@@ -15,7 +15,7 @@ There are other minigames such as MoveToBeacon, CollectMineralShards. These mini
 # Observation Space
 Minigame observation of PySC2 consist of largely screen, minimap feature. Screen feature has 84x84 image size and "height_map", "visibility_map", "creep", "power", "player_id" channel and minimap feature has 64x64 image size and "height_map", "visibility_map", "creep", "camera", "player_id". These two feature is very similar but minimap is little simple that screen.
 
-<img src="image/18-36-53.png" width="300">
+<img src="image/18-49-52.png" width="300">
 Right part is display for screen and minimap feature
 
 However, it is difficult to extract a exact position location of unit by using default feature. Thus, we should use a '--use_feature_units True' additional command for getting of exact location in screen. These feature also give a information unit is belong to which kind of team such as a enermy and my team.
