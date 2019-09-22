@@ -15,6 +15,9 @@ There are other minigames such as MoveToBeacon, CollectMineralShards. These mini
 # Observation Space
 Minigame observation of PySC2 consist of largely screen, minimap feature. Screen feature has 84x84 image size and "height_map", "visibility_map", "creep", "power", "player_id" channel and minimap feature has 64x64 image size and "height_map", "visibility_map", "creep", "camera", "player_id". These two feature is very similar but minimap is little simple that screen.
 
+<img src="image/18-36-53.png" width="300">
+Right part is display for screen and minimap feature
+
 However, it is difficult to extract a exact position location of unit by using default feature. Thus, we should use a '--use_feature_units True' additional command for getting of exact location in screen. These feature also give a information unit is belong to which kind of team such as a enermy and my team.
 
 ```
@@ -53,7 +56,16 @@ return FUNCTIONS.Move_screen("now", [x_point, y_point])
 return FUNCTIONS.Attack_screen("now", [x_point, y_point])
 ```
 
-# Strategy for defeating 4 Roach by using 9 Marine
+# Controlling unit manually
+In PySC2 minigames, you can control unit by a code. Furthermore, you can also control it by using a 
+
+<img src="image/18-36-53.png" width="300">
+Left part is for control unit by a hand. You can also collect a observation and action data of specific tactic.
+
+# Tactics for defeating 4 Roach by using 9 Marine
 It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marines running to Roaches and attacking random Roach. 
 
 <img src="image/ezgif.com-video-to-gif.gif" height="300" width="450">
+
+
+<img src="image/ezgif.com-video-to-gif-1.gif" height="300" width="450">
