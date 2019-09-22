@@ -56,4 +56,4 @@ return FUNCTIONS.Attack_screen("now", [x_point, y_point])
 # Strategy for defeating 4 Roach by using 9 Marine
 It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marines running to Roaches and attacking random Roach. 
 
-<img src="image/ezgif.com-video-to-gif.gif" height="300" width="300">
+<img src="image/ezgif.com-video-to-gif.gif" height="300" width="450">
