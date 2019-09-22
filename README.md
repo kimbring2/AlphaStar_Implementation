@@ -85,4 +85,9 @@ return FUNCTIONS.select_rect("select",
 return FUNCTIONS.select_control_group("set", 1)
 ``` 
 
+<img src="image/22-30-35.png" height="300" width="450">
+
 We can set a one Marine as group 0 after selecting it by using a select_point action. And grouping of another Maring also can be done after selecting them by using a select_rect action. 
+
+
+
