@@ -71,4 +71,18 @@ Humans are able to easily devise a tactic such as arracting some Roaches attenti
 
 <img src="image/ezgif.com-video-to-gif-1.gif" height="300" width="600">
 
-Let's how 
+Let's see how to make these kind of agent in python. As you can see in previous video, grouping one maring and other should be done first for making control more easy then select each Marine at every time.
+
+```  
+return FUNCTIONS.select_point("select", [remain_marines_x_list[0], remain_marines_y_list[0]]) 
+return FUNCTIONS.select_control_group("set", 0)
+```  
+
+```  
+return FUNCTIONS.select_rect("select", 
+                             [remain_marines_x_list[1], remain_marines_y_list[1]], 
+                             [remain_marines_x_list[-1], remain_marines_y_list[-1]])
+return FUNCTIONS.select_control_group("set", 1)
+``` 
+
+We can set a one Marine as group 0 after selecting it by using a select_point action. And grouping of another Maring also can be done after selecting them by using a select_rect action. 
