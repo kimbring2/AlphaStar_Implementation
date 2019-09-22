@@ -69,6 +69,6 @@ It is impossible to winning at this minigame by using simple action sequence suc
 
 Humans are able to easily devise a tactic such as arracting some Roaches attention by using a only one Marine and attacking another Roaches by using remaning Marine. You can do these kind of controlling by using a big display.
 
-<img src="image/ezgif.com-video-to-gif-1.gif" height="300" width="450">
+<img src="image/ezgif.com-video-to-gif-1.gif" height="300" width="600">
 
 Let's how 
