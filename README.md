@@ -18,7 +18,7 @@ Minigame observation of PySC2 consist of largely screen, minimap feature. Screen
 <img src="image/18-49-52.png" width="300">
 Right part is display for screen and minimap feature
 
-However, it is difficult to extract a exact position location of unit by using default feature. Thus, we should use a '--use_feature_units True' additional command for getting of exact location in screen. These feature also give a information unit is belong to which kind of team such as a enermy and my team.
+However, it is difficult to extract a exact position location of unit by using default feature. Thus, we should use a '--use_feature_units True' additional command for getting of exact location in screen. These features also give a information unit is belong to which kind of team such as a enermy and my team.
 
 ```
 marines = [unit for unit in obs.observation.feature_units
@@ -40,7 +40,7 @@ for marine in marines:
 # Action Space
 Action of minigame is consist of 0/no_op, 1/move_camera, 2/select_point, 3/select_rect, 4/select_control_group, 5/select_unit, 453/Stop_quick, 7/select_army, 451/Smart_screen, 452/Smart_minimap, 331/Move_screen, 332/Move_minimap, 333/Patrol_screen, 334/Patrol_minimap, 12/Attack_screen, 13/Attack_minimap, 274/HoldPosition_quick.
 
-There is step function in PySC2 agent class, this function returns a specific action. You can select unit by select_point and select_rect. 
+There is step function in PySC2 agent class, this function returns a specific action. You can select unit by the select_point and select_rect action. 
 
 ```  
 return FUNCTIONS.select_point("select", marine_xy)
@@ -57,15 +57,18 @@ return FUNCTIONS.Attack_screen("now", [x_point, y_point])
 ```
 
 # Controlling unit manually
-In PySC2 minigames, you can control unit by a code. Furthermore, you can also control it by using a 
+In PySC2 minigames, you can control unit by a code. Furthermore, you can also control it by yourself.
 
-<img src="image/18-36-53.png" width="300">
-Left part is for control unit by a hand. You can also collect a observation and action data of specific tactic.
+<img src="image/18-52-20.png" width="300">
+Left part is for control unit by a hand.
 
 # Tactics for defeating 4 Roach by using 9 Marine
-It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marines running to Roaches and attacking random Roach. 
+It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marine running to a Roache and attacking a random Roach and being defeated like a following video.
 
 <img src="image/ezgif.com-video-to-gif.gif" height="300" width="450">
 
+Humans are able to easily devise a tactic such as arracting some Roaches attention by using a only one Marine and attacking another Roaches by using remaning Marine. You can do these kind of controlling by using a big display.
 
 <img src="image/ezgif.com-video-to-gif-1.gif" height="300" width="450">
+
+Let's how 
