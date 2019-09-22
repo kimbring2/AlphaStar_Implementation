@@ -19,15 +19,26 @@ However, it is difficult to extract a exact position location of unit by using d
 
 These feature also give a information unit is belong to which kind of team such as a enermy and my team.
 
+```
+marines = [unit for unit in obs.observation.feature_units
+                 if unit.alliance == _PLAYER_SELF]
+```                 
+```          
+roaches = [unit for unit in obs.observation.feature_units
+                 if unit.alliance == _PLAYER_ENEMY]
+```
+
 # Action Space
+Action of minigame is consist of 0/no_op, 1/move_camera, 2/select_point, 3/select_rect, 4/select_control_group, 5/select_unit, 453/Stop_quick, 7/select_army, 451/Smart_screen, 452/Smart_minimap, 331/Move_screen, 332/Move_minimap, 333/Patrol_screen, 334/Patrol_minimap, 12/Attack_screen, 13/Attack_minimap, 274/HoldPosition_quick.
 
-Action of minigame  
-
-
-
-
-
-
-
-
-
+```  
+return FUNCTIONS.select_point("select", marine_xy)
+``` 
+``` 
+return FUNCTIONS.Attack_screen("now", [x_point, y_point])
+```
+``` 
+return FUNCTIONS.select_rect("select", 
+                             [max(remain_marines_x_list), max(remain_marines_y_list)], 
+                             [min(remain_marines_x_list), min(remain_marines_y_list)])
+```  
