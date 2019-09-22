@@ -1,4 +1,4 @@
-<img src="image/starcraft_2__zerg_roach_by_phillgonzo-d332p8h.jpg" width="350">
+<img src="image/Roach.png" width="350"> <img src="image/Marine_sc2.png" width="350">
 
 # Introduction
 It is a agent for solving PySC2 DefeatRoaches minigames. 
