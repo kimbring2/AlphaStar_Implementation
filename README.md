@@ -1,4 +1,4 @@
-<img src="image/Roach.png" width="350"> <img src="image/Marine_sc2.png" width="350">
+<img src="image/Roach.png" height="350" width="350"> <img src="image/Marine_sc2.png" height="350" width="330">
 
 # Introduction
 It is a agent for solving PySC2 DefeatRoaches minigames. 
