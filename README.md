@@ -123,6 +123,65 @@ if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
 return FUNCTIONS.Move_screen("now", [x_point, y_point])
 ``` 
 
-In this minigame, initial location is different little at each eposide. Thus, we consider every situation. And becasue screen size is limited to 84x84, we should make them below 84 when it goes over wall.
+In this minigame, initial location is different little at each eposide. Thus, we consider every situation. And becasue screen size is limited to 84x84, we should make them below 84 when it goes over limit.
 
 # Attracting a Rochaes by using one Marine
+Our tactic is attracting one Roache attention by using one Marine and attacking remaining Roache by a Marine group. It will be a good controling because a Roache number is smaller than Marine. 
+
+<img src="image/ezgif.com-video-to-gif-4.gif" height="300" width="600">
+
+We can do these control sequence by a following code. First block is for selecting one Marine by using a select_control_group function. Second block is for moving Marine to nearest Roache. As I checked by many trial, 10 is best x axis distance for not to die. Third block is moving back Marine toward back. 
+
+```  
+return FUNCTIONS.select_control_group("recall", 0)
+```  
+
+```
+if ( (marine_position[0] >= min_dis_roache_pos[0]) & (marine_position[1] >= min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] + 10
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] >= min_dis_roache_pos[0]) & (marine_position[1] < min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] + 10
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] < min_dis_roache_pos[0]) & (marine_position[1] >= min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] - 10
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] < min_dis_roache_pos[0]) & (marine_position[1] < min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] - 10
+  y_point = min_dis_roache_pos[1] + 15
+
+if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
+  return FUNCTIONS.no_op()
+return FUNCTIONS.Move_screen("now", [x_point, y_point])
+``` 
+
+```  
+if ( (marine_position[0] >= min_dis_roache_pos[0]) & (marine_position[1] >= min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] + 35
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] >= min_dis_roache_pos[0]) & (marine_position[1] < min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] + 35
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] < min_dis_roache_pos[0]) & (marine_position[1] >= min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] - 35
+  y_point = min_dis_roache_pos[1] + 15
+elif ( (marine_position[0] < min_dis_roache_pos[0]) & (marine_position[1] < min_dis_roache_pos[1]) ):
+  x_point = min_dis_roache_pos[0] - 35
+  y_point = min_dis_roache_pos[1] + 15
+
+if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
+  return FUNCTIONS.no_op()
+return FUNCTIONS.Move_screen("now", [x_point, y_point])
+```
+
+# Feature_unit item for checking end of previous command
+```
+selected_marines = [unit for unit in obs.observation.feature_units
+                    if unit.is_selected == 1]
+if ( (not selected_marines) | (len(selected_marines) != 1) | selected_marines[0][26] == 1):
+    return FUNCTIONS.no_op()
+``` 
+
+Sometimes we should a give a moving command when previous moving command is completed. It is crucial because of stepping process of PySC2 package. You can get a information about this in 26 index of feature_units value of unit. If previous command is still on going, it returns 1.
+
+# 
