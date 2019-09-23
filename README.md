@@ -190,8 +190,6 @@ Sometimes we should a give a moving command when previous moving command is comp
 # Final result
 After attracting one Roache, we should move another Marine for attacking remaing Roache. All needed function is described before, it can be easily implemented.
 
-<img src="image/ezgif.com-video-to-gif-5.gif" width="900">
-
 ```
 return FUNCTIONS.select_control_group("recall", 1)
 ```
@@ -203,4 +201,6 @@ y_point = min_dis_roache_pos[1]
 
 return FUNCTIONS.Move_screen("now", [x_point, y_point])
 ``` 
+
+<img src="image/ezgif.com-video-to-gif-5.gif" width="900">
 
