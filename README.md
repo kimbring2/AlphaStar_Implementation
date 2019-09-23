@@ -62,7 +62,7 @@ In PySC2 minigames, you can control unit by a code. Furthermore, you can also co
 <img src="image/18-52-20.png" height="300" width="450">
 Left part is for control unit by a hand.
 
-# Tactics for defeating 4 Roach by using 9 Marine
+# Setting and Recalling a group for easy control of Marines
 It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marine running to a Roache and attacking a random Roach and being defeated like a following video.
 
 <img src="image/ezgif.com-video-to-gif.gif" height="300" width="450">
@@ -95,3 +95,34 @@ As you can see, the Pygame GUI display what PySC2 provides as a defalut renderin
 By using a '--save_replay True' argument at runninn command, you can save a replay file of your code and watch it by using a 'python -m pysc2.bin.play --replay /home/kimbring2/Pysc2-Relation/DefeatRoaches_2019-09-23-07-07-47.SC2Replay' command. 
 
 <img src="image/ezgif.com-video-to-gif-3.gif" height="300" width="600">
+
+# Placing each Marine group separately in front of Roach Group
+First thing what we should do after giving group number is moving them by using a group function. 
+
+<img src="image/17-51-13.png" height="300" width="450">
+
+There are number of Marine and Roach. Thus, we should get a average of sum of position of each unit. After getting that value, we use it for controlling group.
+
+```  
+if ( (selected_marines_x_mean >= roache_x_mean) & (selected_marines_y_mean >= roache_y_mean) ):
+  x_point = roache_x_mean + 25
+  y_point = roache_y_mean + 20
+elif ( (selected_marines_x_mean >= roache_x_mean) & (selected_marines_y_mean <= roache_y_mean) ):
+  x_point = roache_x_mean + 25
+  y_point = roache_y_mean + 20
+elif ( (selected_marines_x_mean <= roache_x_mean) & (selected_marines_y_mean >= roache_y_mean) ):
+  x_point = roache_x_mean - 25
+  y_point = roache_y_mean + 20
+elif ( (selected_marines_x_mean <= roache_x_mean) & (selected_marines_y_mean <= roache_y_mean) ):
+  x_point = roache_x_mean - 25
+  y_point = roache_y_mean + 20
+  
+if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
+  return FUNCTIONS.no_op()
+
+return FUNCTIONS.Move_screen("now", [x_point, y_point])
+``` 
+
+In this minigame, initial location is different little at each eposide. Thus, we consider every situation. And becasue screen size is limited to 84x84, we should make them below 84 when it goes over wall.
+
+# Attracting a Rochaes by using one Marine
