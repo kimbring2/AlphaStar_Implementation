@@ -90,6 +90,8 @@ return FUNCTIONS.select_control_group("set", 1)
 We can set a one Marine as group 0 after selecting it by using a select_point action. And grouping of another Maring also can be done after selecting them by using a select_rect action. 
 
 # Saving and playing a Replay
-As you can see, the GUI display what PySC2 provides as a defalut rendering option is very simple. Thus, it makes coding boring. By using a '--save_replay True' argument at runninn command, you can save a Replay file and watch it by using a 'python -m pysc2.bin.play --replay /home/kimbring2/Pysc2-Relation/DefeatRoaches_2019-09-23-07-07-47.SC2Replay' command. 
+As you can see, the Pygame GUI display what PySC2 provides as a defalut rendering option is very simple. Thus, we can not see actual attack effect graphics. However, we should see how each unit attact each other for making more accurate algorithm.
+
+By using a '--save_replay True' argument at runninn command, you can save a replay file of your code and watch it by using a 'python -m pysc2.bin.play --replay /home/kimbring2/Pysc2-Relation/DefeatRoaches_2019-09-23-07-07-47.SC2Replay' command. 
 
 <img src="image/ezgif.com-video-to-gif-3.gif" height="300" width="600">
