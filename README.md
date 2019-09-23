@@ -187,7 +187,7 @@ Sometimes we should a give a moving command when previous moving command is comp
 # Final result
 After attracting one Roache, we should move another Marine for attacking remaing Roache. All needed function is described before, it can be easily implemented.
 
-<img src="image/ezgif.com-video-to-gif-5.gif" height="300" width="600">
+<img src="image/ezgif.com-video-to-gif-5.gif" width="900">
 
 ```
 return FUNCTIONS.select_control_group("recall", 1)
