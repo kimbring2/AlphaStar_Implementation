@@ -184,4 +184,20 @@ if ( (not selected_marines) | (len(selected_marines) != 1) | selected_marines[0]
 
 Sometimes we should a give a moving command when previous moving command is completed. It is crucial because of stepping process of PySC2 package. You can get a information about this in 26 index of feature_units value of unit. If previous command is still on going, it returns 1.
 
-# 
+# Final result
+After attracting one Roache, we should move another Marine for attacking remaing Roache. All needed function is described before, it can be easily implemented.
+
+<img src="image/ezgif.com-video-to-gif-5.gif" height="300" width="600">
+
+```
+return FUNCTIONS.select_control_group("recall", 1)
+```
+```
+min_dis_index = distance_list.index(min(distance_list))
+min_dis_roache_pos = roache_position_list[min_dis_index]
+x_point = min_dis_roache_pos[0]
+y_point = min_dis_roache_pos[1]
+
+return FUNCTIONS.Move_screen("now", [x_point, y_point])
+``` 
+
