@@ -7,14 +7,14 @@ This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinfor
 
 1. [Introduction](#intro)
 2. [Observation space](#obs_space)
-3. [Action space](#Action space)
-4. [Controlling unit manually](#Controlling unit manually)
-5. [Setting and Recalling a group](#Setting and Recalling a group)
-6. [Saving and playing a Replay](#Saving and playing a Replay)
-7. [Controlling each Marine group](#Controlling each Marine group)
-8. [Attracting a Rochaes](#Attracting a Rochaes)
-9. [Useful feature_unit flag](#Useful feature_unit flag)
-10. [Final result](#Final result)
+3. [Action space](#act_space)
+4. [Controlling unit manually](#con_manu)
+5. [Setting and Recalling a group](#set_rec_group)
+6. [Saving and playing a Replay](#replay)
+7. [Controlling each Marine group](#contr_m_g)
+8. [Attracting a Rochaes](#att_r)
+9. [Useful feature_unit flag](#feature_unit)
+10. [Final result](#final)
 
 <a name="intro"></a>
 # Introduction
@@ -54,7 +54,7 @@ for marine in marines:
   marine_x_list.append(marine.x)
   marine_y_list.append(marine.y)
 ```   
-
+<a name="act_space"></a>
 # Action space
 Action of minigame is consist of 0/no_op, 1/move_camera, 2/select_point, 3/select_rect, 4/select_control_group, 5/select_unit, 453/Stop_quick, 7/select_army, 451/Smart_screen, 452/Smart_minimap, 331/Move_screen, 332/Move_minimap, 333/Patrol_screen, 334/Patrol_minimap, 12/Attack_screen, 13/Attack_minimap, 274/HoldPosition_quick.
 
@@ -73,13 +73,14 @@ After selection unit, you can make that unit move Move_screen, Attack_screen.
 return FUNCTIONS.Move_screen("now", [x_point, y_point])
 return FUNCTIONS.Attack_screen("now", [x_point, y_point])
 ```
-
+<a name="con_manu"></a>
 # Controlling unit manually
 In PySC2 minigames, you can control unit by a code. Furthermore, you can also control it by yourself.
 
 <img src="image/18-52-20.png" height="300" width="450">
 Left part is for control unit by a hand.
 
+<a name="set_rec_group"></a>
 # Setting and Recalling a group
 It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marine running to a Roache and attacking a random Roach and being defeated like a following video.
 
@@ -107,6 +108,7 @@ return FUNCTIONS.select_control_group("set", 1)
 
 We can set a one Marine as group 0 after selecting it by using a select_point action. And grouping of another Maring also can be done after selecting them by using a select_rect action. 
 
+<a name="replay"></a>
 # Saving and playing a Replay
 As you can see, the Pygame GUI display what PySC2 provides as a defalut rendering option is very simple. Thus, we can not see actual attack effect graphics. However, we should see how each unit attact each other for making more accurate algorithm.
 
@@ -114,6 +116,7 @@ By using a '--save_replay True' argument at runninn command, you can save a repl
 
 <img src="image/ezgif.com-video-to-gif-3.gif" height="300" width="600">
 
+<a name="contr_m_g"></a>
 # Controlling each Marine group
 First thing what we should do after giving group number is moving them by using a group function. 
 
@@ -143,6 +146,7 @@ return FUNCTIONS.Move_screen("now", [x_point, y_point])
 
 In this minigame, initial location is different little at each eposide. Thus, we consider every situation. And becasue screen size is limited to 84x84, we should make them below 84 when it goes over limit.
 
+<a name="att_r"></a>
 # Attracting a Rochaes
 Our tactic is attracting one Roache attention by using one Marine and attacking remaining Roache by a Marine group. It will be a good controling because a Roache number is smaller than Marine. 
 
@@ -192,6 +196,7 @@ if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
 return FUNCTIONS.Move_screen("now", [x_point, y_point])
 ```
 
+<a name="feature_unit"></a>
 # Useful feature_unit flag
 ```
 selected_marines = [unit for unit in obs.observation.feature_units
@@ -202,6 +207,7 @@ if ( (not selected_marines) | (len(selected_marines) != 1) | selected_marines[0]
 
 Sometimes we should a give a moving command when previous moving command is completed. It is crucial because of stepping process of PySC2 package. You can get a information about this in 26 index of feature_units value of unit. If previous command is still on going, it returns 1.
 
+<a name="final"></a>
 # Final result
 After attracting one Roache, we should move another Marine for attacking remaing Roache. All needed function is described before, it can be easily implemented.
 
