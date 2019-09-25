@@ -5,8 +5,8 @@ This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinfor
 
 # Table of Contents
 
-1. [Introduction](#Introduction)
-2. [Observation space](#Observation space)
+1. [Introduction](#intro)
+2. [Observation space](#obs_space)
 3. [Action space](#Action space)
 4. [Controlling unit manually](#Controlling unit manually)
 5. [Setting and Recalling a group](#Setting and Recalling a group)
@@ -16,7 +16,7 @@ This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinfor
 9. [Useful feature_unit flag](#Useful feature_unit flag)
 10. [Final result](#Final result)
 
-
+<a name="intro"></a>
 # Introduction
 It is a agent for solving PySC2 DefeatRoaches minigames. 
 You should intall Starcraft2 for linux and PySC2 python package for running that code from https://github.com/deepmind/pysc2.
@@ -29,6 +29,7 @@ Running command looks difficult at first time, but you can understand it after k
 
 There are other minigames such as MoveToBeacon, CollectMineralShards. These minigames can be solved by a simple algorithm such as DQN. However, DefeatRoaches is little difficult for winning because a Roache unit is much strong to Marine player has to control.
 
+<a name="obs_space"></a>
 # Observation space
 Minigame observation of PySC2 consist of largely screen, minimap feature. Screen feature has 84x84 image size and "height_map", "visibility_map", "creep", "power", "player_id" channel and minimap feature has 64x64 image size and "height_map", "visibility_map", "creep", "camera", "player_id". These two feature is very similar but minimap is little simple that screen.
 
