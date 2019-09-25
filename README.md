@@ -5,17 +5,16 @@ This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinfor
 
 # Table of Contents
 
-1. [My Introduction Title](#Introduction)
-2. [Introduction](#Introduction)
-3. [Observation Space](#Observation space)
-4. [Action Space](#Action space)
-5. [Controlling unit manually](#Controlling unit manually)
-6. [Setting and Recalling a group](#Setting and Recalling a group)
-7. [Saving and playing a Replay](#Saving and playing a Replay)
-8. [Controlling each Marine group](#Controlling each Marine group)
-9. [Attracting a Rochaes](#Attracting a Rochaes)
-10. [Useful feature_unit flag](#Useful feature_unit flag)
-11. [Final result](#Final result)
+1. [Introduction](#Introduction)
+2. [Observation space](#Observation space)
+3. [Action space](#Action space)
+4. [Controlling unit manually](#Controlling unit manually)
+5. [Setting and Recalling a group](#Setting and Recalling a group)
+6. [Saving and playing a Replay](#Saving and playing a Replay)
+7. [Controlling each Marine group](#Controlling each Marine group)
+8. [Attracting a Rochaes](#Attracting a Rochaes)
+9. [Useful feature_unit flag](#Useful feature_unit flag)
+10. [Final result](#Final result)
 
 
 # Introduction
