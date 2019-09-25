@@ -3,7 +3,20 @@ This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinfor
 
 <img src="image/Roach.png" height="300" width="300"> <img src="image/Marine_sc2.png" height="300" width="300">
 
+# Table of Contents
+
 1. [My Introduction Title](#Introduction)
+2. [Introduction](#Introduction)
+3. [Observation Space](#Observation space)
+4. [Action Space](#Action space)
+5. [Controlling unit manually](#Controlling unit manually)
+6. [Setting and Recalling a group](#Setting and Recalling a group)
+7. [Saving and playing a Replay](#Saving and playing a Replay)
+8. [Controlling each Marine group](#Controlling each Marine group)
+9. [Attracting a Rochaes](#Attracting a Rochaes)
+10. [Useful feature_unit flag](#Useful feature_unit flag)
+11. [Final result](#Final result)
+
 
 # Introduction
 It is a agent for solving PySC2 DefeatRoaches minigames. 
@@ -17,7 +30,7 @@ Running command looks difficult at first time, but you can understand it after k
 
 There are other minigames such as MoveToBeacon, CollectMineralShards. These minigames can be solved by a simple algorithm such as DQN. However, DefeatRoaches is little difficult for winning because a Roache unit is much strong to Marine player has to control.
 
-# Observation Space
+# Observation space
 Minigame observation of PySC2 consist of largely screen, minimap feature. Screen feature has 84x84 image size and "height_map", "visibility_map", "creep", "power", "player_id" channel and minimap feature has 64x64 image size and "height_map", "visibility_map", "creep", "camera", "player_id". These two feature is very similar but minimap is little simple that screen.
 
 <img src="image/18-49-52.png" height="300" width="450">
@@ -42,7 +55,7 @@ for marine in marines:
   marine_y_list.append(marine.y)
 ```   
 
-# Action Space
+# Action space
 Action of minigame is consist of 0/no_op, 1/move_camera, 2/select_point, 3/select_rect, 4/select_control_group, 5/select_unit, 453/Stop_quick, 7/select_army, 451/Smart_screen, 452/Smart_minimap, 331/Move_screen, 332/Move_minimap, 333/Patrol_screen, 334/Patrol_minimap, 12/Attack_screen, 13/Attack_minimap, 274/HoldPosition_quick.
 
 There is step function in PySC2 agent class, this function returns a specific action. You can select unit by the select_point and select_rect action. 
@@ -67,7 +80,7 @@ In PySC2 minigames, you can control unit by a code. Furthermore, you can also co
 <img src="image/18-52-20.png" height="300" width="450">
 Left part is for control unit by a hand.
 
-# Setting and Recalling a group for easy control of Marines
+# Setting and Recalling a group
 It is impossible to winning at this minigame by using simple action sequence such as select_army, Attack_screen. It makes every Marine running to a Roache and attacking a random Roach and being defeated like a following video.
 
 <img src="image/ezgif.com-video-to-gif.gif" height="300" width="450">
@@ -101,7 +114,7 @@ By using a '--save_replay True' argument at runninn command, you can save a repl
 
 <img src="image/ezgif.com-video-to-gif-3.gif" height="300" width="600">
 
-# Placing each Marine group separately in front of Roach Group
+# Controlling each Marine group
 First thing what we should do after giving group number is moving them by using a group function. 
 
 <img src="image/17-51-13.png" height="300" width="450">
@@ -130,7 +143,7 @@ return FUNCTIONS.Move_screen("now", [x_point, y_point])
 
 In this minigame, initial location is different little at each eposide. Thus, we consider every situation. And becasue screen size is limited to 84x84, we should make them below 84 when it goes over limit.
 
-# Attracting a Rochaes by using one Marine
+# Attracting a Rochaes
 Our tactic is attracting one Roache attention by using one Marine and attacking remaining Roache by a Marine group. It will be a good controling because a Roache number is smaller than Marine. 
 
 <img src="image/ezgif.com-video-to-gif-4.gif" height="300" width="600">
@@ -179,7 +192,7 @@ if ( (x_point > 83) | (x_point < 1) | (y_point > 83) | (y_point < 1) ):
 return FUNCTIONS.Move_screen("now", [x_point, y_point])
 ```
 
-# Feature_unit item for checking end of previous command
+# Useful feature_unit flag
 ```
 selected_marines = [unit for unit in obs.observation.feature_units
                     if unit.is_selected == 1]
