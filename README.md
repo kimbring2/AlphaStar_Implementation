@@ -1,5 +1,5 @@
 # What is it for?
-This code and explanation is predecessor for making Relational Deep Reinforcement Learning agent. Starcraft 2 has very complex action space such as selecting unit by using mouse scrool and grouping unit. Thus, we should know which kind of action is avalible for agent. First part of this series is for Rule-Based agent which select a action by if sentence. It looks idiot, but it will be very helpful for more intellegent making.
+This code and explanation is predecessor for intoroduce Multi-Agent Deep Reinforcement Learning. Starcraft 2 has very complex action space such as selecting unit by using mouse scrool and grouping unit. Thus, we should know which kind of action is avalible for agent. First part of this series is for Rule-Based agent which select a action by if sentence. It looks inefficient at first, but this work will be very helpful for more intellegent agent.
 
 <img src="image/Roach.png" height="300" width="300"> <img src="image/Marine_sc2.png" height="300" width="300">
 
