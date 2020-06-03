@@ -58,19 +58,23 @@ _QUEUED = [1]
 _SELECT_ALL = [2]
 
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
 _BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
+_BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
 
 _TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
+_TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
 _TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
 
 _RETURN_SCV = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
 _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
+_HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
 #print("_BUILD_SUPPLY_DEPOT :" + str(_BUILD_SUPPLY_DEPOT))
 
@@ -80,11 +84,13 @@ scv_selected = False
 scv_return = False
 
 marine_selected = False
+marauder_selected = False
 
 first_attack = False
+second_attack = False
 
 obs = env.reset()
-for i in range(0, 1000):
+for i in range(0, 50000):
   #print("i: " + str(i))
   #time.sleep(0.1)
 
@@ -114,24 +120,29 @@ for i in range(0, 1000):
   self_CommandCenter = [unit for unit in feature_units if unit.unit_type == units.Terran.CommandCenter and unit.alliance == _PLAYER_SELF]
   self_SupplyDepot = [unit for unit in feature_units if unit.unit_type == units.Terran.SupplyDepot and unit.alliance == _PLAYER_SELF]
   self_Refinery = [unit for unit in feature_units if unit.unit_type == units.Terran.Refinery and unit.alliance == _PLAYER_SELF]
+  self_BarracksTechLab = [unit for unit in feature_units if unit.unit_type == units.Terran.BarracksTechLab and unit.alliance == _PLAYER_SELF]
   self_SCVs = [unit for unit in feature_units if unit.unit_type == units.Terran.SCV and unit.alliance == _PLAYER_SELF]
   self_Marines = [unit for unit in feature_units if unit.unit_type == units.Terran.Marine and unit.alliance == _PLAYER_SELF]
+  self_Marauder = [unit for unit in feature_units if unit.unit_type == units.Terran.Marauder and unit.alliance == _PLAYER_SELF]
   self_Barracks = [unit for unit in feature_units if unit.unit_type == units.Terran.Barracks and unit.alliance == _PLAYER_SELF]
   neutral_Minerals = [unit for unit in feature_units if unit.unit_type == units.Neutral.MineralField]
   neutral_VespeneGeysers = [unit for unit in feature_units if unit.unit_type == units.Neutral.VespeneGeyser]
 
   unselected_SCV_list = []
   for SCV in self_SCVs:
-    #print("SCV: " + str(SCV))
-
     if SCV.is_selected == 0:
       unselected_SCV_list.append(SCV)
-  #print("")
-  num_SCVs = len(self_SCVs)
+  
+  num_SCV = len(self_SCVs)
   num_Barracks = len(self_Barracks)
   num_Marines = len(self_Marines)
+  num_Marauder= len(self_Marauder)
   num_Refinery = len(self_Refinery)
-  #print("num_SCVs: " + str(num_SCVs))
+  num_BarracksTechLab = len(self_BarracksTechLab)
+
+  #print("first_attack: " + str(first_attack))
+  if num_Refinery != 0:
+    assigned_scv = self_Refinery[0].assigned_harvesters
 
   x_list = []
   y_list = []
@@ -147,6 +158,7 @@ for i in range(0, 1000):
     dis_y = self_CommandCenter[0].y - mean_y_Minerals
   
   self_minerals = feature_player.minerals
+  self_vespene = feature_player.vespene
   self_food_used = feature_player.food_used
   self_food_cap = feature_player.food_cap
 
@@ -199,6 +211,8 @@ for i in range(0, 1000):
           action = [actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])]
   else:
     if (self_food_cap - self_food_used <=3):
+      #print("scv_selected: " + str(scv_selected))
+
       if (scv_selected == False):
         scv_selected = True
         random_SCV = random.choice(unselected_SCV_list)
@@ -206,57 +220,96 @@ for i in range(0, 1000):
         action = [actions.FUNCTIONS.select_point("select", target)]
       else:
         if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
-            #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-            random_point = random.choice(empty_space)
-            target = [random_point[0], random_point[1]]
-            #print("target: " + str(target))
-            action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
+          #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
+          random_point = random.choice(empty_space)
+          target = [random_point[0], random_point[1]]
+          #print("target: " + str(target))
+          action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
     elif (num_Refinery == 0):
       if (_BUILD_REFINERY not in available_actions):
         random_SCV = random.choice(unselected_SCV_list)
         target = [random_SCV.x, random_SCV.y]
         action = [actions.FUNCTIONS.select_point("select", target)]
       elif ( (self_minerals >= 100) & (_BUILD_REFINERY in available_actions) ):
-          #target = [random_point[0], random_point[1]]
-          #print("target: " + str(target))
-          if (len(neutral_VespeneGeysers) != 0):
-            target = [neutral_VespeneGeysers[0].x, neutral_VespeneGeysers[0].y]
-            action = [actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])]
-    elif (num_SCVs <= 14):
+        #target = [random_point[0], random_point[1]]
+        #print("target: " + str(target))
+        if (len(neutral_VespeneGeysers) != 0):
+          target = [neutral_VespeneGeysers[0].x, neutral_VespeneGeysers[0].y]
+          action = [actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])]
+    elif (self_Refinery[0].assigned_harvesters <= 3):
+      #print("self_Refinery[0].assigned_harvesters: " + str(self_Refinery[0].assigned_harvesters))
+      #print("Refinery loop")
+      if (scv_selected == False):
+        #print("scv_selected command")
+        scv_selected = True
+        random_SCV = random.choice(unselected_SCV_list)
+        target = [random_SCV.x, random_SCV.y]
+        action = [actions.FUNCTIONS.select_point("select", target)]
+        #print("select scv")
+      elif ( (_HARVEST_GATHER in available_actions) & (scv_selected == True) ):
+        #print("havest command")
+        scv_selected = False
+        target = [self_Refinery[0].x, self_Refinery[0].y]
+        action = [actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])]
+    elif (num_SCV <= 14):
       if (_TRAIN_SCV not in available_actions):
         if (len(self_CommandCenter) != 0):
           target = [self_CommandCenter[0].x, self_CommandCenter[0].y]
           action = [actions.FUNCTIONS.select_point("select", target)]
+
+          scv_selected = False
       else:
         action = [actions.FunctionCall(_TRAIN_SCV, [_QUEUED])]
-    else:
-      if (_HARVEST_GATHER in available_actions):
-        if (num_Refinery != 0):
-          #print("_HARVEST_GATHER Refinery")
-          target = [self_Refinery[0].x, self_Refinery[0].y]
-          action = [actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])]
+    elif (num_Marines < 10):
+      if (num_Barracks != 0):
+        if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
+            action = [actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])]
+        else:
+          target = [self_Barracks[0].x, self_Barracks[0].y]
+          action = [actions.FUNCTIONS.select_point("select", target)]
+    elif (num_Barracks <= 2):
+      if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
+        #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
+        random_point = random.choice(empty_space)
+        target = [random_point[0], random_point[1]]
+        #print("target: " + str(target))
+        action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
       else:
-        if (_SELECT_IDLE_WORKER in available_actions):
-          action = [actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])]
+        random_SCV = random.choice(unselected_SCV_list)
+        target = [random_SCV.x, random_SCV.y]
+        action = [actions.FUNCTIONS.select_point("select", target)]
+    elif (num_BarracksTechLab == 0):
+      #print("TechLab loop")
+      #print("num_BarracksTechLab: " + str(num_BarracksTechLab))
 
-  '''
-  if ( (_MOVE_SCREEN in available_actions) & (scv_return == False) ):
-      scv_return = True
-      action = [actions.FUNCTIONS.Move_screen("now", [neutral_Minerals[0].x, neutral_Minerals[0].y])]
-    else:
-      action = [actions.FUNCTIONS.no_op()]
-  '''
-
-  #print("obs_feature_units: " + str(obs_feature_units))
-  #print("obs[2]: " + str(obs[2]))
-  #roaches = [unit for unit in obs.observation.feature_units if unit.alliance == _PLAYER_ENEMY]
-
-  #print("marines: " + str(marines))
-  #print("")
+      if (_BUILD_TECHLAB not in available_actions):
+        #target = [self_Barracks[0].x, self_Barracks[0].y]
+        #random_point = random.choice(empty_space)
+        #target = [random_point[0], random_point[1]]
+        target = [self_Barracks[0].x, self_Barracks[0].y]
+        action = [actions.FUNCTIONS.select_point("select", target)]
+      elif ( (self_minerals >= 100) & (self_vespene >= 25) & (_BUILD_TECHLAB in available_actions) ):
+        #target = [self_Barracks[0].x, self_Barracks[0].y]
+        random_point = random.choice(empty_space)
+        target = [random_point[0], random_point[1]]
+        action = [actions.FunctionCall(_BUILD_TECHLAB, [_NOT_QUEUED, target])]
+    elif (num_Marauder < 5):
+      #print("Marauder loop")
+      if (num_Barracks != 0):
+        if ( (self_minerals >= 100) & (self_vespene >= 25) & (_TRAIN_MARAUDER in available_actions) ):
+            print("_TRAIN_MARAUDER command")
+            action = [actions.FunctionCall(_TRAIN_MARAUDER, [_QUEUED])]
+        else:
+          target = [self_Barracks[1].x, self_Barracks[1].y]
+          action = [actions.FUNCTIONS.select_point("select", target)]
+    elif (num_Marauder >= 5):
+      if ( (_SELECT_ARMY in available_actions) & (marauder_selected == False) ):
+        marauder_selected = True
+        action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
+      elif ( (_ATTACK_MINIMAP in available_actions) & (marauder_selected == True) ):
+        random_point = random.choice(enermy)
+        target = [random_point[0], random_point[1]]
+        action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
+  #print("action: " + str(action))
+  print("num_Marauder: " + str(num_Marauder))
   obs = env.step(action)
-  #for marine in marines:
-    #print("len(marines): " + str(len(marines)))
-    #print("marine.x: " + str(marine.x))
-    #print("marine.y: " + str(marine.y))
-    #print("")
-
