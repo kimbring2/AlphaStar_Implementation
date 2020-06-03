@@ -60,6 +60,7 @@ _SELECT_ALL = [2]
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
 
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
@@ -85,6 +86,7 @@ scv_return = False
 
 marine_selected = False
 marauder_selected = False
+army_selected = False
 
 first_attack = False
 second_attack = False
@@ -125,6 +127,7 @@ for i in range(0, 50000):
   self_Marines = [unit for unit in feature_units if unit.unit_type == units.Terran.Marine and unit.alliance == _PLAYER_SELF]
   self_Marauder = [unit for unit in feature_units if unit.unit_type == units.Terran.Marauder and unit.alliance == _PLAYER_SELF]
   self_Barracks = [unit for unit in feature_units if unit.unit_type == units.Terran.Barracks and unit.alliance == _PLAYER_SELF]
+  self_BarracksFlying = [unit for unit in feature_units if unit.unit_type == units.Terran.BarracksFlying and unit.alliance == _PLAYER_SELF]
   neutral_Minerals = [unit for unit in feature_units if unit.unit_type == units.Neutral.MineralField]
   neutral_VespeneGeysers = [unit for unit in feature_units if unit.unit_type == units.Neutral.VespeneGeyser]
 
@@ -135,11 +138,13 @@ for i in range(0, 50000):
   
   num_SCV = len(self_SCVs)
   num_Barracks = len(self_Barracks)
+  num_BarracksFlying = len(self_BarracksFlying)
   num_Marines = len(self_Marines)
   num_Marauder= len(self_Marauder)
   num_Refinery = len(self_Refinery)
   num_BarracksTechLab = len(self_BarracksTechLab)
 
+  total_Barracks = num_Barracks + num_BarracksFlying + num_BarracksTechLab
   #print("first_attack: " + str(first_attack))
   if num_Refinery != 0:
     assigned_scv = self_Refinery[0].assigned_harvesters
@@ -173,26 +178,28 @@ for i in range(0, 50000):
         action = [actions.FUNCTIONS.select_point("select", target)]
       else:
         if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
-            #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-            random_point = random.choice(empty_space)
-            target = [random_point[0], random_point[1]]
-            #print("target: " + str(target))
-            action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
-    elif (num_Barracks == 0):
+          #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
+          random_point = random.choice(empty_space)
+          target = [random_point[0], random_point[1]]
+          #print("target: " + str(target))
+          action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
+    elif (num_Barracks <= 2):
       if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
           #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
           random_point = random.choice(empty_space)
           target = [random_point[0], random_point[1]]
           #print("target: " + str(target))
           action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
-    elif (num_Marines < 5):
+    elif (num_Marines < 10):
       if (num_Barracks != 0):
         if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
             action = [actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])]
         else:
-          target = [self_Barracks[0].x, self_Barracks[0].y]
+          scv_selected = False
+          random_barrack = random.choice(self_Barracks)
+          target = [random_barrack.x, random_barrack.y]
           action = [actions.FUNCTIONS.select_point("select", target)]
-    elif (num_Marines >= 5):
+    elif (num_Marines >= 10):
         if ( (_SELECT_ARMY in available_actions) & (marine_selected == False) ) :
           marine_selected = True
           action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
@@ -256,7 +263,6 @@ for i in range(0, 50000):
         if (len(self_CommandCenter) != 0):
           target = [self_CommandCenter[0].x, self_CommandCenter[0].y]
           action = [actions.FUNCTIONS.select_point("select", target)]
-
           scv_selected = False
       else:
         action = [actions.FunctionCall(_TRAIN_SCV, [_QUEUED])]
@@ -267,7 +273,7 @@ for i in range(0, 50000):
         else:
           target = [self_Barracks[0].x, self_Barracks[0].y]
           action = [actions.FUNCTIONS.select_point("select", target)]
-    elif (num_Barracks <= 2):
+    elif (total_Barracks <= 2):
       if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
         #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
         random_point = random.choice(empty_space)
@@ -297,19 +303,32 @@ for i in range(0, 50000):
       #print("Marauder loop")
       if (num_Barracks != 0):
         if ( (self_minerals >= 100) & (self_vespene >= 25) & (_TRAIN_MARAUDER in available_actions) ):
-            print("_TRAIN_MARAUDER command")
+            #print("_TRAIN_MARAUDER command")
             action = [actions.FunctionCall(_TRAIN_MARAUDER, [_QUEUED])]
         else:
+          scv_selected = False
           target = [self_Barracks[1].x, self_Barracks[1].y]
           action = [actions.FUNCTIONS.select_point("select", target)]
-    elif (num_Marauder >= 5):
+    elif (num_Marauder >= 3):
       if ( (_SELECT_ARMY in available_actions) & (marauder_selected == False) ):
         marauder_selected = True
+        scv_selected = False
         action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
-      elif ( (_ATTACK_MINIMAP in available_actions) & (marauder_selected == True) ):
+      elif ( (_SELECT_CONTROL_GROUP in available_actions) & (marauder_selected == True) ):
+        #marauder_selected = False
+        #random_point = random.choice(enermy)
+        #target = [random_point[0], random_point[1]]
+        action = [actions.FUNCTIONS.select_control_group("set", 1)]
+        #action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
+    else:
+      if ( (_SELECT_CONTROL_GROUP in available_actions) & (army_selected == False) ):
+        army_selected = True
+        action = [actions.FUNCTIONS.select_control_group("recall", 1)]
+      elif ( (_ATTACK_MINIMAP in available_actions) & (army_selected == True) ):
         random_point = random.choice(enermy)
         target = [random_point[0], random_point[1]]
         action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
-  #print("action: " + str(action))
-  print("num_Marauder: " + str(num_Marauder))
+
+  print("action: " + str(action))
+  #print("num_Marauder: " + str(num_Marauder))
   obs = env.step(action)
