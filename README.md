@@ -8,6 +8,8 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 # Detailed information
 I am writing explanation for code at Medium as series.
 
+1. First tutorial : https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
+
 # How to run code
 1. Extract information from Starcraft2 replay file : python extract_replay_info.py --replay [replay_file_path]
 
