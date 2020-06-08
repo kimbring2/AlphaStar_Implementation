@@ -60,6 +60,8 @@ def get_random_trajectory(source, home_race, away_race, replay_filter, filter_re
 			#print("player0_mmr: " + str(player0_mmr))
 			#print("player0_apm: " + str(player0_apm))
 			#print("player0_result: " + str(player0_result))
+
+			home_race = race_list.index(home_race) + 1
 			if (home_race == player0_race):
 				print("player0_race pass ")
 			else:
@@ -73,10 +75,10 @@ def get_random_trajectory(source, home_race, away_race, replay_filter, filter_re
 			#print("player1_mmr: " + str(player1_mmr))
 			#print("player1_apm: " + str(player1_apm))
 			#print("player1_result: " + str(player1_result))
-			if (away_race == player1_race):
-				print("player1_race pass ")
-			else:
-				continue
+			#if (away_race == player1_race):
+			#	print("player1_race pass ")
+			#else:
+			#	continue
 
 			if (player0_mmr >= replay_filter):
 				print("player0_mmr pass ")
