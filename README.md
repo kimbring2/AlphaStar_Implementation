@@ -17,7 +17,7 @@ You should replace source as path of the folder where the replay file stored. Ra
 
 ```
 from trajectory import get_random_trajectory
-info_1, info_2 = get_random_trajectory(source='/media/kimbring2/Steam1/StarCraftII/Replays/4.8.2.71663-20190123_035823-1/', home_race=1, away_race=1, replay_filter=3500)
+info_1, info_2 = get_random_trajectory(source='/media/kimbring2/Steam1/StarCraftII/Replays/4.8.2.71663-20190123_035823-1/', home_race='Terran', away_race=['Terran', 'Zerg', 'Protoss'], replay_filter=3500)
 
 print(info_1)
 ['SCV', 'SCV', 'SupplyDepot', 'SCV', 'SCV', 'SCV', 'Barracks', 'Refinery', 'SCV', 'SCV', 'SCV', 'Reaper', 'Reaper', 'CommandCenter', 'Refinery', 'SCV', 'Reaper', 'Factory', 'SCV', 'SupplyDepot', 'Reaper', 'Bunker', 'SCV', 'SCV', 'Hellion', 'SupplyDepot', 'Marine', 'SCV', 'SCV', 'SCV', 'TechLab', 'TechLab', 'SCV', 'SCV', 'SCV', 'SCV', 'SCV', 'CommandCenter', 'SCV', 'SiegeTank', 'SCV', 'Starport', 'EngineeringBay', 'SCV', 'SCV', 'SCV', 'SCV', 'SCV', 'Marine', 'SiegeTank']
