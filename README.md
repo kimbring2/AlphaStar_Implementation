@@ -10,7 +10,18 @@ I am writing explanation for code at Medium as series.
 
 1. First tutorial : https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
 
-# How to run code
-1. Extract information from Starcraft2 replay file : python extract_replay_info.py --replay [replay_file_path]
+# Extract information from replay file
+The following is the process of getting build order, unit and cumulative score information from one replay file in my PC working environment.
 
+You should replace source as path of the folder where the replay file stored. Race is 1:Terran, 2:Zerg, 3:Protoss, respectively.
 
+```
+from trajectory import get_random_trajectory
+info_1, info_2 = get_random_trajectory(source='/media/kimbring2/Steam1/StarCraftII/Replays/4.8.2.71663-20190123_035823-1/', home_race=1, away_race=1, replay_filter=3500)
+
+print(info_1)
+['SCV', 'SCV', 'SupplyDepot', 'SCV', 'SCV', 'SCV', 'Barracks', 'Refinery', 'SCV', 'SCV', 'SCV', 'Reaper', 'Reaper', 'CommandCenter', 'Refinery', 'SCV', 'Reaper', 'Factory', 'SCV', 'SupplyDepot', 'Reaper', 'Bunker', 'SCV', 'SCV', 'Hellion', 'SupplyDepot', 'Marine', 'SCV', 'SCV', 'SCV', 'TechLab', 'TechLab', 'SCV', 'SCV', 'SCV', 'SCV', 'SCV', 'CommandCenter', 'SCV', 'SiegeTank', 'SCV', 'Starport', 'EngineeringBay', 'SCV', 'SCV', 'SCV', 'SCV', 'SCV', 'Marine', 'SiegeTank']
+
+print(info_2)
+{'score': 6052, 'idle_production_time': 272, 'idle_worker_time': 38, 'total_value_units': 2275, 'total_value_structures': 1900, 'killed_value_units': 150, 'killed_value_structures': 0, 'collected_minerals': 4365, 'collected_vespene': 912, 'collection_rate_minerals': 1483, 'collection_rate_vespene': 335, 'spent_minerals': 4150, 'spent_vespene': 700}
+```
