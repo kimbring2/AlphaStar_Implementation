@@ -6,6 +6,10 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 2. Extracting observation, action from replay file : https://github.com/narhen/pysc2-replay
 
+# Running test
+To check you setting all your computer environment correctly. Run 'env_test.py' file in your terminal.
+Then, screen of PySC2 will start and you can see some activation of Rule-Based agent. 
+
 # Detailed information
 I am writing explanation for code at Medium as series.
 
