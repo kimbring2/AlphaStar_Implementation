@@ -3,7 +3,14 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 # Reference
 1. Download replay file : https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
+```
+python download_replays.py --key=<your key> --secret=<your secret key> --version=4.8.2 --replays_dir=<your path> --extract
+```
+
 2. Extracting observation, action from replay file : https://github.com/narhen/pysc2-replay
+```
+
+```
 
 # Detailed information
 I am writing explanation for code at Medium as series.
