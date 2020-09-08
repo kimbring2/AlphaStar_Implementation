@@ -8,7 +8,7 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 # Running test
 To check you setting all your computer environment correctly. Run 'env_test.py' file in your terminal.
-Then, screen of PySC2 will start and you can see some activation of Rule-Based agent. 
+Then, screen of PySC2 will start and you can see some activation of rule-based agent. 
 
 # Detailed information
 I am writing explanation for code at Medium as series.
