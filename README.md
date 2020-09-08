@@ -8,9 +8,6 @@ python download_replays.py --key=<your key> --secret=<your secret key> --version
 ```
 
 2. Extracting observation, action from replay file : https://github.com/narhen/pysc2-replay
-```
-
-```
 
 # Detailed information
 I am writing explanation for code at Medium as series.
