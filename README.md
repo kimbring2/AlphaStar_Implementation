@@ -3,8 +3,11 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 # Reference
 1. Download replay file(4.8.2 version file is needed) : https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
-
 2. Extracting observation, action from replay file : https://github.com/narhen/pysc2-replay
+
+# Version
+1. Python3
+2. PySC2 3.0.0
 
 # Running test
 To check you setting all your computer environment correctly. Run 'env_test.py' file in your terminal.
