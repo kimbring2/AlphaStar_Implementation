@@ -1,27 +1,68 @@
 from multiagent import League
 from rl import Trajectory, loss_function
 
+from pysc2.env import sc2_env, available_actions_printer
+from pysc2.env.environment import StepType
+from absl import flags
+
 LOOPS_PER_ACTOR = 1000
 BATCH_SIZE = 512
 TRAJECTORY_LENGTH = 64
+
+FLAGS = flags.FLAGS
+FLAGS(sys.argv)
 
 
 class SC2Environment:
   """See PySC2 environment."""
 
   def __init__(self, settings):
-    pass
+    map_name = 'Simple128'
+    players = [sc2_env.Agent(sc2_env.Race['terran']), 
+                 sc2_env.Agent(sc2_env.Race['terran'])]
+    feature_screen_size = 128
+    feature_minimap_size = 64
+    rgb_screen_size = None
+    rgb_minimap_size = None
+    action_space = None
+    use_feature_units = True
+    step_mul = 8
+    game_steps_per_episode = None
+    disable_fog = True
+    visualize = True
+
+    self.env = sc2_env.SC2Env(
+          map_name=map_name,
+          players=players,
+          agent_interface_format=sc2_env.parse_agent_interface_format(
+              feature_screen=feature_screen_size,
+              feature_minimap=feature_minimap_size,
+              rgb_screen=rgb_screen_size,
+              rgb_minimap=rgb_minimap_size,
+              action_space=action_space,
+              use_feature_units=use_feature_units),
+          step_mul=step_mul,
+          game_steps_per_episode=game_steps_per_episode,
+          disable_fog=disable_fog,
+          visualize=visualize)
 
   def step(self, home_action, away_action):
-    pass
+    observation = self.env.step([home_action, away_action])
+    done_check = obs[0][0]
+    is_final = False
+    rewards = 0
+
+    if done_check == StepType.LAST:
+      is_final = True
+
+    return observation, is_final, rewards
 
   def reset(self):
-    pass
+    self.env.reset()
 
 
 class Coordinator:
   """Central worker that maintains payoff matrix and assigns new matches."""
-
   def __init__(self, league):
     self.league = league
 
@@ -36,7 +77,6 @@ class ActorLoop:
 
   We don't use batched inference here, but it was used in practice.
   """
-
   def __init__(self, player, coordinator):
     self.player = player
     self.teacher = get_supervised_agent(player.get_race())
@@ -84,7 +124,6 @@ class ActorLoop:
 
 class Learner:
   """Learner worker that updates agent parameters based on trajectories."""
-
   def __init__(self, player):
     self.player = player
     self.trajectories = []

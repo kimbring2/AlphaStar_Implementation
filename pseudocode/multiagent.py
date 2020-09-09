@@ -1,8 +1,36 @@
 """Library for multiagent concerns."""
 import collections
-
 import numpy as np
 
+from pysc2.lib import actions, features, units
+
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_ALL = [0]
+
+_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_NOT_QUEUED = [0]
+_QUEUED = [1]
+_SELECT_ALL = [2]
+
+_SELECT_POINT = actions.FUNCTIONS.select_point.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
+_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
+
+_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
+_BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
+_BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
+
+_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
+_TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
+_TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
+
+_RETURN_SCV = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
+_HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
+_HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
 class Agent(object):
   """Demonstrates agent interface.
@@ -10,7 +38,6 @@ class Agent(object):
   In practice, this needs to be instantiated with the right neural network
   architecture.
   """
-
   def __init__(self, race, initial_weights):
     self.race = race
     self.steps = 0
@@ -32,6 +59,23 @@ class Agent(object):
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
     # ...
+    feature_screen = observation[3]['feature_screen']
+    feature_minimap = observation[3]['feature_minimap']
+    feature_units = observation[3]['feature_units']
+    feature_player = observation[3]['player']
+    available_actions = observation[3]['available_actions']
+
+    unit_type = feature_screen.unit_type
+    empty_space = np.where(unit_type == 0)
+    empty_space = np.vstack((empty_space[0], empty_space[1])).T
+
+    random_point = random.choice(empty_space)
+
+    target = [random_point[0], random_point[1]]
+    action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
+    policy_logits = None
+    new_state = None
+
     return action, policy_logits, new_state
 
   def unroll(self, trajectory):
@@ -67,11 +111,11 @@ def pfsp(win_rates, weighting="linear"):
   norm = probs.sum()
   if norm < 1e-10:
     return np.ones_like(win_rates) / len(win_rates)
+
   return probs / norm
 
 
 class Payoff:
-
   def __init__(self):
     self._players = []
     self._wins = collections.defaultdict(lambda: 0)
@@ -127,7 +171,6 @@ class Payoff:
 
 
 class Player(object):
-
   def get_match(self):
     pass
 
@@ -150,7 +193,6 @@ class Player(object):
 
 
 class MainPlayer(Player):
-
   def __init__(self, race, agent, payoff):
     self.agent = Agent(race, agent.get_weights())
     self._payoff = payoff
@@ -248,7 +290,6 @@ class MainPlayer(Player):
 
 
 class MainExploiter(Player):
-
   def __init__(self, race, agent, payoff):
     self.agent = Agent(race, agent.get_weights())
     self._initial_weights = agent.get_weights()
@@ -294,7 +335,6 @@ class MainExploiter(Player):
 
 
 class LeagueExploiter(Player):
-
   def __init__(self, race, agent, payoff):
     self.agent = Agent(race, agent.get_weights())
     self._initial_weights = agent.get_weights()
@@ -330,7 +370,6 @@ class LeagueExploiter(Player):
 
 
 class Historical(Player):
-
   def __init__(self, agent, payoff):
     self._agent = Agent(agent.race, agent.get_weights())
     self._payoff = payoff
@@ -349,7 +388,6 @@ class Historical(Player):
 
 
 class League(object):
-
   def __init__(self,
                initial_agents,
                main_agents=1,
@@ -366,9 +404,11 @@ class League(object):
       for _ in range(main_exploiters):
         self._learning_agents.append(
             MainExploiter(race, initial_agents[race], self._payoff))
+
       for _ in range(league_exploiters):
         self._learning_agents.append(
             LeagueExploiter(race, initial_agents[race], self._payoff))
+
     for player in self._learning_agents:
       self._payoff.add_player(player)
 
