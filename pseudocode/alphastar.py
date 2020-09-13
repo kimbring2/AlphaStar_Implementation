@@ -1,9 +1,15 @@
+import sys
+import background
+import time
+
 from multiagent import League
 from rl import Trajectory, loss_function
 
 from pysc2.env import sc2_env, available_actions_printer
 from pysc2.env.environment import StepType
 from absl import flags
+
+import tensorflow as tf
 
 LOOPS_PER_ACTOR = 1000
 BATCH_SIZE = 512
@@ -13,52 +19,64 @@ FLAGS = flags.FLAGS
 FLAGS(sys.argv)
 
 
+def get_supervised_agent(race):
+  return supervissed_agent
+
+
+def get_mask(action):
+  mask = action
+
+  return mask
+
+
 class SC2Environment:
   """See PySC2 environment."""
 
   def __init__(self, settings):
-    map_name = 'Simple128'
-    players = [sc2_env.Agent(sc2_env.Race['terran']), 
-                 sc2_env.Agent(sc2_env.Race['terran'])]
-    feature_screen_size = 128
-    feature_minimap_size = 64
-    rgb_screen_size = None
-    rgb_minimap_size = None
-    action_space = None
-    use_feature_units = True
-    step_mul = 8
-    game_steps_per_episode = None
-    disable_fog = True
-    visualize = True
-
     self.env = sc2_env.SC2Env(
-          map_name=map_name,
-          players=players,
+          map_name=settings['map_name'],
+          players=settings['players'],
           agent_interface_format=sc2_env.parse_agent_interface_format(
-              feature_screen=feature_screen_size,
-              feature_minimap=feature_minimap_size,
-              rgb_screen=rgb_screen_size,
-              rgb_minimap=rgb_minimap_size,
-              action_space=action_space,
-              use_feature_units=use_feature_units),
-          step_mul=step_mul,
-          game_steps_per_episode=game_steps_per_episode,
-          disable_fog=disable_fog,
-          visualize=visualize)
+              feature_screen=settings['feature_screen_size'],
+              feature_minimap=settings['feature_minimap_size'],
+              rgb_screen=settings['rgb_screen_size'],
+              rgb_minimap=settings['rgb_minimap_size'],
+              action_space=settings['action_space'],
+              use_feature_units=settings['use_feature_units']),
+          step_mul=settings['step_mul'],
+          game_steps_per_episode=settings['game_steps_per_episode'],
+          disable_fog=settings['disable_fog'],
+          visualize=settings['visualize'])
 
   def step(self, home_action, away_action):
     observation = self.env.step([home_action, away_action])
-    done_check = obs[0][0]
+    done_check = observation[0][0]
     is_final = False
-    rewards = 0
 
     if done_check == StepType.LAST:
       is_final = True
 
-    return observation, is_final, rewards
+    home_observation = observation[0]
+    away_observation = observation[1]
+
+    rewards = observation[0][1]
+
+    return home_observation, away_observation, is_final, rewards
 
   def reset(self):
-    self.env.reset()
+    observation = self.env.reset()
+    done_check = observation[0][0]
+    is_final = False
+
+    if done_check == StepType.LAST:
+      is_final = True
+
+    home_observation = observation[0]
+    away_observation = observation[1]
+
+    rewards = observation[0][1]
+
+    return home_observation, away_observation, is_final, rewards
 
 
 class Coordinator:
@@ -80,28 +98,48 @@ class ActorLoop:
   def __init__(self, player, coordinator):
     self.player = player
     self.teacher = get_supervised_agent(player.get_race())
-    self.environment = SC2Environment()
+
+    env_settings = {
+        "map_name": 'Simple128',
+        "players": [sc2_env.Agent(sc2_env.Race['terran']), 
+                     sc2_env.Agent(sc2_env.Race['terran'])],
+        "feature_screen_size": 128,
+        "feature_minimap_size": 64,
+        "rgb_screen_size": None,
+        "rgb_minimap_size": None,
+        "action_space": None,
+        "use_feature_units": True,
+        "step_mul": 8,
+        "game_steps_per_episode": None,
+        "disable_fog": True,
+        "visualize": False
+    }
+    self.environment = SC2Environment(env_settings)
+    #print("self.environment: " + str(self.environment))
+
     self.coordinator = coordinator
 
   def run(self):
     while True:
-      opponent = self.player.get_match()
+      opponent, _ = self.player.get_match()
+
       trajectory = []
-      start_time = time()  # in seconds.
-      while time() - start_time < 60 * 60:
+      start_time = time.time()  # in seconds.
+      while time.time() - start_time < 60 * 60:
         home_observation, away_observation, is_final, z = self.environment.reset()
         student_state = self.player.initial_state()
         opponent_state = opponent.initial_state()
-        teacher_state = teacher.initial_state()
+        teacher_state = self.teacher.initial_state()
 
         while not is_final:
           student_action, student_logits, student_state = self.player.step(home_observation, student_state)
+
           # We mask out the logits of unused action arguments.
           action_masks = get_mask(student_action)
           opponent_action, _, _ = opponent.step(away_observation, opponent_state)
           teacher_logits = self.teacher(observation, student_action, teacher_state)
 
-          observation, is_final, rewards = self.environment.step(student_action, opponent_action)
+          home_observation, away_observation, is_final, rewards = self.environment.step(student_action, opponent_action)
           trajectory.append(Trajectory(
               observation=home_observation,
               opponent_observation=away_observation,
@@ -115,10 +153,12 @@ class ActorLoop:
               reward=rewards,
           ))
 
+          print("len(trajectory): " + str(len(trajectory)))
           if len(trajectory) > TRAJECTORY_LENGTH:
             trajectory = stack_namedtuple(trajectory)
             self.learner.send_trajectory(trajectory)
             trajectory = []
+
         self.coordinator.send_outcome(student, opponent, self.environment.outcome())
 
 
@@ -127,8 +167,9 @@ class Learner:
   def __init__(self, player):
     self.player = player
     self.trajectories = []
-    self.optimizer = AdamOptimizer(learning_rate=3e-5, beta1=0, beta2=0.99,
-                                   epsilon=1e-5)
+    #self.optimizer = AdamOptimizer(learning_rate=3e-5, beta1=0, beta2=0.99,
+    #                               epsilon=1e-5)
+    self.optimizer = tf.keras.optimizers.Adam(learning_rate=3e-5)
 
   def get_parameters():
     return self.player.agent.get_weights()
@@ -143,7 +184,7 @@ class Learner:
     self.player.agent.steps += num_steps(trajectories)
     self.player.agent.set_weights(self.optimizer.minimize(loss))
 
-  @background
+  @background.task
   def run(self):
     while True:
       if len(self.trajectories) > BATCH_SIZE:
@@ -160,10 +201,10 @@ def main():
   coordinator = Coordinator(league)
   learners = []
   actors = []
-  for idx in range(12):
+  for idx in range(1):
     player = league.get_player(idx)
     learner = Learner(player)
-    actors.extend([ActorLoop(player, coordinator) for _ in range(16000)])
+    actors.extend([ActorLoop(player, coordinator) for _ in range(1)])
 
   for l in learners:
     l.run()
@@ -172,6 +213,7 @@ def main():
 
   # Wait for training to finish.
   join()
+
 
 if __name__ == '__main__':
   main()
