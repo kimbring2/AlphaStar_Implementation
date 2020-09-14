@@ -2,7 +2,7 @@ import sys
 import background
 import time
 
-from multiagent import League
+from multiagent import League, Agent
 from rl import Trajectory, loss_function
 
 from pysc2.env import sc2_env, available_actions_printer
@@ -20,6 +20,7 @@ FLAGS(sys.argv)
 
 
 def get_supervised_agent(race):
+  supervissed_agent = Agent('Terran', None)
   return supervissed_agent
 
 
@@ -31,7 +32,6 @@ def get_mask(action):
 
 class SC2Environment:
   """See PySC2 environment."""
-
   def __init__(self, settings):
     self.env = sc2_env.SC2Env(
           map_name=settings['map_name'],
@@ -95,14 +95,15 @@ class ActorLoop:
 
   We don't use batched inference here, but it was used in practice.
   """
-  def __init__(self, player, coordinator):
+  def __init__(self, player, coordinator, learner):
     self.player = player
+    self.learner = learner
     self.teacher = get_supervised_agent(player.get_race())
 
     env_settings = {
         "map_name": 'Simple128',
         "players": [sc2_env.Agent(sc2_env.Race['terran']), 
-                     sc2_env.Agent(sc2_env.Race['terran'])],
+                      sc2_env.Agent(sc2_env.Race['terran'])],
         "feature_screen_size": 128,
         "feature_minimap_size": 64,
         "rgb_screen_size": None,
@@ -131,13 +132,14 @@ class ActorLoop:
         opponent_state = opponent.initial_state()
         teacher_state = self.teacher.initial_state()
 
-        while not is_final:
+        #while not is_final:
+        for i in range (0,500):
           student_action, student_logits, student_state = self.player.step(home_observation, student_state)
 
           # We mask out the logits of unused action arguments.
           action_masks = get_mask(student_action)
-          opponent_action, _, _ = opponent.step(away_observation, opponent_state)
-          teacher_logits = self.teacher(observation, student_action, teacher_state)
+          opponent_action, opponent_logits, opponent_state = opponent.step(away_observation, opponent_state)
+          teacher_action, teacher_logits, teacher_state = self.teacher.step(home_observation, teacher_state)
 
           home_observation, away_observation, is_final, rewards = self.environment.step(student_action, opponent_action)
           trajectory.append(Trajectory(
@@ -155,7 +157,9 @@ class ActorLoop:
 
           print("len(trajectory): " + str(len(trajectory)))
           if len(trajectory) > TRAJECTORY_LENGTH:
-            trajectory = stack_namedtuple(trajectory)
+            #print("trajectory[0]: " + str(trajectory[0]))
+            #print("")
+            #trajectory = stack_namedtuple(trajectory)
             self.learner.send_trajectory(trajectory)
             trajectory = []
 
@@ -204,7 +208,7 @@ def main():
   for idx in range(1):
     player = league.get_player(idx)
     learner = Learner(player)
-    actors.extend([ActorLoop(player, coordinator) for _ in range(1)])
+    actors.extend([ActorLoop(player, coordinator, learner) for _ in range(1)])
 
   for l in learners:
     l.run()
