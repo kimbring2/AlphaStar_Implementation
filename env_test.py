@@ -108,6 +108,126 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
+  def get_embedded_obs(self, feature_units):
+    unit_type = []
+    #unit_attributes = []
+    alliance = []
+    current_health = []
+    current_shields = []
+    current_energy = []
+    cargo_space_used = []
+    cargo_space_maximum = []
+    build_progress = []
+    current_health_ratio = []
+    current_shield_ratio = []
+    current_energy_ratio = []
+    display_type = []
+    x_position = []
+    y_position = []
+    is_cloaked = []
+    is_powered = []
+    is_hallucination = []
+    is_active = []
+    is_on_screen = []
+    is_in_cargo = []
+    current_minerals = []
+    current_vespene = []
+    #mined_minerals = []
+    #mined_vespene = []
+    assigned_harvesters = []
+    ideal_harvesters = []
+    weapon_cooldown = []
+    order_queue_length = []
+    order_1 = []
+    order_2 = []
+    order_3 = []
+    order_4 = []
+    buffs = []
+    addon_type = []
+    order_progress_1 = []
+    order_progress_2 = []
+    weapon_upgrades = []
+    armor_upgrades = []
+    shield_upgrades = []
+    was_selected = []
+    #was_targeted = []
+    for unit in feature_units:
+      unit_info = str(units.get_unit_type(unit.unit_type))
+      unit_info = unit_info.split(".")
+      unit_race = unit_info[0]
+      unit_name = unit_info[1]
+      unit_info = int(units_new.get_unit_type(unit_race, unit_name))
+      unit_info_onehot = np.identity(256)[unit_info:unit_info+1]
+      unit_type.append(unit_info_onehot)
+
+      unit_alliance = unit.alliance
+      unit_alliance_onehot = np.identity(5)[unit_alliance:unit_alliance+1]
+      alliance.append(unit.alliance)
+
+      #print("min(unit.health, 1500): " + str(min(unit.health, 1500)))
+      unit_health = int(math.sqrt(min(unit.health, 1500)))
+      #print("unit_health: " + str(unit_health))
+      unit_health_onehot = np.identity(38)[unit_health:unit_health+1]
+      #print("unit_health_onehot: " + str(unit_health_onehot))
+      current_health.append(unit_health_onehot)
+
+      unit_shield = int(math.sqrt(min(unit.shield, 1000)))
+      unit_shield_onehot = np.identity(31)[unit_shield:unit_shield+1]
+      current_shields.append(unit_shield_onehot)
+
+      unit_energy = int(math.sqrt(min(unit.energy, 200)))
+      unit_energy_onehot = np.identity(31)[unit_energy:unit_energy+1]
+      current_energy.append(unit_energy_onehot)
+
+      cargo_space_used.append(unit.cargo_space_taken)
+      cargo_space_maximum.append(unit.cargo_space_max)
+
+      build_progress.append(unit.build_progress)
+
+      current_health_ratio.append(unit.health_ratio)
+      current_shield_ratio.append(unit.shield_ratio)
+      current_energy_ratio.append(unit.energy_ratio)
+
+      display_type.append(unit.display_type)
+
+      x_position.append(unit.x)
+      y_position.append(unit.y)
+
+      is_cloaked.append(unit.cloak)
+      is_powered.append(unit.is_powered)
+      is_hallucination.append(unit.hallucination)
+      is_active.append(unit.active)
+      is_on_screen.append(unit.is_in_cargo)
+      is_in_cargo.append(unit.is_powered)
+
+      current_minerals.append(unit.mineral_contents)
+      current_vespene.append(unit.vespene_contents)
+
+      assigned_harvesters.append(unit.assigned_harvesters)
+      ideal_harvesters.append(unit.ideal_harvesters)
+      weapon_cooldown.append(unit.weapon_cooldown)
+
+      order_queue_length.append(unit.order_length)
+      order_1.append(unit.order_id_0)
+      order_2.append(unit.order_id_1)
+      order_3.append(unit.order_id_2)
+      order_4.append(unit.order_id_3)
+
+      buffs.append([unit.buff_id_0, unit.buff_id_1])
+
+      addon_type.append(unit.addon_unit_type)
+
+      order_progress_1.append(unit.order_progress_0)
+      order_progress_2.append(unit.order_progress_1)
+
+      weapon_upgrades.append(unit.attack_upgrade_level)
+      armor_upgrades.append(unit.armor_upgrade_level)
+      shield_upgrades.append(unit.shield_upgrade_level)
+
+      was_selected.append(unit.is_selected)
+    
+    return unit_type
+
   def step(self, observation):
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
@@ -116,6 +236,12 @@ class Agent(object):
     feature_minimap = observation[3]['feature_minimap']
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
+    #print("feature_player: " + str(feature_player))
+
+    embedded_feature_units = self.get_embedded_obs(feature_units)
+    print("len(embedded_feature_units): " + str(len(embedded_feature_units)))
+    #print("embedded_feature_units: " + str(embedded_feature_units))
+
     available_actions = observation[3]['available_actions']
 
     unit_type = feature_screen.unit_type
@@ -344,137 +470,17 @@ agent2 = Agent()
 
 obs = env.reset()
 for i in range(0, 2000):
-  '''
-  unit_type = []
-  #unit_attributes = []
-  alliance = []
-  current_health = []
-  current_shields = []
-  current_energy = []
-  cargo_space_used = []
-  cargo_space_maximum = []
-  build_progress = []
-  current_health_ratio = []
-  current_shield_ratio = []
-  current_energy_ratio = []
-  display_type = []
-  x_position = []
-  y_position = []
-  is_cloaked = []
-  is_powered = []
-  is_hallucination = []
-  is_active = []
-  is_on_screen = []
-  is_in_cargo = []
-  current_minerals = []
-  current_vespene = []
-  #mined_minerals = []
-  #mined_vespene = []
-  assigned_harvesters = []
-  ideal_harvesters = []
-  weapon_cooldown = []
-  order_queue_length = []
-  order_1 = []
-  order_2 = []
-  order_3 = []
-  order_4 = []
-  buffs = []
-  addon_type = []
-  order_progress_1 = []
-  order_progress_2 = []
-  weapon_upgrades = []
-  armor_upgrades = []
-  shield_upgrades = []
-  was_selected = []
-  #was_targeted = []
-  for unit in feature_units:
-    unit_info = str(units.get_unit_type(unit.unit_type))
-    unit_info = unit_info.split(".")
-    unit_race = unit_info[0]
-    unit_name = unit_info[1]
-    unit_info = int(units_new.get_unit_type(unit_race, unit_name))
-    unit_info_onehot = np.identity(256)[unit_info:unit_info+1]
-    unit_type.append(unit_info_onehot)
-
-    unit_alliance = unit.alliance
-    unit_alliance_onehot = np.identity(5)[unit_alliance:unit_alliance+1]
-    alliance.append(unit.alliance)
-
-    #print("min(unit.health, 1500): " + str(min(unit.health, 1500)))
-    unit_health = int(math.sqrt(min(unit.health, 1500)))
-    #print("unit_health: " + str(unit_health))
-    unit_health_onehot = np.identity(38)[unit_health:unit_health+1]
-    #print("unit_health_onehot: " + str(unit_health_onehot))
-    current_health.append(unit_health_onehot)
-
-    unit_shield = int(math.sqrt(min(unit.shield, 1000)))
-    unit_shield_onehot = np.identity(31)[unit_shield:unit_shield+1]
-    current_shields.append(unit_shield_onehot)
-
-    unit_energy = int(math.sqrt(min(unit.energy, 200)))
-    unit_energy_onehot = np.identity(31)[unit_energy:unit_energy+1]
-    current_energy.append(unit_energy_onehot)
-
-    cargo_space_used.append(unit.cargo_space_taken)
-    cargo_space_maximum.append(unit.cargo_space_max)
-
-    build_progress.append(unit.build_progress)
-
-    current_health_ratio.append(unit.health_ratio)
-    current_shield_ratio.append(unit.shield_ratio)
-    current_energy_ratio.append(unit.energy_ratio)
-
-    display_type.append(unit.display_type)
-
-    x_position.append(unit.x)
-    y_position.append(unit.y)
-
-    is_cloaked.append(unit.cloak)
-    is_powered.append(unit.is_powered)
-    is_hallucination.append(unit.hallucination)
-    is_active.append(unit.active)
-    is_on_screen.append(unit.is_in_cargo)
-    is_in_cargo.append(unit.is_powered)
-
-    current_minerals.append(unit.mineral_contents)
-    current_vespene.append(unit.vespene_contents)
-
-    assigned_harvesters.append(unit.assigned_harvesters)
-
-    ideal_harvesters.append(unit.ideal_harvesters)
-
-    weapon_cooldown.append(unit.weapon_cooldown)
-
-    order_queue_length.append(unit.order_length)
-    order_1.append(unit.order_id_0)
-    order_2.append(unit.order_id_1)
-    order_3.append(unit.order_id_2)
-    order_4.append(unit.order_id_3)
-
-    buffs.append([unit.buff_id_0, unit.buff_id_1])
-
-    addon_type.append(unit.addon_unit_type)
-
-    order_progress_1.append(unit.order_progress_0)
-    order_progress_2.append(unit.order_progress_1)
-
-    weapon_upgrades.append(unit.attack_upgrade_level)
-    armor_upgrades.append(unit.armor_upgrade_level)
-    shield_upgrades.append(unit.shield_upgrade_level)
-
-    was_selected.append(unit.is_selected)
-  '''
-
   #print("action: " + str(action))
   #print("num_Marauder: " + str(num_Marauder))
 
   action_1 = agent1.step(obs[0])
-  print("action_1: " + str(action_1))
+  #print("action_1: " + str(action_1))
 
   action_2 = agent2.step(obs[1])
   action_2 = [actions.FUNCTIONS.no_op()]
   obs = env.step([action_1, action_2])
   #print("env.action_space: " + str(env.action_space))
-
-
-
+  #print("obs[0][1]: " + str(obs[0][1]))
+  #print("obs[0][0]: " + str(obs[0][0]))
+  #print("obs[1][0]: " + str(obs[1][0]))
+  #print("")
