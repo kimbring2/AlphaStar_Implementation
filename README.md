@@ -2,8 +2,8 @@
 I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 # Reference
-1. Download replay file(4.8.2 version file is needed) : https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
-2. Extracting observation, action from replay file : https://github.com/narhen/pysc2-replay
+1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
+2. Extracting observation, action from replay file: https://github.com/narhen/pysc2-replay
 
 # Version
 1. Python3
@@ -16,7 +16,8 @@ Then, screen of PySC2 will start and you can see some activation of two Terran r
 # Detailed information
 I am writing explanation for code at Medium as series.
 
-1. First tutorial : https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
+1. First tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
+1. Second tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
 
 # Extract information from replay file
 The following is the process of getting build order, unit and cumulative score information from one replay file in my PC working environment.
@@ -33,3 +34,10 @@ print(info_1)
 print(info_2)
 {'score': 6052, 'idle_production_time': 272, 'idle_worker_time': 38, 'total_value_units': 2275, 'total_value_structures': 1900, 'killed_value_units': 150, 'killed_value_structures': 0, 'collected_minerals': 4365, 'collected_vespene': 912, 'collection_rate_minerals': 1483, 'collection_rate_vespene': 335, 'spent_minerals': 4150, 'spent_vespene': 700}
 ```
+
+# Run AlphaStar main file
+I add basic code for running AlphaStar such as PySC2 environment, RL state&action part. Please run below code with another file of same folder.
+
+[alphastar.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/alphastar.py)
+
+You can check PySC2 environment will be created and producing of data of each step.
