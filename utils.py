@@ -138,20 +138,6 @@ def get_embedded_obs(feature_units):
       is_selected.append(is_selected_onehot[0])
     
     '''
-    unit_type[0].shape: (256,)
-    current_health[0].shape: (39,)
-    current_shields[0].shape: (31,)
-    current_energy[0].shape: (31,)
-    x_position[0].shape: (10,)
-    y_position[0].shape: (10,)
-    assigned_harvesters[0].shape: (24,)
-    ideal_harvesters[0].shape: (17,)
-    weapon_cooldown[0].shape: (32,)
-    weapon_upgrades[0].shape: (4,)
-    armor_upgrades[0].shape: (4,)
-    shield_upgrades[0].shape: (4,)
-    is_selected[0].shape: (2,)
-    
     print("unit_type[0].shape: " + str(unit_type[0].shape))
     print("current_health[0].shape: " + str(current_health[0].shape))
     print("current_shields[0].shape: " + str(current_shields[0].shape))
@@ -175,58 +161,17 @@ def get_embedded_obs(feature_units):
       length = 100
 
     for i in range(0, length):
-      padded_current_health = np.zeros(256)
-      padded_current_shields = np.zeros(256)
-      padded_current_energy = np.zeros(256)
-      padded_current_health[:current_health[i].shape[0]] = current_health[i]
-      padded_current_shields[:current_shields[i].shape[0]] = current_shields[i]
-      padded_current_energy[:current_energy[i].shape[0]] = current_energy[i]
-      input_list.append(padded_current_health)
-      input_list.append(padded_current_shields)
-      input_list.append(padded_current_energy)
+      entity_array = np.concatenate((unit_type[i], current_health[i], current_shields[i], current_energy[i], x_position[i], y_position[i],
+                                          assigned_harvesters[i], ideal_harvesters[i], weapon_cooldown[i], weapon_upgrades[i], armor_upgrades[i],
+                                          shield_upgrades[i], is_selected[i]), axis=0, out=None)
+      #print("input_array.shape: " + str(input_array.shape))
 
-      padded_x_position = np.zeros(256)
-      padded_y_position = np.zeros(256)
-      padded_x_position[:x_position[i].shape[0]] = x_position[i]
-      padded_y_position[:y_position[i].shape[0]] = y_position[i]
-      input_list.append(padded_x_position)
-      input_list.append(padded_y_position)
-
-      padded_assigned_harvesters = np.zeros(256)
-      padded_ideal_harvesters = np.zeros(256)
-      padded_assigned_harvesters[:assigned_harvesters[i].shape[0]] = assigned_harvesters[i]
-      padded_ideal_harvesters[:ideal_harvesters[i].shape[0]] = ideal_harvesters[i]
-      input_list.append(padded_assigned_harvesters)
-      input_list.append(padded_ideal_harvesters)
-
-      padded_weapon_cooldown = np.zeros(256)
-      padded_weapon_cooldown[:weapon_cooldown[i].shape[0]] = weapon_cooldown[i]
-      input_list.append(padded_weapon_cooldown)
-
-      padded_weapon_upgrades = np.zeros(256)
-      padded_armor_upgrades = np.zeros(256)
-      padded_shield_upgrades = np.zeros(256)
-      padded_weapon_upgrades[:weapon_upgrades[i].shape[0]] = weapon_upgrades[i]
-      padded_armor_upgrades[:armor_upgrades[i].shape[0]] = armor_upgrades[i]
-      padded_shield_upgrades[:shield_upgrades[i].shape[0]] = shield_upgrades[i]
-      input_list.append(padded_weapon_upgrades)
-      input_list.append(padded_armor_upgrades)
-      input_list.append(padded_shield_upgrades)
-      
-      padded_is_selected = np.zeros(256)
-      padded_is_selected[:is_selected[i].shape[0]] = is_selected[i]
-      #print("padded_is_selected.shape: " + str(padded_is_selected.shape))
-      #print("padded_is_selected: " + str(padded_is_selected))
-      input_list.append(padded_is_selected)
-
-      #print("padded_current_health.shape: " + str(padded_current_health.shape))
-      #print("padded_current_shields.shape: " + str(padded_current_shields.shape))
-      #print("padded_current_energy.shape: " + str(padded_current_energy.shape))
-      #print("")
+      input_list.append(entity_array)
+ 
 
     #print("len(input_list): " + str(len(input_list)))
     input_array = np.array(input_list)
     #print("input_array.shape: " + str(input_array.shape))
     #print("")
-
+    
     return input_array
