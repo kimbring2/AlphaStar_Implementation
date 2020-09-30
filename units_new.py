@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import enum
 
+
 # pylint: disable=invalid-name
 class Neutral(enum.IntEnum):
 	"""Neutral units."""
@@ -136,6 +137,16 @@ class Protoss(enum.IntEnum):
 	Zealot = 181
 
 
+terran_building_list = ['Armory', 'AutoTurret', 'Barracks', 'BarracksFlying', 'BarracksReactor', 'BarracksTechLab', 
+                           'Bunker', 'CommandCenter', 'CommandCenterFlying', 'EngineeringBay', 'Factory', 'FactoryFlying',
+                           'FactoryReactor', 'FactoryTechLab', 'FusionCore', 'GhostAcademy', 'MissileTurret', 'OrbitalCommand',
+                           'OrbitalCommandFlying', 'PlanetaryFortress', 'Reactor', 'Refinery', 'RefineryRich', 'SensorTower', 
+                           'Starport', 'StarportFlying', 'StarportReactor', 'StarportTechLab', 'SupplyDepot', 'SupplyDepotLowered',
+                           'TechLab']
+terran_infantry_unit_list = ['Ghost', 'GhostAlternate', 'GhostNova', 'Marauder', 'Marine', 'Reaper', 'SCV']
+terran_vehicle_unit_list = ['MULE', 'Hellion', 'Hellbat', 'SiegeTank', 'SiegeTankSieged', 'Thor', 'Cyclone'] 
+terran_ship_unit_list = ['VikingAssault', 'VikingFighter', 'Banshee', 'Battlecruiser' , 'Liberator', 'LiberatorAG', 'Medivac', 'Raven'] 
+terran_etc_unit_list = ['PointDefenseDrone', 'WidowMine', 'WidowMineBurrowed']
 class Terran(enum.IntEnum):
 	"""Terran units."""
 	Armory = 1
@@ -285,22 +296,39 @@ def get_unit_type(race, name):
 	#print("name: " + str(name))
 
 	if race == "Neutral":
+		unit_caterogy = 'Unknown'
+
 		try:
-			return Neutral[name]
+			return Neutral[name], unit_caterogy
 		except ValueError:
+			print("ValueError")
 			pass  # Wrong race.
 	elif race == "Protoss":
 		try:
 			return Protoss[name]
 		except ValueError:
+			print("ValueError")
 			pass  # Wrong race.
 	elif race == "Terran":
+		if name in terran_building_list:
+			unit_caterogy = 'Building'
+		elif name in terran_infantry_unit_list:
+			unit_caterogy = 'Infantry'
+		elif name in terran_vehicle_unit_list:
+			unit_caterogy = 'Vehicle'
+		elif name in terran_ship_unit_list:
+			unit_caterogy = 'Ship'
+		else:
+			unit_caterogy = 'Etc'
+
 		try:
-			return Terran[name]
+			return Terran[name], unit_caterogy
 		except ValueError:
+			print("ValueError")
 			pass  # Wrong race.
 	elif race == "Zerg":
 		try:
 			return Zerg[name]
 		except ValueError:
+			print("ValueError")
 			pass  # Wrong race.

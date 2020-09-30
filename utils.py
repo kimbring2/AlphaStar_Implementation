@@ -4,12 +4,24 @@ import units_new
 import math
 
 
+terran_building_list = ['Armory', 'AutoTurret', 'Barracks', 'BarracksFlying', 'BarracksReactor', 'BarracksTechLab', 
+                           'Bunker', 'CommandCenter', 'CommandCenterFlying', 'EngineeringBay', 'Factory', 'FactoryFlying',
+                           'FactoryReactor', 'FactoryTechLab', 'FusionCore', 'GhostAcademy', 'MissileTurret', 'OrbitalCommand',
+                           'OrbitalCommandFlying', 'PlanetaryFortress', 'Reactor', 'Refinery', 'RefineryRich', 'SensorTower', 
+                           'Starport', 'StarportFlying', 'StarportReactor', 'StarportTechLab', 'SupplyDepot', 'SupplyDepotLowered',
+                           'TechLab'] 
+terran_air_unit_list = ['Banshee', 'Battlecruiser', 'Cyclone', 'Liberator', 'LiberatorAG', 'Medivac', 'PointDefenseDrone', 'Raven',
+                           'VikingAssault']
+terran_ground_unit_list = ['Ghost', 'GhostAlternate', 'GhostNova', 'Hellion', 'Hellbat', 'KD8Charge', 'MULE', 'Marauder', 'Marine',
+                              'Nuke', 'PointDefenseDrone']
+
+
 def bin_array(num, m):
     """Convert a positive integer num into an m-bit bit vector"""
     return np.array(list(np.binary_repr(num).zfill(m))).astype(np.int8)
 
 
-def get_embedded_obs(feature_units):
+def get_entity_obs(feature_units):
     unit_type = []
     #unit_attributes = []
     alliance = []
@@ -58,7 +70,9 @@ def get_embedded_obs(feature_units):
       unit_info = unit_info.split(".")
       unit_race = unit_info[0]
       unit_name = unit_info[1]
-      unit_info = int(units_new.get_unit_type(unit_race, unit_name))
+
+      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
+      unit_info = int(units_new.get_unit_type(unit_race, unit_name)[0])
       unit_info_onehot = np.identity(256)[unit_info:unit_info+1]
       unit_type.append(unit_info_onehot[0])
 
@@ -92,8 +106,11 @@ def get_embedded_obs(feature_units):
 
       display_type.append(unit.display_type)
 
-      x_position.append(bin_array(unit.x, 10))
-      y_position.append(bin_array(unit.y, 10))
+      #print("unit.x: " + str(unit.x))
+      #print("unit.y: " + str(unit.y))
+
+      x_position.append(bin_array(abs(unit.x), 10))
+      y_position.append(bin_array(abs(unit.y), 10))
 
       is_cloaked.append(unit.cloak)
       is_powered.append(unit.is_powered)
@@ -167,8 +184,11 @@ def get_embedded_obs(feature_units):
       #print("input_array.shape: " + str(input_array.shape))
 
       input_list.append(entity_array)
- 
 
+    if length < 512:
+      for i in range(length, 512):
+        input_list.append(np.zeros(464))
+ 
     #print("len(input_list): " + str(len(input_list)))
     input_array = np.array(input_list)
     #print("input_array.shape: " + str(input_array.shape))

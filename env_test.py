@@ -2,7 +2,7 @@ from pysc2.env import sc2_env, available_actions_printer
 from pysc2.lib import actions, features, units
 import sys
 import units_new
-from utils import get_embedded_obs
+from utils import get_entity_obs
 
 import random
 import time
@@ -114,15 +114,53 @@ class Agent(object):
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
     # ...
+    #print("observation: " + str(observation))
+    print("")
     feature_screen = observation[3]['feature_screen']
     feature_minimap = observation[3]['feature_minimap']
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
-    #print("feature_player: " + str(feature_player))
+    #print("feature_units.shape: " + str(feature_units.shape))
+    # feature_player: [ 2 95  0 12 15  0 12  0  0  0  0]
+    # player_id, minerals, vespene, food_used, food_cap, food_army, food_workers, idle_worker_count, army_count, warp_gate_count, larva_count 
 
-    embedded_feature_units = get_embedded_obs(feature_units)
-    print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
-    #print("embedded_feature_units: " + str(embedded_feature_units))
+    score_by_category = observation[3]['score_by_category'].flatten()
+    agent_statistics = np.log(score_by_category + 1)
+    # agent_statistics.shape: (55,)
+
+    race_list = ["Protoss", "Terran", "Zerg", "Unknown"]
+    home_race = 'Terran'
+    away_race = 'Terran'
+    home_race_index = race_list.index(home_race)
+    away_race_index = race_list.index(away_race)
+    home_race_onehot = np.identity(5)[home_race_index:home_race_index+1]
+    away_race_onehot = np.identity(5)[away_race_index:away_race_index+1]
+
+    race = np.array([home_race_onehot[0], away_race_onehot[0]]).flatten()
+    # race.shape: (10,)
+
+    for unit in feature_units:
+      unit_info = str(units.get_unit_type(unit.unit_type))
+      unit_info = unit_info.split(".")
+      unit_race = unit_info[0]
+      unit_name = unit_info[1]
+      #print("unit_name: " + str(unit_name))
+
+      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
+      unit_category = units_new.get_unit_type(unit_race, unit_name)[1]
+      #print("unit_category: " + str(unit_category))
+      #print("unit.alliance: " + str(unit.alliance))
+      if unit.alliance == 1:
+        #print("unit")
+        print("unit.attack_upgrade_level: " + str(unit.attack_upgrade_level))
+        print("unit.armor_upgrade_level: " + str(unit.armor_upgrade_level))
+        print("unit.shield_upgrade_level: " + str(unit.shield_upgrade_level))
+      elif unit.alliance == 1:
+    
+
+    embedded_feature_units = get_entity_obs(feature_units)
+    # print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
+    # (512, 464)
 
     available_actions = observation[3]['available_actions']
 
