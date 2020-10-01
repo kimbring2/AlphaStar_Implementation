@@ -2,13 +2,15 @@ from pysc2.env import sc2_env, available_actions_printer
 from pysc2.lib import actions, features, units
 import sys
 import units_new
-from utils import get_entity_obs
+import upgrades_new
+from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
 
 import random
 import time
 import math
 import statistics
 import numpy as np
+import tensorflow as tf
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -87,6 +89,8 @@ _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
 _HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
 
+home_upgrade_array = np.zeros(89)
+away_upgrade_array = np.zeros(89)
 class Agent(object):
   """Demonstrates agent interface.
 
@@ -111,6 +115,10 @@ class Agent(object):
 
 
   def step(self, observation):
+    global pos_encoding
+    global home_upgrade_array
+    global away_upgrade_array
+
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
     # ...
@@ -120,47 +128,34 @@ class Agent(object):
     feature_minimap = observation[3]['feature_minimap']
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
-    #print("feature_units.shape: " + str(feature_units.shape))
-    # feature_player: [ 2 95  0 12 15  0 12  0  0  0  0]
-    # player_id, minerals, vespene, food_used, food_cap, food_army, food_workers, idle_worker_count, army_count, warp_gate_count, larva_count 
+    score_by_category = observation[3]['score_by_category']
+    game_loop = observation[3]['game_loop']
 
-    score_by_category = observation[3]['score_by_category'].flatten()
-    agent_statistics = np.log(score_by_category + 1)
+    agent_statistics = get_agent_statistics(score_by_category)
     # agent_statistics.shape: (55,)
 
-    race_list = ["Protoss", "Terran", "Zerg", "Unknown"]
     home_race = 'Terran'
     away_race = 'Terran'
-    home_race_index = race_list.index(home_race)
-    away_race_index = race_list.index(away_race)
-    home_race_onehot = np.identity(5)[home_race_index:home_race_index+1]
-    away_race_onehot = np.identity(5)[away_race_index:away_race_index+1]
-
-    race = np.array([home_race_onehot[0], away_race_onehot[0]]).flatten()
+    race = get_race_onehot(home_race, away_race)
     # race.shape: (10,)
 
-    for unit in feature_units:
-      unit_info = str(units.get_unit_type(unit.unit_type))
-      unit_info = unit_info.split(".")
-      unit_race = unit_info[0]
-      unit_name = unit_info[1]
-      #print("unit_name: " + str(unit_name))
+    time = get_gameloop_obs(game_loop)
+    #print("time.shape: " + str(time.shape))
+    #time.shape : (64,)
 
-      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
-      unit_category = units_new.get_unit_type(unit_race, unit_name)[1]
-      #print("unit_category: " + str(unit_category))
-      #print("unit.alliance: " + str(unit.alliance))
-      if unit.alliance == 1:
-        #print("unit")
-        print("unit.attack_upgrade_level: " + str(unit.attack_upgrade_level))
-        print("unit.armor_upgrade_level: " + str(unit.armor_upgrade_level))
-        print("unit.shield_upgrade_level: " + str(unit.shield_upgrade_level))
-      elif unit.alliance == 1:
-    
+    upgrade_value = get_upgrade_obs(feature_units)
+    if upgrade_value != -1:
+      home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
+      away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
+
+    # home_upgrade_array.shape: (89,)
+    # away_upgrade_array.shape: (89,)
+
+    embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
+    # embedded_scalar.shape: (307,)
 
     embedded_feature_units = get_entity_obs(feature_units)
-    # print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
-    # (512, 464)
+    # embedded_feature_units.shape: (512, 464)
 
     available_actions = observation[3]['available_actions']
 
@@ -389,11 +384,13 @@ agent1 = Agent()
 agent2 = Agent()
 
 obs = env.reset()
-for i in range(0, 2000):
+#for i in range(0, 20000):
+while True:
   #print("action: " + str(action))
   #print("num_Marauder: " + str(num_Marauder))
 
   action_1 = agent1.step(obs[0])
+  action_1 = [actions.FUNCTIONS.no_op()]
   #print("action_1: " + str(action_1))
 
   action_2 = agent2.step(obs[1])

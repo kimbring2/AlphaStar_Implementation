@@ -1,7 +1,9 @@
 from pysc2.lib import actions, features, units
 import numpy as np
 import units_new
+import upgrades_new
 import math
+import tensorflow as tf
 
 
 terran_building_list = ['Armory', 'AutoTurret', 'Barracks', 'BarracksFlying', 'BarracksReactor', 'BarracksTechLab', 
@@ -195,3 +197,181 @@ def get_entity_obs(feature_units):
     #print("")
     
     return input_array
+
+
+ # feature_player: [ 2 95  0 12 15  0 12  0  0  0  0]
+# player_id, minerals, vespene, food_used, food_cap, food_army, food_workers, idle_worker_count, army_count, warp_gate_count, larva_count 
+def get_agent_statistics(score_by_category):
+  score_by_category = score_by_category.flatten()
+  agent_statistics = np.log(score_by_category + 1)
+
+  return agent_statistics
+
+
+def get_upgrade_obs(feature_units):
+    for unit in feature_units:
+      unit_info = str(units.get_unit_type(unit.unit_type))
+      unit_info = unit_info.split(".")
+      unit_race = unit_info[0]
+      unit_name = unit_info[1]
+      #print("unit_name: " + str(unit_name))
+
+      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
+      unit_category = units_new.get_unit_type(unit_race, unit_name)[1]
+      home_upgrade_array = np.zeros(89)
+      away_upgrade_array = np.zeros(89)
+      #print("unit_category: " + str(unit_category))
+      #print("unit.alliance: " + str(unit.alliance))
+      if unit.alliance == 1:
+        upgrade_name_list = []
+        if unit_category == 'Building':
+          if unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranStructureArmor')
+        elif unit_category == 'Infantry':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranInfantryArmorsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranInfantryArmorsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranInfantryArmorsLevel3')
+        elif unit_category == 'Vehicle':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel3')
+        elif unit_category == 'Ship':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranShipWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranShipWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranShipWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel3')
+
+        if len(upgrade_name_list) != 0:
+          for upgrade_name in upgrade_name_list:
+            upgrade_type = int(upgrades_new.get_upgrade_type(upgrade_name))
+            home_upgrade_array[upgrade_type] = 1
+
+          return home_upgrade_array, away_upgrade_array
+      elif unit.alliance == 4:
+        #print("unit.attack_upgrade_level: " + str(unit.attack_upgrade_level))
+        #print("unit.armor_upgrade_level: " + str(unit.armor_upgrade_level))
+        #print("unit.shield_upgrade_level: " + str(unit.shield_upgrade_level))
+        upgrade_name_list = []
+        if unit_category == 'Building':
+          if unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranStructureArmor')
+        elif unit_category == 'Infantry':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranInfantryWeaponsLevel3')
+        elif unit_category == 'Vehicle':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel3')
+        elif unit_category == 'Ship':
+          if unit.attack_upgrade_level == 1:
+            upgrade_name_list.append('TerranShipWeaponsLevel1')
+          elif unit.attack_upgrade_level == 2:
+            upgrade_name_list.append('TerranShipWeaponsLevel2')
+          elif unit.attack_upgrade_level == 3:
+            upgrade_name_list.append('TerranShipWeaponsLevel3')
+
+          if unit.armor_upgrade_level == 1:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel1')
+          elif unit.armor_upgrade_level == 2:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel2')
+          elif unit.armor_upgrade_level == 3:
+            upgrade_name_list.append('TerranVehicleAndShipArmorsLevel3')
+      
+        if len(upgrade_name_list) != 0:
+          for upgrade_name in upgrade_name_list:
+            upgrade_type = int(upgrades_new.get_upgrade_type(upgrade_name))
+            away_upgrade_array[upgrade_type] = 1
+
+          return home_upgrade_array, away_upgrade_array
+
+      return -1
+
+
+race_list = ["Protoss", "Terran", "Zerg", "Unknown"]
+def get_race_onehot(home_race, away_race):
+  home_race_index = race_list.index(home_race)
+  away_race_index = race_list.index(away_race)
+  home_race_onehot = np.identity(5)[home_race_index:home_race_index+1]
+  away_race_onehot = np.identity(5)[away_race_index:away_race_index+1]
+
+  return np.array([home_race_onehot[0], away_race_onehot[0]]).flatten()
+
+
+def get_angles(pos, i, d_model):
+  angle_rates = 1 / np.power(10000, (2 * (i//2)) / np.float32(d_model))
+  return pos * angle_rates
+
+
+def positional_encoding(position, d_model):
+  angle_rads = get_angles(np.arange(position)[:, np.newaxis],
+                          np.arange(d_model)[np.newaxis, :],
+                          d_model)
+  
+  # apply sin to even indices in the array; 2i
+  angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
+  
+  # apply cos to odd indices in the array; 2i+1
+  angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
+    
+  pos_encoding = angle_rads[np.newaxis, ...]
+    
+  return tf.cast(pos_encoding, dtype=tf.float32)
+
+pos_encoding = positional_encoding(16000, 64)
+
+
+def get_gameloop_obs(game_loop):
+  time = pos_encoding[:, game_loop[0], :]
+  #print("time.shape : " + str(time.shape))
+
+  return time.numpy().flatten()
