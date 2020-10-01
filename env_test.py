@@ -3,7 +3,9 @@ from pysc2.lib import actions, features, units
 import sys
 import units_new
 import upgrades_new
+
 from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
+from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core
 
 import random
 import time
@@ -113,6 +115,11 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
+    self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
+    self.scalar_encoder = ScalarEncoder(128)
+    self.entity_encoder = EntityEncoder(464, 8)
+    self.core = Core(12)
+
 
   def step(self, observation):
     global pos_encoding
@@ -125,11 +132,15 @@ class Agent(object):
     #print("observation: " + str(observation))
     print("")
     feature_screen = observation[3]['feature_screen']
+    # feature_screen.shape: (27, 128, 128)
     feature_minimap = observation[3]['feature_minimap']
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
     score_by_category = observation[3]['score_by_category']
     game_loop = observation[3]['game_loop']
+
+    spatial_encoder_output = self.spatial_encoder(np.reshape(feature_screen, [1,128,128,27]))
+    #print("spatial_encoder.shape: " + str(spatial_encoder_output.shape))
 
     agent_statistics = get_agent_statistics(score_by_category)
     # agent_statistics.shape: (55,)
@@ -154,8 +165,26 @@ class Agent(object):
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
     # embedded_scalar.shape: (307,)
 
+    scalar_encoder_output = self.scalar_encoder(np.reshape(embedded_scalar, [1,307]))
+    #print("scalar_encoder_output.shape: " + str(scalar_encoder_output.shape))
+
     embedded_feature_units = get_entity_obs(feature_units)
     # embedded_feature_units.shape: (512, 464)
+    entity_encoder_output = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
+    #print("entity_encoder_output.shape: " + str(entity_encoder_output.shape))
+
+    # Encoder Input
+    #spatial_encoder.shape: (1, 16384)
+    #scalar_encoder_output.shape: (1, 128)
+    #entity_encoder_output.shape: (1, 256)
+    encoder_input = np.concatenate((spatial_encoder_output, scalar_encoder_output, entity_encoder_output), axis=1)
+    # encoder_input.shape: (1, 16768)
+
+    core_input = np.reshape(encoder_input, [16, 8, 131])
+    whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
+    print(whole_seq_output.shape)
+    print(final_memory_state.shape)
+    print(final_carry_state.shape)
 
     available_actions = observation[3]['available_actions']
 

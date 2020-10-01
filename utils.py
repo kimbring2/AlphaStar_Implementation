@@ -375,3 +375,12 @@ def get_gameloop_obs(game_loop):
   #print("time.shape : " + str(time.shape))
 
   return time.numpy().flatten()
+
+
+'''
+def get_spatial_obs(feature_screen):
+  time = pos_encoding[:, game_loop[0], :]
+  #print("time.shape : " + str(time.shape))
+
+  return time.numpy().flatten()
+'''
