@@ -1,8 +1,12 @@
 """Library for multiagent concerns."""
 import collections
 import numpy as np
+import random
 
 from pysc2.lib import actions, features, units
+from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
+from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core
+
 
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_ALL = [0]
@@ -32,6 +36,7 @@ _RETURN_SCV = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
 _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
 _HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
+
 class Agent(object):
   """Demonstrates agent interface.
 
@@ -42,14 +47,28 @@ class Agent(object):
     self.race = race
     self.steps = 0
     self.weights = initial_weights
+    self.weights = None
+
+    self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
+    self.scalar_encoder = ScalarEncoder(128)
+    self.entity_encoder = EntityEncoder(464, 8)
+    self.core = Core(12)
+
+    self.home_upgrade_array = np.zeros(89)
+    self.away_upgrade_array = np.zeros(89)
 
   def initial_state(self):
     """Returns the hidden state of the agent for the start of an episode."""
     # Network details elided.
+    initial_state = None
+
     return initial_state
 
   def set_weights(self, weights):
     self.weights = weights
+
+  def get_weights(self):
+    return self.weights
 
   def get_steps(self):
     """How many agent steps the agent has been trained for."""
@@ -64,17 +83,46 @@ class Agent(object):
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
     available_actions = observation[3]['available_actions']
+    score_by_category = observation[3]['score_by_category']
+    game_loop = observation[3]['game_loop']
 
     unit_type = feature_screen.unit_type
     empty_space = np.where(unit_type == 0)
     empty_space = np.vstack((empty_space[0], empty_space[1])).T
-
     random_point = random.choice(empty_space)
-
-    target = [random_point[0], random_point[1]]
-    action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
+    #target = [random_point[0], random_point[1]]
+    #action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
     policy_logits = None
     new_state = None
+
+    spatial_encoder_output = self.spatial_encoder(np.reshape(feature_screen, [1,128,128,27]))
+
+    agent_statistics = get_agent_statistics(score_by_category)
+
+    home_race = 'Terran'
+    away_race = 'Terran'
+    race = get_race_onehot(home_race, away_race)
+
+    time = get_gameloop_obs(game_loop)
+
+    upgrade_value = get_upgrade_obs(feature_units)
+    if upgrade_value != -1:
+      self.home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
+      self.away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
+
+    embedded_scalar = np.concatenate((agent_statistics, race, time, self.home_upgrade_array, self.away_upgrade_array), axis=0)
+    scalar_encoder_output = self.scalar_encoder(np.reshape(embedded_scalar, [1,307]))
+    embedded_feature_units = get_entity_obs(feature_units)
+    entity_encoder_output = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
+    encoder_input = np.concatenate((spatial_encoder_output, scalar_encoder_output, entity_encoder_output), axis=1)
+
+    core_input = np.reshape(encoder_input, [16, 8, 131])
+    whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
+    print(whole_seq_output.shape)
+    print(final_memory_state.shape)
+    print(final_carry_state.shape)
+
+    action = [actions.FUNCTIONS.no_op()]
 
     return action, policy_logits, new_state
 
@@ -251,6 +299,21 @@ class MainPlayer(Player):
 
     return None
 
+  def step(self, observation, state):
+    action, policy_logits, new_state = self.agent.step(observation, state)
+    return action, policy_logits, new_state
+
+  def initial_state(self):
+    """Returns the hidden state of the agent for the start of an episode."""
+    # Network details elided.
+    return self.agent.initial_state()
+
+  def get_weights(self):
+    return self.agent.get_weights()
+
+  def get_race(self):
+    return self._race
+
   def get_match(self):
     coin_toss = np.random.random()
 
@@ -297,6 +360,15 @@ class MainExploiter(Player):
     self._race = agent.race
     self._checkpoint_step = 0
 
+  def step(self, observation, state):
+    action, policy_logits, new_state = self.agent.step(observation, state)
+    return action, policy_logits, new_state
+
+  def initial_state(self):
+    """Returns the hidden state of the agent for the start of an episode."""
+    # Network details elided.
+    return self.agent.initial_state()
+
   def get_match(self):
     main_agents = [
         player for player in self._payoff.players
@@ -315,6 +387,9 @@ class MainExploiter(Player):
 
     return np.random.choice(
         historical, p=pfsp(win_rates, weighting="variance")), True
+
+  def get_race(self):
+    return self._race
 
   def checkpoint(self):
     self.agent.set_weights(self._initial_weights)
@@ -342,6 +417,15 @@ class LeagueExploiter(Player):
     self._race = agent.race
     self._checkpoint_step = 0
 
+  def step(self, observation, state):
+    action, policy_logits, new_state = self.agent.step(observation, state)
+    return action, policy_logits, new_state
+
+  def initial_state(self):
+    """Returns the hidden state of the agent for the start of an episode."""
+    # Network details elided.
+    return self.agent.initial_state()
+
   def get_match(self):
     historical = [
         player for player in self._payoff.players
@@ -350,6 +434,9 @@ class LeagueExploiter(Player):
     win_rates = self._payoff[self, historical]
     return np.random.choice(
         historical, p=pfsp(win_rates, weighting="linear_capped")), True
+
+  def get_race(self):
+    return self._race
 
   def checkpoint(self):
     if np.random.random() < 0.25:
@@ -376,9 +463,18 @@ class Historical(Player):
     self._race = agent.race
     self._parent = agent
 
+  def step(self, observation, state):
+    action, policy_logits, new_state = self._agent.step(observation, state)
+    return action, policy_logits, new_state
+
   @property
   def parent(self):
     return self._parent
+
+  def initial_state(self):
+    """Returns the hidden state of the agent for the start of an episode."""
+    # Network details elided.
+    return self._agent.initial_state()
 
   def get_match(self):
     raise ValueError("Historical players should not request matches")
@@ -392,12 +488,15 @@ class League(object):
                initial_agents,
                main_agents=1,
                main_exploiters=1,
-               league_exploiters=2):
+               league_exploiters=1):
     self._payoff = Payoff()
     self._learning_agents = []
+
     for race in initial_agents:
+
       for _ in range(main_agents):
         main_agent = MainPlayer(race, initial_agents[race], self._payoff)
+
         self._learning_agents.append(main_agent)
         self._payoff.add_player(main_agent.checkpoint())
 
