@@ -17,7 +17,8 @@ Then, screen of PySC2 will start and you can see some activation of two Terran r
 I am writing explanation for code at Medium as series.
 
 1. First tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
-1. Second tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
+2. Second tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
+3. Third tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
 
 # Extract information from replay file
 The following is the process of getting build order, unit and cumulative score information from one replay file in my PC working environment.
@@ -40,4 +41,14 @@ I add basic code for running AlphaStar such as PySC2 environment, RL state&actio
 
 [alphastar.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/alphastar.py)
 
-You can check PySC2 environment will be created and producing of data of each step.
+You can check that PySC2 environment will be created and producing of data of each step.
+
+# Preprocess observation of PySC2
+AlphaStar need to preprosess observation of PySC2 for selection action. I add a 3 Encoder,Core network and preprocessed code for that.  
+[network.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/network.py)
+[upgrades_new.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/upgrades_new.py)
+[utils.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/utils.py)
+
+Please run below code with another file of same folder. You can check agent produce some value by using raw observation of PySC2
+
+[alphastar.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/alphastar.py)
