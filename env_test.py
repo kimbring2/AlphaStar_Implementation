@@ -4,7 +4,7 @@ import sys
 import units_new
 import upgrades_new
 
-from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
+from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics, execute_action
 from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core
 
 import random
@@ -22,7 +22,7 @@ map_name = 'Simple128'
 #players = [sc2_env.Agent(sc2_env.Race['terran']), 
 #           sc2_env.Bot(sc2_env.Race['protoss'], sc2_env.Difficulty.very_easy)]
 players = [sc2_env.Agent(sc2_env.Race['terran']), 
-             sc2_env.Agent(sc2_env.Race['terran'])]
+            sc2_env.Agent(sc2_env.Race['terran'])]
 
 feature_screen_size = 128
 feature_minimap_size = 64
@@ -33,7 +33,7 @@ use_feature_units = True
 step_mul = 8
 game_steps_per_episode = None
 disable_fog = True
-visualize = True
+visualize = False
 
 env = sc2_env.SC2Env(
       map_name=map_name,
@@ -60,20 +60,23 @@ _PLAYER_SELF = features.PlayerRelative.SELF
 _PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
 _PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
+# Action part
 _NO_OP = actions.FUNCTIONS.no_op.id
-
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
-_SELECT_ALL = [0]
 
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 _SELECT_ALL = [2]
 
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_ALL = [0]
+
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
+_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
+
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
-_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
 
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
@@ -83,13 +86,10 @@ _BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
 _TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
 _TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
 _TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
-_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
 
 _RETURN_SCV = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
 _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
 _HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
-
 
 home_upgrade_array = np.zeros(89)
 away_upgrade_array = np.zeros(89)
@@ -100,13 +100,25 @@ class Agent(object):
   architecture.
   """
   def __init__(self):
-    #self.race = race
+    self.home_race = 'Terran'
+    self.away_race = 'Terran'
+
+    self.build_order = []
+
     #self.steps = 0
     #self.weights = initial_weights
     self.supply_depot_built = False
 
     self.scv_selected = False
     self.scv_return = False
+
+    self.train_marine_flag = False
+    self.train_marauder_flag = False
+
+    self.build_supply_depot_flag = False
+    self.build_barracks_flag = False
+    self.build_refinery_flag = False
+    self.build_techlab_flag = False
 
     self.marine_selected = False
     self.marauder_selected = False
@@ -120,17 +132,20 @@ class Agent(object):
     self.entity_encoder = EntityEncoder(464, 8)
     self.core = Core(12)
 
+    self.previous_action = None
+    self.selected_units = None
+
 
   def step(self, observation):
-    global pos_encoding
     global home_upgrade_array
     global away_upgrade_array
+    global previous_action
 
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
     # ...
     #print("observation: " + str(observation))
-    print("")
+    #print("")
     feature_screen = observation[3]['feature_screen']
     # feature_screen.shape: (27, 128, 128)
     feature_minimap = observation[3]['feature_minimap']
@@ -145,9 +160,7 @@ class Agent(object):
     agent_statistics = get_agent_statistics(score_by_category)
     # agent_statistics.shape: (55,)
 
-    home_race = 'Terran'
-    away_race = 'Terran'
-    race = get_race_onehot(home_race, away_race)
+    race = get_race_onehot(self.home_race, self.away_race)
     # race.shape: (10,)
 
     time = get_gameloop_obs(game_loop)
@@ -163,6 +176,55 @@ class Agent(object):
     # away_upgrade_array.shape: (89,)
 
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
+
+    available_actions = observation[3]['available_actions']
+    cumulative_statistics = observation[3]['score_cumulative']
+    #print("available_actions: " + str(available_actions))
+    #print("cumulative_statistics: " + str(cumulative_statistics))
+    if (self.previous_action is not None):
+      previous_action = (self.previous_action)
+      #print("previous_action: " + str(previous_action))
+
+      unit_name = None
+      if previous_action == _BUILD_SUPPLY_DEPOT:
+        #print("_BUILD_SUPPLY_DEPOT true")
+        unit_name = 'SupplyDepot'
+      elif previous_action == _BUILD_BARRACKS:
+        unit_name = 'Barracks'
+      elif previous_action == _BUILD_REFINERY:
+        unit_name = 'Refinery'
+      elif previous_action == _BUILD_TECHLAB:
+        unit_name = 'TechLab'
+      elif previous_action == _TRAIN_SCV:
+        unit_name = 'SCV'
+      elif previous_action == _TRAIN_MARINE:
+        unit_name = 'Marine'
+      elif previous_action == _TRAIN_MARAUDER:
+        unit_name = 'Marauder'
+
+      self.previous_action = None
+      if unit_name is not None:
+        unit_info = int(units_new.get_unit_type(self.home_race, unit_name)[0])
+        print("unit_info: " + str(unit_info))
+
+        if len(self.build_order) <= 20:
+          self.build_order.append(unit_info)
+
+        unit_name = None
+
+      print("self.build_order: " + str(self.build_order))
+      #_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+      #_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
+      #_BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
+      #_BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
+
+      #_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
+      #_TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
+      #_TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
+      #print("previous_action: " + str(previous_action))
+      # beginning_build_order = 
+
+    #scalar_context = 
     # embedded_scalar.shape: (307,)
 
     scalar_encoder_output = self.scalar_encoder(np.reshape(embedded_scalar, [1,307]))
@@ -182,9 +244,9 @@ class Agent(object):
 
     core_input = np.reshape(encoder_input, [16, 8, 131])
     whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
-    print(whole_seq_output.shape)
-    print(final_memory_state.shape)
-    print(final_carry_state.shape)
+    #print(whole_seq_output.shape)
+    #print(final_memory_state.shape)
+    #print(final_carry_state.shape)
 
     available_actions = observation[3]['available_actions']
 
@@ -245,6 +307,15 @@ class Agent(object):
     self_food_cap = feature_player.food_cap
 
     #print("first_attack: " + str(first_attack))
+    '''
+    self.build_supply_depot_flag = False
+    self.build_barracks_flag = False
+    self.build_refinery_flag = False
+    self.build_techlab_flag = False
+    '''
+    selected_units = []
+
+    action_flag = -1
     action = [actions.FUNCTIONS.no_op()]
     if (self.first_attack == False):
       if (self_food_cap - self_food_used <=3):
@@ -252,13 +323,26 @@ class Agent(object):
           self.scv_selected = True
           random_SCV = random.choice(unselected_SCV_list)
           target = [random_SCV.x, random_SCV.y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          
+          # action
+          action_type = _SELECT_POINT
+          target_unit = random_SCV
+          location = target
+          selected_units = [random_SCV]
+          action = [actions.FunctionCall(action_type, [queued, target])]
         else:
           if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
             #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
             random_point = random.choice(empty_space)
             target = [random_point[0], random_point[1]]
             #print("target: " + str(target))
+
+            self.previous_action = _BUILD_SUPPLY_DEPOT
+
+            # action
+            action_type = _BUILD_SUPPLY_DEPOT
+            target_unit = None
+            location = target
             action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
       elif (num_Barracks <= 2):
         if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
@@ -266,32 +350,72 @@ class Agent(object):
             random_point = random.choice(empty_space)
             target = [random_point[0], random_point[1]]
             #print("target: " + str(target))
+
+            self.previous_action = _BUILD_BARRACKS
+
+            # action
+            action_type = _BUILD_BARRACKS
+            target_unit = None
+            location = target
             action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
-      elif (num_Marines < 10):
+      elif (num_Marines < 5):
         if (num_Barracks != 0):
           if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
-              action = [actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])]
+              self.previous_action = _TRAIN_MARINE
+
+              # action
+              action_type = _TRAIN_MARINE
+              target_unit = None
+              location = None
+              selected_units.append(random_SCV)
+              action = [actions.FunctionCall(_TRAIN_MARINE, [_NOT_QUEUED])]
           else:
             self.scv_selected = False
             random_barrack = random.choice(self_Barracks)
             target = [random_barrack.x, random_barrack.y]
-            action = [actions.FUNCTIONS.select_point("select", target)]
-      elif (num_Marines >= 10):
+
+            # action
+            action_type = _SELECT_POINT
+            target_unit = None
+            location = target
+            selected_units = [random_barrack]
+            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
+      elif (num_Marines >= 5):
           if ( (_SELECT_ARMY in available_actions) & (self.marine_selected == False) ) :
             self.marine_selected = True
+
+            # action
+            action_type = _SELECT_ARMY
+            target_unit = None
+            location = None
+            selected_units = ["ARMY"]
             action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
           elif (self.marine_selected == True):
             if (_ATTACK_MINIMAP in available_actions):
               self.first_attack = True
               random_point = random.choice(enermy)
               target = [random_point[0], random_point[1]]
+
+              # action
+              action_type = _ATTACK_MINIMAP
+              target_unit = None
+              location = target
               action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
       else:
         if (_HARVEST_GATHER in available_actions) :
           target = [neutral_Minerals[0].x, neutral_Minerals[0].y]
+
+          # action
+          action_type = _HARVEST_GATHER
+          target_unit = None
+          location = None
           action = [actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])]
         else:
           if (_SELECT_IDLE_WORKER in available_actions):
+            # action
+            action_type = _SELECT_IDLE_WORKER
+            target_unit = None
+            location = None
             action = [actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])]
     else:
       if (self_food_cap - self_food_used <=3):
@@ -301,24 +425,29 @@ class Agent(object):
           self.scv_selected = True
           random_SCV = random.choice(unselected_SCV_list)
           target = [random_SCV.x, random_SCV.y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          #action = [actions.FUNCTIONS.select_point("select", target)]
+          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
         else:
           if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
             #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
             random_point = random.choice(empty_space)
             target = [random_point[0], random_point[1]]
             #print("target: " + str(target))
+
+            self.previous_action = _BUILD_SUPPLY_DEPOT
             action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
       elif (num_Refinery == 0):
         if (_BUILD_REFINERY not in available_actions):
           random_SCV = random.choice(unselected_SCV_list)
           target = [random_SCV.x, random_SCV.y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
         elif ( (self_minerals >= 100) & (_BUILD_REFINERY in available_actions) ):
           #target = [random_point[0], random_point[1]]
           #print("target: " + str(target))
           if (len(neutral_VespeneGeysers) != 0):
             target = [neutral_VespeneGeysers[0].x, neutral_VespeneGeysers[0].y]
+
+            self.previous_action = _BUILD_REFINERY
             action = [actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])]
       elif (self_Refinery[0].assigned_harvesters <= 3):
         #print("self_Refinery[0].assigned_harvesters: " + str(self_Refinery[0].assigned_harvesters))
@@ -328,7 +457,7 @@ class Agent(object):
           self.scv_selected = True
           random_SCV = random.choice(unselected_SCV_list)
           target = [random_SCV.x, random_SCV.y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
           #print("select scv")
         elif ( (_HARVEST_GATHER in available_actions) & (self.scv_selected == True) ):
           #print("havest command")
@@ -339,28 +468,32 @@ class Agent(object):
         if (_TRAIN_SCV not in available_actions):
           if (len(self_CommandCenter) != 0):
             target = [self_CommandCenter[0].x, self_CommandCenter[0].y]
-            action = [actions.FUNCTIONS.select_point("select", target)]
+            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
             self.scv_selected = False
         else:
-          action = [actions.FunctionCall(_TRAIN_SCV, [_QUEUED])]
-      elif (num_Marines < 10):
+          action = [actions.FunctionCall(_TRAIN_SCV, [_NOT_QUEUED])]
+      elif (num_Marines < 5):
         if (num_Barracks != 0):
           if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
-              action = [actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])]
+
+              self.previous_action = _TRAIN_MARINE
+              action = [actions.FunctionCall(_TRAIN_MARINE, [_NOT_QUEUED])]
           else:
             target = [self_Barracks[0].x, self_Barracks[0].y]
-            action = [actions.FUNCTIONS.select_point("select", target)]
+            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
       elif (total_Barracks <= 2):
         if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
           #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
           random_point = random.choice(empty_space)
           target = [random_point[0], random_point[1]]
           #print("target: " + str(target))
+
+          self.previous_action = _BUILD_BARRACKS
           action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
         else:
           random_SCV = random.choice(unselected_SCV_list)
           target = [random_SCV.x, random_SCV.y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
       elif (num_BarracksTechLab == 0):
         #print("TechLab loop")
         #print("num_BarracksTechLab: " + str(num_BarracksTechLab))
@@ -370,22 +503,26 @@ class Agent(object):
           #random_point = random.choice(empty_space)
           #target = [random_point[0], random_point[1]]
           target = [self_Barracks[0].x, self_Barracks[0].y]
-          action = [actions.FUNCTIONS.select_point("select", target)]
+          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
         elif ( (self_minerals >= 100) & (self_vespene >= 25) & (_BUILD_TECHLAB in available_actions) ):
           #target = [self_Barracks[0].x, self_Barracks[0].y]
           random_point = random.choice(empty_space)
           target = [random_point[0], random_point[1]]
+
+          self.previous_action = _BUILD_TECHLAB
           action = [actions.FunctionCall(_BUILD_TECHLAB, [_NOT_QUEUED, target])]
       elif (num_Marauder < 5):
         #print("Marauder loop")
         if (num_Barracks != 0):
           if ( (self_minerals >= 100) & (self_vespene >= 25) & (_TRAIN_MARAUDER in available_actions) ):
               #print("_TRAIN_MARAUDER command")
-              action = [actions.FunctionCall(_TRAIN_MARAUDER, [_QUEUED])]
+
+              self.previous_action = _TRAIN_MARAUDER
+              action = [actions.FunctionCall(_TRAIN_MARAUDER, [_NOT_QUEUED])]
           else:
             self.scv_selected = False
             target = [self_Barracks[1].x, self_Barracks[1].y]
-            action = [actions.FUNCTIONS.select_point("select", target)]
+            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
       elif (num_Marauder >= 3):
         if ( (_SELECT_ARMY in available_actions) & (self.marauder_selected == False) ):
           self.marauder_selected = True
@@ -395,17 +532,21 @@ class Agent(object):
           #marauder_selected = False
           #random_point = random.choice(enermy)
           #target = [random_point[0], random_point[1]]
-          action = [actions.FUNCTIONS.select_control_group("set", 1)]
-          #action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
+          action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, [[actions.ControlGroupAct.set], [1]])]
+          #action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, ["set", 1])]
       else:
         if ( (_SELECT_CONTROL_GROUP in available_actions) & (self.army_selected == False) ):
           self.army_selected = True
-          action = [actions.FUNCTIONS.select_control_group("recall", 1)]
+          action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, [[actions.ControlGroupAct.recall], [1]])]
         elif ( (_ATTACK_MINIMAP in available_actions) & (self.army_selected == True) ):
           random_point = random.choice(enermy)
           target = [random_point[0], random_point[1]]
           action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
-
+    
+    #actions.FUNCTIONS.select_point("select", target)
+    #target = [10, 10]
+    #action = actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+    #print(action)
     return action
 
 
@@ -419,11 +560,11 @@ while True:
   #print("num_Marauder: " + str(num_Marauder))
 
   action_1 = agent1.step(obs[0])
-  action_1 = [actions.FUNCTIONS.no_op()]
+  #action_1 = [actions.FUNCTIONS.no_op()]
   #print("action_1: " + str(action_1))
 
   action_2 = agent2.step(obs[1])
-  action_2 = [actions.FUNCTIONS.no_op()]
+  #action_2 = [actions.FUNCTIONS.no_op()]
   obs = env.step([action_1, action_2])
   #print("env.action_space: " + str(env.action_space))
   #print("obs[0][1]: " + str(obs[0][1]))
