@@ -4,8 +4,8 @@ import sys
 import units_new
 import upgrades_new
 
-from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics, execute_action
-from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core
+from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
+from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core, ActionTypeHead
 
 import random
 import time
@@ -130,7 +130,9 @@ class Agent(object):
     self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
     self.scalar_encoder = ScalarEncoder(128)
     self.entity_encoder = EntityEncoder(464, 8)
-    self.core = Core(12)
+    self.core = Core(256)
+
+    self.action_type_head = ActionTypeHead(15)
 
     self.previous_action = None
     self.selected_units = None
@@ -178,9 +180,15 @@ class Agent(object):
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
 
     available_actions = observation[3]['available_actions']
-    cumulative_statistics = observation[3]['score_cumulative']
-    #print("available_actions: " + str(available_actions))
-    #print("cumulative_statistics: " + str(cumulative_statistics))
+    # available_actions: [  0   1   2   3   4 264  12  13 274 549 451 452 453 331 332 333 334  79]
+
+    cumulative_statistics = observation[3]['score_cumulative'] / 1000.0
+    # cumulative_statistics.: [1050    2    0  600  400    0    0    0    0    0    0    0    0]
+
+    cumulative_statistics_array = np.log(cumulative_statistics + 1)
+    #print("cumulative_statistics_array.shape: " + str(cumulative_statistics_array.shape))
+
+    build_order_array = np.zeros(256)
     if (self.previous_action is not None):
       previous_action = (self.previous_action)
       #print("previous_action: " + str(previous_action))
@@ -205,27 +213,29 @@ class Agent(object):
       self.previous_action = None
       if unit_name is not None:
         unit_info = int(units_new.get_unit_type(self.home_race, unit_name)[0])
-        print("unit_info: " + str(unit_info))
+        #print("unit_info: " + str(unit_info))
+        build_order_array[unit_info] = 1
 
         if len(self.build_order) <= 20:
-          self.build_order.append(unit_info)
+          self.build_order.append(build_order_array)
 
         unit_name = None
 
-      print("self.build_order: " + str(self.build_order))
-      #_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
-      #_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
-      #_BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
-      #_BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
+    #print("build_order_array.shape: " + str(build_order_array.shape))
 
-      #_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
-      #_TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
-      #_TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
-      #print("previous_action: " + str(previous_action))
-      # beginning_build_order = 
+    available_actions_array = np.zeros(573)
+    available_actions_list = available_actions.tolist()
+    for available_action in available_actions_list:
+      available_actions_array[available_action] = 1
 
-    #scalar_context = 
-    # embedded_scalar.shape: (307,)
+    #print("available_actions_array.shape: " + str(available_actions_array.shape))
+    
+    # available_actions_array.shape: (573,)
+    # cumulative_statistics.shape: (13,)
+    # build_order_array.shape: (256,)
+    scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
+    scalar_context = np.reshape(scalar_context, [1, 842])
+    # scalar_context.shape: (1, 842)
 
     scalar_encoder_output = self.scalar_encoder(np.reshape(embedded_scalar, [1,307]))
     #print("scalar_encoder_output.shape: " + str(scalar_encoder_output.shape))
@@ -244,9 +254,15 @@ class Agent(object):
 
     core_input = np.reshape(encoder_input, [16, 8, 131])
     whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
-    #print(whole_seq_output.shape)
-    #print(final_memory_state.shape)
-    #print(final_carry_state.shape)
+    # whole_seq_output.shape: (16, 8, 256)
+    # final_memory_state.shape: (16, 256)
+    # final_carry_state.shape: (16, 256)
+
+    #print("scalar_context.shape: "  + str(scalar_context.shape))
+
+    action_type_logits, action_type = self.action_type_head(np.reshape(whole_seq_output, [1, 16, 8, 256]), scalar_context) 
+    #print("action_type_logits.shape " + str(action_type_logits.shape))
+    #print("action_type.shape " + str(action_type.shape))
 
     available_actions = observation[3]['available_actions']
 
@@ -329,7 +345,7 @@ class Agent(object):
           target_unit = random_SCV
           location = target
           selected_units = [random_SCV]
-          action = [actions.FunctionCall(action_type, [queued, target])]
+          action = [actions.FunctionCall(action_type, [_NOT_QUEUED, target])]
         else:
           if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
             #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
