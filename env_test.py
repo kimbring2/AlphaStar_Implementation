@@ -134,8 +134,8 @@ class Agent(object):
 
     self.action_type_head = ActionTypeHead(15)
 
+    self.action_phase = 0
     self.previous_action = None
-    self.selected_units = None
 
 
   def step(self, observation):
@@ -155,9 +155,6 @@ class Agent(object):
     feature_player = observation[3]['player']
     score_by_category = observation[3]['score_by_category']
     game_loop = observation[3]['game_loop']
-
-    spatial_encoder_output = self.spatial_encoder(np.reshape(feature_screen, [1,128,128,27]))
-    #print("spatial_encoder.shape: " + str(spatial_encoder_output.shape))
 
     agent_statistics = get_agent_statistics(score_by_category)
     # agent_statistics.shape: (55,)
@@ -241,26 +238,24 @@ class Agent(object):
     #print("scalar_encoder_output.shape: " + str(scalar_encoder_output.shape))
 
     embedded_feature_units = get_entity_obs(feature_units)
-    # embedded_feature_units.shape: (512, 464)
-    entity_encoder_output = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
-    #print("entity_encoder_output.shape: " + str(entity_encoder_output.shape))
+    #print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
+    embedded_entity, entity_embeddings = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
+    #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
+    #print("embedded_entity.shape: " + str(embedded_entity.shape))
 
-    # Encoder Input
-    #spatial_encoder.shape: (1, 16384)
-    #scalar_encoder_output.shape: (1, 128)
-    #entity_encoder_output.shape: (1, 256)
-    encoder_input = np.concatenate((spatial_encoder_output, scalar_encoder_output, entity_encoder_output), axis=1)
-    # encoder_input.shape: (1, 16768)
+    spatial_encoder_output = self.spatial_encoder(np.reshape(feature_screen, [1,128,128,27]), entity_embeddings)
+    #print("spatial_encoder.shape: " + str(spatial_encoder_output.shape))
 
-    core_input = np.reshape(encoder_input, [16, 8, 131])
+    encoder_input = np.concatenate((spatial_encoder_output, scalar_encoder_output, embedded_entity), axis=1)
+    #print("encoder_input.shape: " + str(encoder_input.shape))
+
+    core_input = np.reshape(encoder_input, [8, 16, 131])
     whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
-    # whole_seq_output.shape: (16, 8, 256)
-    # final_memory_state.shape: (16, 256)
-    # final_carry_state.shape: (16, 256)
+    #print("whole_seq_output.shape: " + str(whole_seq_output.shape))
 
-    #print("scalar_context.shape: "  + str(scalar_context.shape))
-
-    action_type_logits, action_type = self.action_type_head(np.reshape(whole_seq_output, [1, 16, 8, 256]), scalar_context) 
+    lstm_output = np.reshape(whole_seq_output, [1, 128 * 256])
+    #print("lstm_output.shape: " + str(lstm_output.shape))
+    action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
     #print("action_type_logits.shape " + str(action_type_logits.shape))
     #print("action_type.shape " + str(action_type.shape))
 
@@ -323,16 +318,30 @@ class Agent(object):
     self_food_cap = feature_player.food_cap
 
     #print("first_attack: " + str(first_attack))
-    '''
-    self.build_supply_depot_flag = False
-    self.build_barracks_flag = False
-    self.build_refinery_flag = False
-    self.build_techlab_flag = False
-    '''
-    selected_units = []
-
-    action_flag = -1
+    # action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _TRAIN_MARINE, _ATTACK_MINIMAP, _BUILD_REFINERY, _BUILD_TECHLAB, _TRAIN_MARAUDER]
+    #selected_units = []
     action = [actions.FUNCTIONS.no_op()]
+
+    action_type = 0 # 1. Action Type Head
+    if action_type == 0:
+      action_index = 0 
+
+    if action_type == 0:
+      if self.action_phase == 0:
+        selected_units = random.choice(self_SCVs) # 2. Selected Units Head
+
+        select_point = [selected_units.x, selected_units.y]
+        action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
+        self.action_phase = 1
+      elif self.action_phase == 1 and _BUILD_SUPPLY_DEPOT in available_actions:
+        target_unit = None # 3. Target Unit Head
+        position = random.choice(empty_space) # 4. Location Head
+
+        action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, position])]
+
+    self.previous_action = action 
+    '''
+    action_flag = -1
     if (self.first_attack == False):
       if (self_food_cap - self_food_used <=3):
         if (self.scv_selected == False):
@@ -558,7 +567,7 @@ class Agent(object):
           random_point = random.choice(enermy)
           target = [random_point[0], random_point[1]]
           action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
-    
+    '''
     #actions.FUNCTIONS.select_point("select", target)
     #target = [10, 10]
     #action = actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
