@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 
 def scaled_dot_product_attention(q, k, v, mask):
   """Calculate the attention weights.
@@ -157,11 +157,11 @@ class SpatialEncoder(tf.keras.layers.Layer):
     ])
 
   def call(self, x, y):
-      # enc_output.shape == (batch_size, input_seq_len, d_model)
+    # enc_output.shape == (batch_size, input_seq_len, d_model)
 
     out = self.map_model(x)
     out_entity = self.entity_model(y)
-    print("out_entity.shape: " + str(out_entity.shape))
+    #print("out_entity.shape: " + str(out_entity.shape))
 
     return out
 
@@ -246,10 +246,12 @@ class ActionTypeHead(tf.keras.layers.Layer):
     out_gated = tf.keras.layers.Multiply()([out, out_gate])
     output_flatten = tf.keras.layers.Flatten()(out_gated)
     output = tf.keras.layers.Dense(self.action_num)(output_flatten)
+    #print("output: " + str(output))
+
     action_type_logits = tf.nn.softmax(output, axis=-1)[0]
     #print("action_type_logits: " + str(action_type_logits))
 
-    action_type = tf.argmax(action_type_logits)
+    action_type = tf.argmax(action_type_logits, axis=0)
     #print("action_type: " + str(action_type))
 
     action_type_onehot = tf.one_hot(action_type, self.action_num)
@@ -278,3 +280,71 @@ class ActionTypeHead(tf.keras.layers.Layer):
     '''
 
     return action_type_logits, action_type, autoregressive_embedding
+
+
+def sample(a, temperature=0.8):
+  print("a: " + str(a))
+
+  a = np.array(a)**(1/temperature)
+  p_sum = a.sum()
+  sample_temp = a / p_sum 
+  print("sample_temp: " + str(sample_temp))
+
+  sample_temp = np.random.multinomial(1, sample_temp, 1)
+  print("sample_temp: " + str(sample_temp))
+
+  return np.argmax(sample_temp)
+
+
+class SelectedUnitsHead(tf.keras.layers.Layer):
+  def __init__(self):
+    super(SelectedUnitsHead, self).__init__()
+
+    self.model = tf.keras.layers.Dense(256, activation='relu')
+
+  def call(self, autoregressive_embedding, possible_entity_type_onehot, entity_embeddings):
+    func_embed = tf.keras.layers.Dense(256, activation='relu')(possible_entity_type_onehot)
+
+    '''
+    It then computes a key corresponding to each entity by feeding `entity_embeddings` through a 1D convolution with 32 channels and kernel size 1, 
+    and creates a new variable corresponding to ending unit selection. 
+    '''
+
+    #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
+    #entity_embeddings.shape: (1, 512, 256)
+    key = tf.keras.layers.Conv1D(32, 1, activation='relu')(entity_embeddings)
+    #print("key.shape: " + str(key.shape))
+    # key.shape: (1, 512, 32) 
+
+    #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
+    # autoregressive_embedding.shape: (1, 1024)
+    query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
+    query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
+    query = tf.expand_dims(query, axis=0)
+
+    dim = tf.zeros([1, 32])
+    query, state_h, state_c = tf.keras.layers.LSTM(units=32, stateful=True, return_state=True, return_sequences=True)(query, initial_state=[dim, dim], training=True)
+    #print("query.shape: " + str(query.shape))
+    # query.shape: (1, 1, 32)
+
+    entity_selection_result = tf.matmul(query, key, transpose_b=True)
+    #print("entity_selection_result.shape: " + str(entity_selection_result.shape))
+    # entity_selection_result.shape: (1, 512, 32)
+
+    #print("entity_selection_result[0][0]: " + str(entity_selection_result[0][0]))
+    selected_entity = sample(entity_selection_result[0][0])
+    #print("selected_entity: " + str(selected_entity))
+    '''
+    Then, repeated for selecting up to 64 units, the network passes `autoregressive_embedding` through a linear of size 256, adds `func_embed`, 
+    and passes the combination through a ReLU and a linear of size 32. The result is fed into a LSTM with size 32 and zero initial state to get a query. 
+    The entity keys are multiplied by the query, and are sampled using the mask and temperature 0.8 to decide which entity to select. That entity is 
+    masked out so that it cannot be selected in future iterations. The one-hot position of the selected entity is multiplied by the keys, reduced by 
+    the mean across the entities, passed through a linear layer of size 1024, and added to `autoregressive_embedding` for subsequent iterations. The 
+    final `autoregressive_embedding` is returned. If `action_type` does not involve selecting units, this head is ignored.
+    '''
+
+    units_logits = None
+    units = None
+    autoregressive_embedding = None
+
+    return units_logits, units, autoregressive_embedding

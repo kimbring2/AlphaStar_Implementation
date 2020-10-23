@@ -5,7 +5,7 @@ import units_new
 import upgrades_new
 
 from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
-from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core, ActionTypeHead
+from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead
 
 import random
 import time
@@ -132,11 +132,11 @@ class Agent(object):
     self.entity_encoder = EntityEncoder(464, 8)
     self.core = Core(256)
 
-    self.action_type_head = ActionTypeHead(15)
+    self.action_type_head = ActionTypeHead(7)
+    self.selected_units_head = SelectedUnitsHead()
 
     self.action_phase = 0
     self.previous_action = None
-
 
   def step(self, observation):
     global home_upgrade_array
@@ -255,9 +255,6 @@ class Agent(object):
 
     lstm_output = np.reshape(whole_seq_output, [1, 128 * 256])
     #print("lstm_output.shape: " + str(lstm_output.shape))
-    action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
-    #print("action_type_logits.shape " + str(action_type_logits.shape))
-    #print("action_type.shape " + str(action_type.shape))
 
     available_actions = observation[3]['available_actions']
 
@@ -318,13 +315,34 @@ class Agent(object):
     self_food_cap = feature_player.food_cap
 
     #print("first_attack: " + str(first_attack))
-    # action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _TRAIN_MARINE, _ATTACK_MINIMAP, _BUILD_REFINERY, _BUILD_TECHLAB, _TRAIN_MARAUDER]
+    # action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
     #selected_units = []
     action = [actions.FUNCTIONS.no_op()]
 
+    action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
+    #print("action_type_logits.shape " + str(action_type_logits.shape))
+    #print("action_type.shape " + str(action_type.shape))
+
     action_type = 0 # 1. Action Type Head
-    if action_type == 0:
+    if action_type == 0 or action_type == 1 or action_type == 2:
       action_index = 0 
+
+      action_acceptable_entity_type = 44
+      action_acceptable_entity_type_onehot = np.identity(60)[action_acceptable_entity_type:action_acceptable_entity_type+1]
+      #print("action_acceptable_entity_type_onehot " + str(action_acceptable_entity_type_onehot))
+
+      print("len(feature_units): " + str(len(feature_units)))
+      selectable_entity_mask = np.ones(len(feature_units))
+      #for idx, feature_unit in enumerate(feature_units):
+      #  print("feature_unit: " + str(feature_unit))
+
+      '''
+      If applicable, Selected Units Head first determines which entity types can accept `action_type`, creates a one-hot of that type with maximum equal 
+      to the number of unit types, and passes it through a linear of size 256 and a ReLU. This will be referred to in this head as `func_embed`.
+
+      It also computes a mask of which units can be selected, initialised to allow selecting all entities that exist (including enemy units).
+      '''
+      units_logits_, units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, action_acceptable_entity_type_onehot, entity_embeddings) 
 
     if action_type == 0:
       if self.action_phase == 0:
