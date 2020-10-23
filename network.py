@@ -231,6 +231,20 @@ class ResBlock(tf.keras.layers.Layer):
         return output
 
 
+def sample(a, temperature=0.8):
+  #print("a: " + str(a))
+
+  a = np.array(a)**(1/temperature)
+  p_sum = a.sum()
+  sample_temp = a / p_sum 
+  #print("sample_temp: " + str(sample_temp))
+
+  sample_temp = np.random.multinomial(1, sample_temp, 1)
+  #print("sample_temp: " + str(sample_temp))
+
+  return np.argmax(sample_temp)
+
+
 class ActionTypeHead(tf.keras.layers.Layer):
   def __init__(self, action_num):
     super(ActionTypeHead, self).__init__()
@@ -251,7 +265,8 @@ class ActionTypeHead(tf.keras.layers.Layer):
     action_type_logits = tf.nn.softmax(output, axis=-1)[0]
     #print("action_type_logits: " + str(action_type_logits))
 
-    action_type = tf.argmax(action_type_logits, axis=0)
+    #action_type = tf.argmax(action_type_logits, axis=0)
+    action_type = sample(action_type_logits)
     #print("action_type: " + str(action_type))
 
     action_type_onehot = tf.one_hot(action_type, self.action_num)
@@ -282,20 +297,6 @@ class ActionTypeHead(tf.keras.layers.Layer):
     return action_type_logits, action_type, autoregressive_embedding
 
 
-def sample(a, temperature=0.8):
-  print("a: " + str(a))
-
-  a = np.array(a)**(1/temperature)
-  p_sum = a.sum()
-  sample_temp = a / p_sum 
-  print("sample_temp: " + str(sample_temp))
-
-  sample_temp = np.random.multinomial(1, sample_temp, 1)
-  print("sample_temp: " + str(sample_temp))
-
-  return np.argmax(sample_temp)
-
-
 class SelectedUnitsHead(tf.keras.layers.Layer):
   def __init__(self):
     super(SelectedUnitsHead, self).__init__()
@@ -315,25 +316,30 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     key = tf.keras.layers.Conv1D(32, 1, activation='relu')(entity_embeddings)
     #print("key.shape: " + str(key.shape))
     # key.shape: (1, 512, 32) 
+    #print("key: " + str(key))
 
     #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
     # autoregressive_embedding.shape: (1, 1024)
     query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
     query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
     query = tf.expand_dims(query, axis=0)
+    #print("query: " + str(query))
 
     dim = tf.zeros([1, 32])
-    query, state_h, state_c = tf.keras.layers.LSTM(units=32, stateful=True, return_state=True, return_sequences=True)(query, initial_state=[dim, dim], training=True)
+    query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, initial_state=[dim, dim], training=True)
     #print("query.shape: " + str(query.shape))
     # query.shape: (1, 1, 32)
+    #print("query: " + str(query))
 
     entity_selection_result = tf.matmul(query, key, transpose_b=True)
     #print("entity_selection_result.shape: " + str(entity_selection_result.shape))
     # entity_selection_result.shape: (1, 512, 32)
 
-    #print("entity_selection_result[0][0]: " + str(entity_selection_result[0][0]))
-    selected_entity = sample(entity_selection_result[0][0])
-    #print("selected_entity: " + str(selected_entity))
+    units_logits = entity_selection_result[0][0]
+    #print("units_logits: " + str(units_logits))
+
+    units = sample(entity_selection_result[0][0])
+    #print("units: " + str(units))
     '''
     Then, repeated for selecting up to 64 units, the network passes `autoregressive_embedding` through a linear of size 256, adds `func_embed`, 
     and passes the combination through a ReLU and a linear of size 32. The result is fed into a LSTM with size 32 and zero initial state to get a query. 
@@ -343,8 +349,18 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     final `autoregressive_embedding` is returned. If `action_type` does not involve selecting units, this head is ignored.
     '''
 
-    units_logits = None
-    units = None
-    autoregressive_embedding = None
+    #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
+    # autoregressive_embedding.shape: (1, 1024)
+
+    autoregressive_embedding_ = tf.one_hot(units, 512)
+    # autoregressive_embedding_.shape: (512,)
+    # key.shape: (1, 512, 32)
+    autoregressive_embedding_ = tf.keras.layers.Multiply()([autoregressive_embedding_, key[0]])
+    autoregressive_embedding_ = tf.reduce_mean(autoregressive_embedding_, 0)
+    #print("autoregressive_embedding_.shape: " + str(autoregressive_embedding_.shape))
+    autoregressive_embedding_ = tf.expand_dims(autoregressive_embedding_, axis=0)
+    autoregressive_embedding_ = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding_)
+    autoregressive_embedding += autoregressive_embedding_
+    #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
 
     return units_logits, units, autoregressive_embedding
