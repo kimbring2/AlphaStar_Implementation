@@ -5,7 +5,7 @@ import units_new
 import upgrades_new
 
 from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
-from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead
+from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead, LocationHead
 
 import random
 import time
@@ -134,12 +134,12 @@ class Agent(object):
     self.action_type_head = ActionTypeHead(7)
     self.selected_units_head = SelectedUnitsHead()
     self.target_unit_head = TargetUnitHead()
+    self.location_head = LocationHead()
 
     self.core_prev_state = None
     self.action_phase = 0
     self.previous_action = None
     self.selected_unit = []
-
 
   def step(self, observation):
     global home_upgrade_array
@@ -239,8 +239,9 @@ class Agent(object):
     # scalar_context.shape: (1, 842)
 
     embedded_feature_units = get_entity_obs(feature_units)
+    embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
     #print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
-    embedded_entity, entity_embeddings = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
+    embedded_entity, entity_embeddings = self.entity_encoder(embedded_feature_units)
     #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
     #print("embedded_entity.shape: " + str(embedded_entity.shape))
 
@@ -348,9 +349,12 @@ class Agent(object):
       else:
         target_unit = None
 
-      if self.action_phase == 0:
+      target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
+
+      if self.action_phase == 0 and selected_units_ is not None:
         #selected_units = random.choice(self_SCVs) # 2. Selected Units Head
-        selected_units = selected_units_
+        selected_units = feature_units[selected_units_]
+        print("selected_units: " + str(selected_units))
 
         select_point = [selected_units.x, selected_units.y]
         action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
@@ -358,7 +362,8 @@ class Agent(object):
       elif self.action_phase == 1 and _BUILD_SUPPLY_DEPOT in available_actions:
         #target_unit = None # 3. Target Unit Head
         target_unit = target_unit
-        position = random.choice(empty_space) # 4. Location Head
+        #position = random.choice(empty_space) # 4. Location Head
+        position = (target_location[0], target_location[1])
         action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
 
       self.previous_action = action 
