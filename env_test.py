@@ -5,7 +5,7 @@ import units_new
 import upgrades_new
 
 from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
-from network import EntityEncoder, ScalarEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead
+from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead
 
 import random
 import time
@@ -128,15 +128,18 @@ class Agent(object):
     self.second_attack = False
 
     self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
-    self.scalar_encoder = ScalarEncoder(128)
     self.entity_encoder = EntityEncoder(464, 8)
     self.core = Core(256)
 
     self.action_type_head = ActionTypeHead(7)
     self.selected_units_head = SelectedUnitsHead()
+    self.target_unit_head = TargetUnitHead()
 
+    self.core_prev_state = None
     self.action_phase = 0
     self.previous_action = None
+    self.selected_unit = []
+
 
   def step(self, observation):
     global home_upgrade_array
@@ -175,6 +178,7 @@ class Agent(object):
     # away_upgrade_array.shape: (89,)
 
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
+    embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
 
     available_actions = observation[3]['available_actions']
     # available_actions: [  0   1   2   3   4 264  12  13 274 549 451 452 453 331 332 333 334  79]
@@ -234,27 +238,30 @@ class Agent(object):
     scalar_context = np.reshape(scalar_context, [1, 842])
     # scalar_context.shape: (1, 842)
 
-    scalar_encoder_output = self.scalar_encoder(np.reshape(embedded_scalar, [1,307]))
-    #print("scalar_encoder_output.shape: " + str(scalar_encoder_output.shape))
-
     embedded_feature_units = get_entity_obs(feature_units)
     #print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
     embedded_entity, entity_embeddings = self.entity_encoder(np.reshape(embedded_feature_units, [1,512,464]))
     #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
     #print("embedded_entity.shape: " + str(embedded_entity.shape))
 
-    spatial_encoder_output = self.spatial_encoder(np.reshape(feature_screen, [1,128,128,27]), entity_embeddings)
-    #print("spatial_encoder.shape: " + str(spatial_encoder_output.shape))
+    map_, embedded_spatial = self.spatial_encoder(feature_screen)
 
-    encoder_input = np.concatenate((spatial_encoder_output, scalar_encoder_output, embedded_entity), axis=1)
-    #print("encoder_input.shape: " + str(encoder_input.shape))
+    #print("embedded_spatial.shape: " + str(embedded_spatial.shape))
+    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
+    #print("embedded_entity.shape: " + str(embedded_entity.shape))
+    # embedded_spatial.shape: (1, 256)
+    # embedded_scalar.shape: (1, 307)
+    # embedded_entity.shape: (1, 256)
 
-    core_input = np.reshape(encoder_input, [8, 16, 131])
-    whole_seq_output, final_memory_state, final_carry_state = self.core(core_input)
+    whole_seq_output, final_memory_state, final_carry_state = self.core(self.core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
     #print("whole_seq_output.shape: " + str(whole_seq_output.shape))
+    # whole_seq_output.shape: (1, 9, 256)
 
-    lstm_output = np.reshape(whole_seq_output, [1, 128 * 256])
-    #print("lstm_output.shape: " + str(lstm_output.shape))
+    #print("final_memory_state.shape: " + str(final_memory_state.shape))
+    # final_memory_state.shape: (1, 256)
+    self.core_prev_state = (final_memory_state, final_carry_state)
+
+    lstm_output = np.reshape(whole_seq_output, [1, 9 * 256])
 
     available_actions = observation[3]['available_actions']
 
@@ -314,50 +321,47 @@ class Agent(object):
     self_food_used = feature_player.food_used
     self_food_cap = feature_player.food_cap
 
-    #print("first_attack: " + str(first_attack))
-    # action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
-    #selected_units = []
+    action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
     action = [actions.FUNCTIONS.no_op()]
 
     action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
-    #print("action_type_logits.shape " + str(action_type_logits.shape))
-    #print("action_type.shape " + str(action_type.shape))
 
-    action_type = 0 # 1. Action Type Head
+    selectable_entity_mask = np.zeros(512)
     if action_type == 0 or action_type == 1 or action_type == 2:
-      action_index = 0 
-
       action_acceptable_entity_type = 44
-      action_acceptable_entity_type_onehot = np.identity(60)[action_acceptable_entity_type:action_acceptable_entity_type+1]
-      #print("action_acceptable_entity_type_onehot " + str(action_acceptable_entity_type_onehot))
+      for idx, feature_unit in enumerate(feature_units):
+        #print("feature_unit: " + str(feature_unit))
+        selectable_entity_mask[idx]  = 1
 
-      print("len(feature_units): " + str(len(feature_units)))
-      selectable_entity_mask = np.ones(len(feature_units))
-      #for idx, feature_unit in enumerate(feature_units):
-      #  print("feature_unit: " + str(feature_unit))
+      selected_units_logits_, selected_units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, action_acceptable_entity_type, entity_embeddings)
+      if (selected_units_ < len(feature_units)):
+        selected_units_ = selected_units_
+        self.selected_unit.append(feature_units[selected_units_])
+        #print("feature_units[selected_units_]: " + str(feature_units[selected_units_]))
+      else:
+        selected_units_ = None
 
-      '''
-      If applicable, Selected Units Head first determines which entity types can accept `action_type`, creates a one-hot of that type with maximum equal 
-      to the number of unit types, and passes it through a linear of size 256 and a ReLU. This will be referred to in this head as `func_embed`.
+      target_unit_logits, target_unit = self.target_unit_head(autoregressive_embedding, action_acceptable_entity_type, entity_embeddings)
+      if (target_unit < len(feature_units)):
+        target_unit = target_unit
+        #print("feature_units[target_unit]: " + str(feature_units[target_unit]))
+      else:
+        target_unit = None
 
-      It also computes a mask of which units can be selected, initialised to allow selecting all entities that exist (including enemy units).
-      '''
-      units_logits_, units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, action_acceptable_entity_type_onehot, entity_embeddings) 
-
-    if action_type == 0:
       if self.action_phase == 0:
-        selected_units = random.choice(self_SCVs) # 2. Selected Units Head
+        #selected_units = random.choice(self_SCVs) # 2. Selected Units Head
+        selected_units = selected_units_
 
         select_point = [selected_units.x, selected_units.y]
         action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
         self.action_phase = 1
       elif self.action_phase == 1 and _BUILD_SUPPLY_DEPOT in available_actions:
-        target_unit = None # 3. Target Unit Head
+        #target_unit = None # 3. Target Unit Head
+        target_unit = target_unit
         position = random.choice(empty_space) # 4. Location Head
+        action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
 
-        action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, position])]
-
-    self.previous_action = action 
+      self.previous_action = action 
     '''
     action_flag = -1
     if (self.first_attack == False):
