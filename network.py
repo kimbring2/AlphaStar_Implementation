@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-
 def scaled_dot_product_attention(q, k, v, mask):
   """Calculate the attention weights.
   q, k, v must have matching leading dimensions.
@@ -21,9 +20,10 @@ def scaled_dot_product_attention(q, k, v, mask):
   """
 
   matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
-  
+
   # scale matmul_qk
   dk = tf.cast(tf.shape(k)[-1], tf.float32)
+  #dk = tf.shape(tf.shape(k)[-1])
   scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
 
   # add the mask to the scaled tensor.
@@ -33,7 +33,6 @@ def scaled_dot_product_attention(q, k, v, mask):
   # softmax is normalized on the last axis (seq_len_k) so that the scores
   # add up to 1.
   attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
-
   output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
   return output, attention_weights
@@ -65,6 +64,10 @@ class MultiHeadAttention(tf.keras.layers.Layer):
   def call(self, v, k, q, mask):
     batch_size = tf.shape(q)[0]
     
+    q = tf.cast(q, tf.float32)
+    k = tf.cast(k, tf.float32)
+    v = tf.cast(v, tf.float32)
+
     q = self.wq(q)  # (batch_size, seq_len, d_model)
     k = self.wk(k)  # (batch_size, seq_len, d_model)
     v = self.wv(v)  # (batch_size, seq_len, d_model)
@@ -100,6 +103,9 @@ class EntityEncoder(tf.keras.layers.Layer):
     def call(self, embedded_feature_units):
         # enc_output.shape == (batch_size, input_seq_len, d_model)
         #y = tf.random.uniform((1, 512, 464))  # (batch_size, encoder_sequence, d_model)
+
+        #embedded_feature_units = tf.cast(embedded_feature_units, tf.float32)
+        #print("embedded_feature_units: " + str(embedded_feature_units))
         out, attn = self.mha(embedded_feature_units, k=embedded_feature_units, q=embedded_feature_units, mask=None)
         # out.shape: (1, 512, 32)
     
@@ -111,6 +117,7 @@ class EntityEncoder(tf.keras.layers.Layer):
 
         entity_embeddings = tf.keras.layers.Conv1D(256, 1, activation='relu')(out)
         embedded_entity = tf.reduce_mean(out, 1)
+        embedded_entity = tf.cast(embedded_entity, tf.float32) 
         embedded_entity = tf.keras.layers.Dense(256, activation='relu')(embedded_entity)
         #print("embedded_entity.shape: " + str(embedded_entity.shape))
         #embedded_entity.shape: (1, 464)
@@ -159,6 +166,7 @@ class SpatialEncoder(tf.keras.layers.Layer):
 
     map_flatten = tf.keras.layers.Flatten()(map_)
     # out_map.shape: (1, 16384)
+    map_flatten = tf.cast(map_flatten, tf.float32) 
 
     embedded_spatial = tf.keras.layers.Dense(256, activation='relu')(map_flatten)
     #print("embedded_spatial.shape: " + str(embedded_spatial.shape))
@@ -205,19 +213,33 @@ print(whole_seq_output.shape)
 print(final_memory_state.shape)
 print(final_carry_state.shape)
 '''
-
+'''
 def sample(a, temperature=0.8):
   #print("a: " + str(a))
 
-  a = np.array(a)**(1/temperature)
+  a = np.array(a)**(1 / temperature)
   p_sum = a.sum()
-  sample_temp = a / p_sum 
-  #print("sample_temp: " + str(sample_temp))
 
+  a = np.log(a) / temperature
+  a = np.exp(a) / np.sum(np.exp(a))
+
+  print("p_sum: " + str(p_sum))
+
+  sample_temp = a / p_sum 
+
+  #print("sample_temp.shape: " + str(sample_temp.shape))
   sample_temp = np.random.multinomial(1, sample_temp, 1)
   #print("sample_temp: " + str(sample_temp))
 
   return np.argmax(sample_temp)
+'''
+
+def sample(a, temperature=0.8):
+    a = a + 1
+    a = np.log(a) / temperature
+    a = np.exp(a) / np.sum(np.exp(a))
+
+    return np.argmax(np.random.multinomial(1, a, 1))
 
 
 class ResBlock_MLP(tf.keras.layers.Layer):
@@ -240,6 +262,7 @@ class ResBlock_MLP(tf.keras.layers.Layer):
 
         shortcut = self.shortcut(net)
 
+        net = tf.cast(net, tf.float32) 
         net = self.mlp_0(net)
         net = self.bn_1(net, training=training)
         net = tf.nn.relu(net)
@@ -258,11 +281,13 @@ class ActionTypeHead(tf.keras.layers.Layer):
   
   def call(self, lstm_output,  scalar_context):
     out = self.model(lstm_output, True)
+    scalar_context = tf.cast(scalar_context, tf.float32) 
     out_gate = tf.keras.layers.Dense(256)(scalar_context)
     #print("out_3.shape: " + str(out_3.shape))
 
     out_gated = tf.keras.layers.Multiply()([out, out_gate])
     output_flatten = tf.keras.layers.Flatten()(out_gated)
+    output_flatten = tf.cast(output_flatten, tf.float32) 
     output = tf.keras.layers.Dense(self.action_num)(output_flatten)
     #print("output: " + str(output))
 
@@ -277,14 +302,17 @@ class ActionTypeHead(tf.keras.layers.Layer):
     action_type_onehot = tf.expand_dims(action_type_onehot, axis=0)
     #print("action_type_onehot.shape: " + str(action_type_onehot.shape))
 
+    action_type_onehot = tf.cast(action_type_onehot, tf.float32) 
     autoregressive_embedding = tf.keras.layers.Dense(1024)(action_type_onehot)
     #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
 
+    scalar_context = tf.cast(scalar_context, tf.float32) 
     autoregressive_embedding_gate = tf.keras.layers.Dense(1024)(scalar_context)
     autoregressive_embedding = tf.keras.layers.Multiply()([autoregressive_embedding, autoregressive_embedding_gate])
     # autoregressive_embedding.shape: (1, 1024)
 
     lstm_output_embedding = tf.keras.layers.Flatten()(lstm_output)
+    lstm_output = tf.cast(lstm_output, tf.float32) 
     lstm_output_embedding = tf.keras.layers.Dense(1024)(lstm_output_embedding)
     lstm_output_embedding_gate = tf.keras.layers.Dense(1024)(scalar_context)
     lstm_output_embedding = tf.keras.layers.Multiply()([lstm_output_embedding, lstm_output_embedding_gate])
@@ -307,12 +335,13 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
 
     self.model = tf.keras.layers.Dense(256, activation='relu')
 
-  def call(self, autoregressive_embedding, action_acceptable_entity_type, entity_embeddings):
-    action_acceptable_entity_type_onehot = tf.one_hot(action_acceptable_entity_type, 512)
-    action_acceptable_entity_type_onehot = tf.expand_dims(action_acceptable_entity_type_onehot, axis=0)
+  def call(self, autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings):
+    #action_acceptable_entity_type_onehot = tf.one_hot(action_acceptable_entity_type, 512)
+    action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
 
     #print("action_acceptable_entity_type_onehot.shape: " + str(action_acceptable_entity_type_onehot.shape))
-    func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_onehot)
+    action_acceptable_entity_type_binary = tf.cast(action_acceptable_entity_type_binary, tf.float32) 
+    func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_binary)
 
     '''
     It then computes a key corresponding to each entity by feeding `entity_embeddings` through a 1D convolution with 32 channels and kernel size 1, 
@@ -328,13 +357,17 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
 
     #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
     # autoregressive_embedding.shape: (1, 1024)
+    autoregressive_embedding = tf.cast(autoregressive_embedding, tf.float32) 
+    func_embed = tf.cast(func_embed, tf.float32) 
     query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
     query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
     query = tf.expand_dims(query, axis=0)
     #print("query: " + str(query))
 
     dim = tf.zeros([1, 32])
-    query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, initial_state=[dim, dim], training=True)
+    query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, 
+                                                                                                                                                   initial_state=[dim, dim], 
+                                                                                                                                                   training=True)
     #print("query.shape: " + str(query.shape))
     # query.shape: (1, 1, 32)
     #print("query: " + str(query))
@@ -368,6 +401,8 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     autoregressive_embedding_ = tf.reduce_mean(autoregressive_embedding_, 0)
     #print("autoregressive_embedding_.shape: " + str(autoregressive_embedding_.shape))
     autoregressive_embedding_ = tf.expand_dims(autoregressive_embedding_, axis=0)
+
+    autoregressive_embedding_ = tf.cast(autoregressive_embedding_, tf.float32) 
     autoregressive_embedding_ = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding_)
     autoregressive_embedding += autoregressive_embedding_
     #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
@@ -381,14 +416,15 @@ class TargetUnitHead(tf.keras.layers.Layer):
 
     self.model = tf.keras.layers.Dense(256, activation='relu')
 
-  def call(self,autoregressive_embedding, action_acceptable_entity_type, entity_embeddings):
-    action_acceptable_entity_type_onehot = tf.one_hot(action_acceptable_entity_type, 512)
-    action_acceptable_entity_type_onehot = tf.expand_dims(action_acceptable_entity_type_onehot, axis=0)
+  def call(self,autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings):
+    action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
 
-    func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_onehot)
+    action_acceptable_entity_type_binary = tf.cast(action_acceptable_entity_type_binary, tf.float32) 
+    func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_binary)
 
     key = tf.keras.layers.Conv1D(32, 1, activation='relu')(entity_embeddings)
 
+    autoregressive_embedding = tf.cast(autoregressive_embedding, tf.float32) 
     query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
     query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
     query = tf.expand_dims(query, axis=0)
@@ -482,13 +518,13 @@ class LocationHead(tf.keras.layers.Layer):
     #print("target_location_logits_flatten[0].shape: " + str(target_location_logits_flatten[0].shape))
     #print("target_location_logits_flatten[0]: " + str(target_location_logits_flatten[0]))
     target_location = sample(target_location_logits_flatten[0])
-    print("target_location: " + str(target_location))
+    #print("target_location: " + str(target_location))
 
     x = int(target_location / 128)
     y = target_location % 128
 
     target_location_logits = target_location_logits_flatten[0]
     target_location = (x, y)
-    print("target_location: " + str(target_location))
+    #print("target_location: " + str(target_location))
 
     return target_location_logits, target_location
