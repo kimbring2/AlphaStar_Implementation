@@ -176,7 +176,7 @@ class Trajectory(object):
 				print("True loop")
 				while True:
 					replay_step += 1
-					print("replay_step: " + str(replay_step))
+					#print("replay_step: " + str(replay_step))
 
 					controller.step(step_mul)
 					obs = controller.observe()
@@ -190,12 +190,11 @@ class Trajectory(object):
 						function_name = function_dict[ability_id]
 						if (function_name != 'build_queue'):
 							function_name_parse = function_name.split('_')
-
 							function_name_first = function_name_parse[0]
 							#print("function_name_first: " + str(function_name_first))
 							if (function_name_first == 'Build' or function_name_first == 'Train'):
 								unit_name = function_name_parse[1]
-								unit_info = int(units_new.get_unit_type(self.home_race_name, unit_name))
+								unit_info = int(units_new.get_unit_type(self.home_race_name, unit_name)[0])
 								#print("unit_name: " + str(unit_name))
 								#print("unit_info: " + str(unit_info))
 
@@ -206,10 +205,8 @@ class Trajectory(object):
 					if obs.player_result: # Episide over.
 						_state = StepType.LAST
 						discount = 0
-
 					else:
 						discount = discount
-
 						_episode_steps += step_mul
 
 					agent_obs = _features.transform_obs(obs)
@@ -233,6 +230,7 @@ class Trajectory(object):
 					score_cumulative_dict['spent_minerals'] = score_cumulative.spent_minerals
 					score_cumulative_dict['spent_vespene'] = score_cumulative.spent_vespene
 
+					#print("obs.player_result: " + str(obs.player_result))
 					if obs.player_result:
 						break
 
