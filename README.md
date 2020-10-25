@@ -4,6 +4,8 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 # Reference
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
 2. Extracting observation, action from replay file: https://github.com/narhen/pysc2-replay
+3. Transfomer network of Tensorflow 2.0: https://www.tensorflow.org/tutorials/text/transformer
+4. Resblock of Tensorflow 2.0: https://zhuanlan.zhihu.com/p/87047648
 
 # Version
 1. Python3
@@ -21,7 +23,7 @@ I am writing explanation for code at Medium as series.
 1. Tutorial about replay file: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
 2. Tutorial about agent class: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
 3. Tutorial about encoder network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
-3. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
+4. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
 
 # Preprocess observation of PySC2
 I am adding the necessary code for running alphaStar based on psuedocode of DeepMind paper
