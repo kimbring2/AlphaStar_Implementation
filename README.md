@@ -16,9 +16,10 @@ Then, screen of PySC2 will start and you can see some activation of two Terran r
 # Detailed information
 I am writing explanation for code at Medium as series.
 
-1. First tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
-2. Second tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
-3. Third tutorial: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
+1. Tutorial about replay file: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
+2. Tutorial about agent class: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
+3. Tutorial about encoder network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
+3. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
 
 # Extract information from replay file
 The following is the process of getting build order, unit and cumulative score information from one replay file in my PC working environment.
