@@ -26,7 +26,7 @@ I am writing explanation for code at Medium as series.
 4. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
 
 # Preprocess observation of PySC2
-I am adding the necessary code for running alphaStar based on psuedocode of DeepMind paper
+I am adding the necessary code for running AlphaStar based on psuedocode of DeepMind paper
 
 1. Extract information from Replay file: [trajectory.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/trajectory.py)
 2. Encoder, Core, Head network: [network.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/network.py)
