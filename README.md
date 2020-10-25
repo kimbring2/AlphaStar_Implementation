@@ -8,10 +8,12 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 # Version
 1. Python3
 2. PySC2 3.0.0
+3. Tensorflow 2.2.0
 
 # Running test
-To check you setting all your computer environment correctly. Run 'env_test.py' file in your terminal.
-Then, screen of PySC2 will start and you can see some activation of two Terran rule-based agent. 
+To check you setting all your computer environment correctly. Run [env_test.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/env_test.py) in your terminal.
+
+Then, screen of PySC2 will start and you can see some activation of rule-based agent of Terran. 
 
 # Detailed information
 I am writing explanation for code at Medium as series.
