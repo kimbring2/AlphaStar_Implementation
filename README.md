@@ -34,7 +34,7 @@ I am adding the necessary code for running alphaStar based on psuedocode of Deep
 4. Edited unit inforamtion of PySC2: [units_new.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/units_new.py)
 5. Edited upgrade inforamtion of PySC2: [upgrades_new.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/upgrades_new.py)
 
-You can run AlphaStar application by running [alphastar.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/alphastar.py) after putting all additional file with same folder.
+You can run AlphaStar application by running [alphastar.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/alphastar.py) after putting all additional file in same folder.
 ```
 $ python alphastar.py 
 ```
