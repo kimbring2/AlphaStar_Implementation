@@ -15,10 +15,7 @@ from absl import app, flags
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
 
-# from trajectory import get_random_trajectory
-# get_random_trajectory(source='/media/kimbring2/Steam1/StarCraftII/Replays/4.8.2.71663-20190123_035823-1/', home_race=1, away_race=1, replay_filter=3500)
-# import sys, importlib
-# importlib.reload(sys.modules['trajectory'])
+
 class Trajectory(object):
 	def __init__(self, source, home_race_name, away_race_name, replay_filter, filter_repeated_camera_moves=True):
 	    self.source = source
@@ -162,7 +159,7 @@ class Trajectory(object):
 				rgb_minimap_size = None
 				action_space = None
 				use_feature_units = True
-				agent_interface_format = sc2_env.parse_agent_interface_format(
+				aif = sc2_env.parse_agent_interface_format(
 					feature_screen=feature_screen_size,
 					feature_minimap=feature_minimap_size,
 					rgb_screen=rgb_screen_size,
@@ -170,7 +167,7 @@ class Trajectory(object):
 					action_space=action_space,
 					use_feature_units=use_feature_units)
 
-				_features = features.features_from_game_info(controller.game_info())
+				_features = features.features_from_game_info(controller.game_info(), agent_interface_format=aif)
 
 				build_info = []
 				build_name = []
@@ -183,7 +180,7 @@ class Trajectory(object):
 
 					controller.step(step_mul)
 					obs = controller.observe()
-					self.home_trajectory.append(obs)
+					#self.home_trajectory.append(obs)
 
 					if (len(obs.actions) != 0):
 						action = (obs.actions)[0]
@@ -216,6 +213,7 @@ class Trajectory(object):
 						_episode_steps += step_mul
 
 					agent_obs = _features.transform_obs(obs)
+					self.home_trajectory.append(agent_obs)
 					step = TimeStep(step_type=_state, reward=0,
 				                    discount=discount, observation=agent_obs)
 
