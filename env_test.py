@@ -125,19 +125,7 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
-    ################################################################################################
-    self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
-    self.entity_encoder = EntityEncoder(464, 8)
-
-    self.core = Core(256)
-
-    self.action_type_head = ActionTypeHead(7)
-    self.selected_units_head = SelectedUnitsHead()
-    self.target_unit_head = TargetUnitHead()
-    self.location_head = LocationHead()
-    ################################################################################################
-
-    self.core_prev_state = None
+    self.core_prev_state = (tf.zeros([1, 256]), tf.zeros([1, 256]))
     self.action_phase = 0
     self.previous_action = None
     self.selected_unit = []
@@ -150,7 +138,7 @@ class Agent(object):
       core_prev_state = (tf.keras.Input(shape=[256]), tf.keras.Input(shape=[256]))
       embedded_scalar = tf.keras.Input(shape=[307])
       scalar_context = tf.keras.Input(shape=[842])
-      action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
+      #action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
 
       map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
@@ -160,16 +148,16 @@ class Agent(object):
       
       action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(7)(lstm_output, scalar_context)
       selected_units_logits_, selected_units_, autoregressive_embedding = SelectedUnitsHead()(autoregressive_embedding, 
-                                                                                                                   action_acceptable_entity_type_binary, 
+                                                                                                                   action_type, 
                                                                                                                    entity_embeddings)
-      target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings)
-      target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
+      target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding, action_type, entity_embeddings)
+      target_location_logits, target_location = LocationHead()(autoregressive_embedding, action_type, map_)
 
-    
       # Instantiate an end-to-end model predicting both priority and department
       agent_model = tf.keras.Model(
-          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context, action_acceptable_entity_type_binary],
-          outputs=[action_type_logits, selected_units_logits_, target_unit_logits, target_location_logits],
+          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
+          outputs=[action_type_logits, action_type, selected_units_logits_, selected_units_, target_unit_logits, target_unit, target_location_logits, target_location, 
+                     final_memory_state, final_carry_state]
       )
 
       agent_model.summary()
@@ -183,11 +171,7 @@ class Agent(object):
 
     """Performs inference on the observation, given hidden state last_state."""
     # We are omitting the details of network inference here.
-    # ...
-    #print("observation: " + str(observation))
-    #print("")
     feature_screen = observation[3]['feature_screen']
-    #print("feature_screen.shape: " + str(feature_screen.shape))
     # feature_screen.shape: (27, 128, 128)
 
     feature_minimap = observation[3]['feature_minimap']
@@ -205,7 +189,6 @@ class Agent(object):
     # race.shape: (10,)
 
     time = get_gameloop_obs(game_loop)
-    #print("time.shape: " + str(time.shape))
     #time.shape : (64,)
 
     upgrade_value = get_upgrade_obs(feature_units)
@@ -218,18 +201,15 @@ class Agent(object):
 
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
     embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
-    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
 
     cumulative_statistics = observation[3]['score_cumulative'] / 1000.0
     # cumulative_statistics.: [1050    2    0  600  400    0    0    0    0    0    0    0    0]
 
     cumulative_statistics_array = np.log(cumulative_statistics + 1)
-    #print("cumulative_statistics_array.shape: " + str(cumulative_statistics_array.shape))
 
     build_order_array = np.zeros(256)
     if (self.previous_action is not None):
       previous_action = (self.previous_action)
-      #print("previous_action: " + str(previous_action))
 
       unit_name = None
       if previous_action == _BUILD_SUPPLY_DEPOT:
@@ -251,7 +231,6 @@ class Agent(object):
       self.previous_action = None
       if unit_name is not None:
         unit_info = int(units_new.get_unit_type(self.home_race, unit_name)[0])
-        #print("unit_info: " + str(unit_info))
         build_order_array[unit_info] = 1
 
         if len(self.build_order) <= 20:
@@ -260,109 +239,81 @@ class Agent(object):
         unit_name = None
 
     feature_screen = np.expand_dims(feature_screen, axis=0)
-    map_, embedded_spatial = self.spatial_encoder(feature_screen)
 
     available_actions_array = np.zeros(573)
     available_actions_list = available_actions.tolist()
     for available_action in available_actions_list:
       available_actions_array[available_action] = 1
 
-    #print("available_actions_array.shape: " + str(available_actions_array.shape))
-    
     # available_actions_array.shape: (573,)
     # cumulative_statistics.shape: (13,)
     # build_order_array.shape: (256,)
+
     scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
     scalar_context = np.reshape(scalar_context, [1, 842])
     # scalar_context.shape: (1, 842)
 
     embedded_feature_units = get_entity_obs(feature_units)
     embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
-    #print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
-    embedded_entity, entity_embeddings = self.entity_encoder(embedded_feature_units)
     action = [actions.FUNCTIONS.no_op()]
-    #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
-    #print("embedded_entity.shape: " + str(embedded_entity.shape))
-    
-    #print("embedded_spatial.shape: " + str(embedded_spatial.shape))
-    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
-    #print("embedded_entity.shape: " + str(embedded_entity.shape))
     # embedded_spatial.shape: (1, 256)
     # embedded_scalar.shape: (1, 307)
     # embedded_entity.shape: (1, 256)
-    whole_seq_output, final_memory_state, final_carry_state = self.core(self.core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
-    #print("whole_seq_output.shape: " + str(whole_seq_output.shape))
-    # whole_seq_output.shape: (1, 9, 256)
 
-    #print("final_memory_state.shape: " + str(final_memory_state.shape))
-    # final_memory_state.shape: (1, 256)
+    predict_value = self.agent_model([feature_screen, embedded_feature_units, self.core_prev_state, embedded_scalar, scalar_context])
+    action_type_logits = predict_value[0]
+    action_type = predict_value[1].numpy()
+    selected_units_logits = predict_value[2]
+    selected_units = predict_value[3].numpy()
+    target_unit_logits = predict_value[4]
+    target_unit = predict_value[5].numpy()
+    target_location_logits = predict_value[6]
+    target_location = predict_value[7]
+    final_memory_state = predict_value[8]
+    final_carry_state = predict_value[9]
+
+    #print("action_type_logits: " + str(action_type_logits))
+    print("action_type: " + str(action_type))
+    #print("selected_units_logits_: " + str(selected_units_logits_))
+    print("selected_units: " + str(selected_units))
+    #print("target_unit_logits: " + str(target_unit_logits))
+    print("target_unit: " + str(target_unit))
+    #print("target_location_logits: " + str(target_location_logits))
+    print("target_location[0]: " + str(target_location[0]))
+    print("target_location[1]: " + str(target_location[1]))
+    print("")
+    #print("final_memory_state: " + str(final_memory_state))
+    #print("final_carry_state: " + str(final_carry_state))
+
     self.core_prev_state = (final_memory_state, final_carry_state)
     # self.core_prev_state[0].shape: (1, 256)
     # self.core_prev_state[1].shape: (1, 256)
 
-    lstm_output = np.reshape(whole_seq_output, [1, 9 * 256])
-
     action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
     action = [actions.FUNCTIONS.no_op()]
 
-    action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
-    #print("action_type: " + str(action_type))
-    
     selectable_entity_mask = np.zeros(512)
     for idx, feature_unit in enumerate(feature_units):
-        #print("feature_unit: " + str(feature_unit))
         selectable_entity_mask[idx] = 1
 
-    action_acceptable_entity_type_binary = np.zeros(512)
-    if action_type == 0 or action_type == 1 or action_type == 2:
-      action_acceptable_entity_type_binary[43] = 1 
-    elif action_type == 3 or action_type == 4:
-      action_acceptable_entity_type_binary[3] = 1 
-    elif action_type == 5:
-      action_acceptable_entity_type_binary[28] = 1 
-      action_acceptable_entity_type_binary[29] = 1
-      action_acceptable_entity_type_binary[43] = 1  
-    elif action_type == 6:
-      action_acceptable_entity_type_binary[3] = 1 
-
-    action_acceptable_entity_type_binary = np.expand_dims(action_acceptable_entity_type_binary, 0)
-    #print("action_acceptable_entity_type_binary.shape: " + str(action_acceptable_entity_type_binary.shape))
-    selected_units_logits_, selected_units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, 
-                                                                                                                       action_acceptable_entity_type_binary, 
-                                                                                                                       entity_embeddings)
-    #print("feature_units: " + str(feature_units))
-    #print("len(feature_units): " + str(len(feature_units)))
-    #print("selected_units_.numpy(): " + str(selected_units_.numpy()))
-    #print("feature_units[selected_units_.numpy()]: " + str(feature_units[selected_units_.numpy()]))
-    if (selected_units_.numpy() < len(feature_units)):
-      selected_units_ = selected_units_.numpy()
-      self.selected_unit.append(feature_units[selected_units_])
-      #print("feature_units[selected_units_]: " + str(feature_units[selected_units_]))
+    if (selected_units < len(feature_units)):
+      self.selected_unit.append(feature_units[selected_units])
     else:
-      selected_units_ = None
+      selected_units = None
 
-    target_unit_logits, target_unit = self.target_unit_head(autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings)
     if (target_unit < len(feature_units)):
       target_unit = target_unit
-      #print("feature_units[target_unit]: " + str(feature_units[target_unit]))
     else:
       target_unit = None
 
-    target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
-    #print("target_location: " + str(target_location))
-    if self.action_phase == 0 and selected_units_ is not None and (_SELECT_POINT in available_actions):
-      #selected_units = random.choice(self_SCVs) # 2. Selected Units Head
-      selected_units = feature_units[selected_units_]
-      #print("selected_units: " + str(selected_units))
+    if self.action_phase == 0 and selected_units is not None and (_SELECT_POINT in available_actions):
+      selected_units_info = feature_units[selected_units]
 
-      select_point = [selected_units.x, selected_units.y]
+      select_point = [selected_units_info.x, selected_units_info.y]
       action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
       self.action_phase = 1
     elif self.action_phase == 1 and action_type_list[action_type] in available_actions:
-      #target_unit = None # 3. Target Unit Head
       target_unit = target_unit
-
-      #position = random.choice(empty_space) # 4. Location Head
       position = (target_location[0], target_location[1])
       action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
 
@@ -370,15 +321,6 @@ class Agent(object):
     
     policy_logits = None
     new_state = None
-
-    action_type_, selected_units_, target_unit_, target_location_ = self.agent_model([feature_screen, embedded_feature_units, 
-                                                                                                        self.core_prev_state, 
-                                                                                                        embedded_scalar, scalar_context, action_acceptable_entity_type_binary])
-    #result = self.agent_model([feature_screen, embedded_feature_units, self.core_prev_state, embedded_scalar])
-    print("action_type_: " + str(action_type_))
-    print("selected_units_: " + str(selected_units_))
-    print("target_unit_: " + str(target_unit_))
-    print("target_location_: " + str(target_location_))
 
     return action, policy_logits, new_state
 
