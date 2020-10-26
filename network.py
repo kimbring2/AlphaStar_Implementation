@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 def scaled_dot_product_attention(q, k, v, mask):
   """Calculate the attention weights.
   q, k, v must have matching leading dimensions.
@@ -145,6 +146,9 @@ class SpatialEncoder(tf.keras.layers.Layer):
     ])
 
   def call(self, feature_screen):
+    print("feature_screen.shape: " + str(feature_screen.shape))
+
+    #feature_screen = feature_screen[0]
     '''
     Two additional map layers are added to those described in the interface. The first is a camera layer with two possible values: whether a location is inside 
     or outside the virtual camera. The second is the scattered entities. `entity_embeddings` are embedded through a size 32 1D convolution followed by a ReLU, 
@@ -157,11 +161,12 @@ class SpatialEncoder(tf.keras.layers.Layer):
     is 4, and the stride is 2. 4 ResBlocks with 128 channels and kernel size 3 and applied to the downsampled map, with the skip connections placed into `map_skip`. 
     The ResBlock output is embedded into a 1D tensor of size 256 by a linear layer and a ReLU, which becomes `embedded_spatial`.
     '''
+    #print("feature_screen.shape: " + str(feature_screen.shape))
 
     # out_entity.shape: (1, 510, 32)
-    map_ = tf.transpose(feature_screen, perm=[1, 2, 0])
-    map_ = tf.expand_dims(map_, axis=0)
-    #print("map_.shape: " + str(map_.shape))
+    map_ = tf.transpose(feature_screen, perm=[0, 2, 3, 1])
+    #map_ = tf.expand_dims(map_, axis=0)
+    print("map_.shape: " + str(map_.shape))
     map_ = self.map_model(map_)
 
     map_flatten = tf.keras.layers.Flatten()(map_)
@@ -193,6 +198,10 @@ class Core(tf.keras.layers.Layer):
     self.model = tf.keras.layers.LSTM(unit_number, return_sequences=True, return_state=True)
 
   def call(self, prev_state, embedded_entity, embedded_spatial, embedded_scalar):
+    #print("embedded_entity.shape: " + str(embedded_entity.shape))
+    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
+    #print("embedded_spatial.shape: " + str(embedded_spatial.shape))
+
     # enc_output.shape == (batch_size, input_seq_len, d_model)
     core_input = tf.concat((embedded_spatial, embedded_scalar, embedded_entity), axis=1)
     #print("encoder_input.shape: " + str(encoder_input.shape))
@@ -235,11 +244,21 @@ def sample(a, temperature=0.8):
 '''
 
 def sample(a, temperature=0.8):
+    '''
     a = a + 1
-    a = np.log(a) / temperature
-    a = np.exp(a) / np.sum(np.exp(a))
+    a = tf.math.log(a) / temperature
+    a = tf.math.exp(a) / tf.reduce_sum(tf.exp(a))
+    print("a: " + str(a))
 
-    return np.argmax(np.random.multinomial(1, a, 1))
+    a_ = tf.compat.v1.distributions.Multinomial(total_count=1, logits=None, probs=1)
+    return tf.argmax(a_)
+    '''
+    #a = a + 1
+    #a = np.log(a) / temperature
+    #a = np.exp(a) / np.sum(np.exp(a))
+    #print("a: " + str(a))
+    #print("tf.argmax(a): " + str(tf.argmax(a)))
+    return tf.argmax(a)
 
 
 class ResBlock_MLP(tf.keras.layers.Layer):
@@ -292,7 +311,7 @@ class ActionTypeHead(tf.keras.layers.Layer):
     #print("output: " + str(output))
 
     action_type_logits = tf.nn.softmax(output, axis=-1)[0]
-    #print("action_type_logits: " + str(action_type_logits))
+    #print("action_type_logits.shape: " + str(action_type_logits.shape))
 
     #action_type = tf.argmax(action_type_logits, axis=0)
     action_type = sample(action_type_logits)
@@ -337,9 +356,9 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
 
   def call(self, autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings):
     #action_acceptable_entity_type_onehot = tf.one_hot(action_acceptable_entity_type, 512)
-    action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
+    #action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
 
-    #print("action_acceptable_entity_type_onehot.shape: " + str(action_acceptable_entity_type_onehot.shape))
+    #print("action_acceptable_entity_type_binary.shape: " + str(action_acceptable_entity_type_binary.shape))
     action_acceptable_entity_type_binary = tf.cast(action_acceptable_entity_type_binary, tf.float32) 
     func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_binary)
 
@@ -361,10 +380,11 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     func_embed = tf.cast(func_embed, tf.float32) 
     query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
     query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
-    query = tf.expand_dims(query, axis=0)
-    #print("query: " + str(query))
+    query = tf.expand_dims(query, axis=1)
+    #print("query.shape: " + str(query.shape))
 
-    dim = tf.zeros([1, 32])
+    batch_size = 1
+    dim = tf.zeros([batch_size, 32])
     query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, 
                                                                                                                                                    initial_state=[dim, dim], 
                                                                                                                                                    training=True)
@@ -417,7 +437,7 @@ class TargetUnitHead(tf.keras.layers.Layer):
     self.model = tf.keras.layers.Dense(256, activation='relu')
 
   def call(self,autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings):
-    action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
+    #action_acceptable_entity_type_binary = tf.expand_dims(action_acceptable_entity_type_binary, axis=0)
 
     action_acceptable_entity_type_binary = tf.cast(action_acceptable_entity_type_binary, tf.float32) 
     func_embed = tf.keras.layers.Dense(256, activation='relu')(action_acceptable_entity_type_binary)
@@ -427,9 +447,10 @@ class TargetUnitHead(tf.keras.layers.Layer):
     autoregressive_embedding = tf.cast(autoregressive_embedding, tf.float32) 
     query = tf.keras.layers.Dense(256, activation='relu')(autoregressive_embedding)
     query = tf.keras.layers.Dense(32, activation='relu')(func_embed + query)
-    query = tf.expand_dims(query, axis=0)
+    query = tf.expand_dims(query, axis=1)
 
-    dim = tf.zeros([1, 32])
+    batch_size = 1
+    dim = tf.zeros([batch_size, 32])
     query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, initial_state=[dim, dim], training=True)
     entity_selection_result = tf.matmul(query, key, transpose_b=True)
 
