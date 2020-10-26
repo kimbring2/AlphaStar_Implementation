@@ -6,6 +6,7 @@ import upgrades_new
 
 from utils import get_entity_obs, get_upgrade_obs, get_gameloop_obs, get_race_onehot, get_agent_statistics
 from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead, LocationHead
+from trajectory import Trajectory
 
 import random
 import time
@@ -52,7 +53,7 @@ env = sc2_env.SC2Env(
 
 env.reset()
 
-env.save_replay("rulebase_replay")
+#env.save_replay("rulebase_replay")
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
@@ -104,9 +105,6 @@ class Agent(object):
     self.away_race = 'Terran'
 
     self.build_order = []
-
-    #self.steps = 0
-    #self.weights = initial_weights
     self.supply_depot_built = False
 
     self.scv_selected = False
@@ -127,20 +125,57 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
+    ################################################################################################
     self.spatial_encoder = SpatialEncoder(img_height=128, img_width=128, channel=27)
     self.entity_encoder = EntityEncoder(464, 8)
+
     self.core = Core(256)
 
     self.action_type_head = ActionTypeHead(7)
     self.selected_units_head = SelectedUnitsHead()
     self.target_unit_head = TargetUnitHead()
     self.location_head = LocationHead()
+    ################################################################################################
 
     self.core_prev_state = None
     self.action_phase = 0
     self.previous_action = None
     self.selected_unit = []
 
+    self.agent_model = None
+  
+  def make_model(self):
+      feature_screen = tf.keras.Input(shape=[27, 128, 128])
+      embedded_feature_units = tf.keras.Input(shape=[512,464])
+      core_prev_state = (tf.keras.Input(shape=[256]), tf.keras.Input(shape=[256]))
+      embedded_scalar = tf.keras.Input(shape=[307])
+      scalar_context = tf.keras.Input(shape=[842])
+      action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
+
+      map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
+      embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
+      
+      whole_seq_output, final_memory_state, final_carry_state = Core(256)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
+      lstm_output = tf.reshape(whole_seq_output, [1, 9 * 256])
+      
+      action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(7)(lstm_output, scalar_context)
+      selected_units_logits_, selected_units_, autoregressive_embedding = SelectedUnitsHead()(autoregressive_embedding, 
+                                                                                                                   action_acceptable_entity_type_binary, 
+                                                                                                                   entity_embeddings)
+      target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings)
+      target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
+
+    
+      # Instantiate an end-to-end model predicting both priority and department
+      agent_model = tf.keras.Model(
+          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context, action_acceptable_entity_type_binary],
+          outputs=[action_type_logits, selected_units_logits_, target_unit_logits, target_location_logits],
+      )
+
+      agent_model.summary()
+
+      self.agent_model = agent_model
+  
   def step(self, observation):
     global home_upgrade_array
     global away_upgrade_array
@@ -152,12 +187,16 @@ class Agent(object):
     #print("observation: " + str(observation))
     #print("")
     feature_screen = observation[3]['feature_screen']
+    #print("feature_screen.shape: " + str(feature_screen.shape))
     # feature_screen.shape: (27, 128, 128)
+
     feature_minimap = observation[3]['feature_minimap']
     feature_units = observation[3]['feature_units']
     feature_player = observation[3]['player']
     score_by_category = observation[3]['score_by_category']
     game_loop = observation[3]['game_loop']
+    available_actions = observation[3]['available_actions']
+    # available_actions: [  0   1   2   3   4 264  12  13 274 549 451 452 453 331 332 333 334  79]
 
     agent_statistics = get_agent_statistics(score_by_category)
     # agent_statistics.shape: (55,)
@@ -179,9 +218,7 @@ class Agent(object):
 
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
     embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
-
-    available_actions = observation[3]['available_actions']
-    # available_actions: [  0   1   2   3   4 264  12  13 274 549 451 452 453 331 332 333 334  79]
+    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
 
     cumulative_statistics = observation[3]['score_cumulative'] / 1000.0
     # cumulative_statistics.: [1050    2    0  600  400    0    0    0    0    0    0    0    0]
@@ -222,7 +259,8 @@ class Agent(object):
 
         unit_name = None
 
-    #print("build_order_array.shape: " + str(build_order_array.shape))
+    feature_screen = np.expand_dims(feature_screen, axis=0)
+    map_, embedded_spatial = self.spatial_encoder(feature_screen)
 
     available_actions_array = np.zeros(573)
     available_actions_list = available_actions.tolist()
@@ -242,18 +280,16 @@ class Agent(object):
     embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
     #print("embedded_feature_units.shape: " + str(embedded_feature_units.shape))
     embedded_entity, entity_embeddings = self.entity_encoder(embedded_feature_units)
+    action = [actions.FUNCTIONS.no_op()]
     #print("entity_embeddings.shape: " + str(entity_embeddings.shape))
     #print("embedded_entity.shape: " + str(embedded_entity.shape))
-
-    map_, embedded_spatial = self.spatial_encoder(feature_screen)
-
+    
     #print("embedded_spatial.shape: " + str(embedded_spatial.shape))
     #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
     #print("embedded_entity.shape: " + str(embedded_entity.shape))
     # embedded_spatial.shape: (1, 256)
     # embedded_scalar.shape: (1, 307)
     # embedded_entity.shape: (1, 256)
-
     whole_seq_output, final_memory_state, final_carry_state = self.core(self.core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
     #print("whole_seq_output.shape: " + str(whole_seq_output.shape))
     # whole_seq_output.shape: (1, 9, 256)
@@ -261,348 +297,95 @@ class Agent(object):
     #print("final_memory_state.shape: " + str(final_memory_state.shape))
     # final_memory_state.shape: (1, 256)
     self.core_prev_state = (final_memory_state, final_carry_state)
+    # self.core_prev_state[0].shape: (1, 256)
+    # self.core_prev_state[1].shape: (1, 256)
 
     lstm_output = np.reshape(whole_seq_output, [1, 9 * 256])
-
-    available_actions = observation[3]['available_actions']
-
-    unit_type = feature_screen.unit_type
-    empty_space = np.where(unit_type == 0)
-    empty_space = np.vstack((empty_space[0], empty_space[1])).T
-    #print("feature_minimap: " + str(feature_minimap))
-
-    enermy = (feature_minimap.player_relative == _PLAYER_ENEMY).nonzero()
-    enermy = np.vstack((enermy[0], enermy[1])).T
-
-    self_CommandCenter = [unit for unit in feature_units if unit.unit_type == units.Terran.CommandCenter and unit.alliance == _PLAYER_SELF]
-    self_SupplyDepot = [unit for unit in feature_units if unit.unit_type == units.Terran.SupplyDepot and unit.alliance == _PLAYER_SELF]
-    self_Refinery = [unit for unit in feature_units if unit.unit_type == units.Terran.Refinery and unit.alliance == _PLAYER_SELF]
-    self_BarracksTechLab = [unit for unit in feature_units if unit.unit_type == units.Terran.BarracksTechLab and unit.alliance == _PLAYER_SELF]
-    self_SCVs = [unit for unit in feature_units if unit.unit_type == units.Terran.SCV and unit.alliance == _PLAYER_SELF]
-    self_Marines = [unit for unit in feature_units if unit.unit_type == units.Terran.Marine and unit.alliance == _PLAYER_SELF]
-    self_Marauder = [unit for unit in feature_units if unit.unit_type == units.Terran.Marauder and unit.alliance == _PLAYER_SELF]
-    self_Barracks = [unit for unit in feature_units if unit.unit_type == units.Terran.Barracks and unit.alliance == _PLAYER_SELF]
-    self_BarracksFlying = [unit for unit in feature_units if unit.unit_type == units.Terran.BarracksFlying and unit.alliance == _PLAYER_SELF]
-    neutral_Minerals = [unit for unit in feature_units if unit.unit_type == units.Neutral.MineralField]
-    neutral_VespeneGeysers = [unit for unit in feature_units if unit.unit_type == units.Neutral.VespeneGeyser]
-
-    unselected_SCV_list = []
-    for SCV in self_SCVs:
-      if SCV.is_selected == 0:
-        unselected_SCV_list.append(SCV)
-    
-    num_SCV = len(self_SCVs)
-    num_Barracks = len(self_Barracks)
-    num_BarracksFlying = len(self_BarracksFlying)
-    num_Marines = len(self_Marines)
-    num_Marauder= len(self_Marauder)
-    num_Refinery = len(self_Refinery)
-    num_BarracksTechLab = len(self_BarracksTechLab)
-
-    total_Barracks = num_Barracks + num_BarracksFlying + num_BarracksTechLab
-    #print("first_attack: " + str(first_attack))
-    if num_Refinery != 0:
-      assigned_scv = self_Refinery[0].assigned_harvesters
-
-    x_list = []
-    y_list = []
-    for Mineral in neutral_Minerals:
-      x_list.append(Mineral.x)
-      y_list.append(Mineral.y)
-
-    num_Minerals = len(x_list)
-    if (num_Minerals != 0):
-      mean_x_Minerals = statistics.mean(x_list)
-      mean_y_Minerals = statistics.mean(y_list)
-      dis_x = self_CommandCenter[0].x - mean_x_Minerals
-      dis_y = self_CommandCenter[0].y - mean_y_Minerals
-    
-    self_minerals = feature_player.minerals
-    self_vespene = feature_player.vespene
-    self_food_used = feature_player.food_used
-    self_food_cap = feature_player.food_cap
 
     action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
     action = [actions.FUNCTIONS.no_op()]
 
     action_type_logits, action_type, autoregressive_embedding = self.action_type_head(lstm_output, scalar_context) 
-
+    #print("action_type: " + str(action_type))
+    
     selectable_entity_mask = np.zeros(512)
-    if action_type == 0 or action_type == 1 or action_type == 2:
-      action_acceptable_entity_type = 44
-      for idx, feature_unit in enumerate(feature_units):
+    for idx, feature_unit in enumerate(feature_units):
         #print("feature_unit: " + str(feature_unit))
-        selectable_entity_mask[idx]  = 1
+        selectable_entity_mask[idx] = 1
 
-      selected_units_logits_, selected_units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, action_acceptable_entity_type, entity_embeddings)
-      if (selected_units_ < len(feature_units)):
-        selected_units_ = selected_units_
-        self.selected_unit.append(feature_units[selected_units_])
-        #print("feature_units[selected_units_]: " + str(feature_units[selected_units_]))
-      else:
-        selected_units_ = None
+    action_acceptable_entity_type_binary = np.zeros(512)
+    if action_type == 0 or action_type == 1 or action_type == 2:
+      action_acceptable_entity_type_binary[43] = 1 
+    elif action_type == 3 or action_type == 4:
+      action_acceptable_entity_type_binary[3] = 1 
+    elif action_type == 5:
+      action_acceptable_entity_type_binary[28] = 1 
+      action_acceptable_entity_type_binary[29] = 1
+      action_acceptable_entity_type_binary[43] = 1  
+    elif action_type == 6:
+      action_acceptable_entity_type_binary[3] = 1 
 
-      target_unit_logits, target_unit = self.target_unit_head(autoregressive_embedding, action_acceptable_entity_type, entity_embeddings)
-      if (target_unit < len(feature_units)):
-        target_unit = target_unit
-        #print("feature_units[target_unit]: " + str(feature_units[target_unit]))
-      else:
-        target_unit = None
-
-      target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
-
-      if self.action_phase == 0 and selected_units_ is not None:
-        #selected_units = random.choice(self_SCVs) # 2. Selected Units Head
-        selected_units = feature_units[selected_units_]
-        print("selected_units: " + str(selected_units))
-
-        select_point = [selected_units.x, selected_units.y]
-        action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
-        self.action_phase = 1
-      elif self.action_phase == 1 and _BUILD_SUPPLY_DEPOT in available_actions:
-        #target_unit = None # 3. Target Unit Head
-        target_unit = target_unit
-        #position = random.choice(empty_space) # 4. Location Head
-        position = (target_location[0], target_location[1])
-        action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
-
-      self.previous_action = action 
-    '''
-    action_flag = -1
-    if (self.first_attack == False):
-      if (self_food_cap - self_food_used <=3):
-        if (self.scv_selected == False):
-          self.scv_selected = True
-          random_SCV = random.choice(unselected_SCV_list)
-          target = [random_SCV.x, random_SCV.y]
-          
-          # action
-          action_type = _SELECT_POINT
-          target_unit = random_SCV
-          location = target
-          selected_units = [random_SCV]
-          action = [actions.FunctionCall(action_type, [_NOT_QUEUED, target])]
-        else:
-          if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
-            #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-            random_point = random.choice(empty_space)
-            target = [random_point[0], random_point[1]]
-            #print("target: " + str(target))
-
-            self.previous_action = _BUILD_SUPPLY_DEPOT
-
-            # action
-            action_type = _BUILD_SUPPLY_DEPOT
-            target_unit = None
-            location = target
-            action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
-      elif (num_Barracks <= 2):
-        if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
-            #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-            random_point = random.choice(empty_space)
-            target = [random_point[0], random_point[1]]
-            #print("target: " + str(target))
-
-            self.previous_action = _BUILD_BARRACKS
-
-            # action
-            action_type = _BUILD_BARRACKS
-            target_unit = None
-            location = target
-            action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
-      elif (num_Marines < 5):
-        if (num_Barracks != 0):
-          if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
-              self.previous_action = _TRAIN_MARINE
-
-              # action
-              action_type = _TRAIN_MARINE
-              target_unit = None
-              location = None
-              selected_units.append(random_SCV)
-              action = [actions.FunctionCall(_TRAIN_MARINE, [_NOT_QUEUED])]
-          else:
-            self.scv_selected = False
-            random_barrack = random.choice(self_Barracks)
-            target = [random_barrack.x, random_barrack.y]
-
-            # action
-            action_type = _SELECT_POINT
-            target_unit = None
-            location = target
-            selected_units = [random_barrack]
-            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-      elif (num_Marines >= 5):
-          if ( (_SELECT_ARMY in available_actions) & (self.marine_selected == False) ) :
-            self.marine_selected = True
-
-            # action
-            action_type = _SELECT_ARMY
-            target_unit = None
-            location = None
-            selected_units = ["ARMY"]
-            action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
-          elif (self.marine_selected == True):
-            if (_ATTACK_MINIMAP in available_actions):
-              self.first_attack = True
-              random_point = random.choice(enermy)
-              target = [random_point[0], random_point[1]]
-
-              # action
-              action_type = _ATTACK_MINIMAP
-              target_unit = None
-              location = target
-              action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
-      else:
-        if (_HARVEST_GATHER in available_actions) :
-          target = [neutral_Minerals[0].x, neutral_Minerals[0].y]
-
-          # action
-          action_type = _HARVEST_GATHER
-          target_unit = None
-          location = None
-          action = [actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])]
-        else:
-          if (_SELECT_IDLE_WORKER in available_actions):
-            # action
-            action_type = _SELECT_IDLE_WORKER
-            target_unit = None
-            location = None
-            action = [actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])]
+    action_acceptable_entity_type_binary = np.expand_dims(action_acceptable_entity_type_binary, 0)
+    #print("action_acceptable_entity_type_binary.shape: " + str(action_acceptable_entity_type_binary.shape))
+    selected_units_logits_, selected_units_, autoregressive_embedding = self.selected_units_head(autoregressive_embedding, 
+                                                                                                                       action_acceptable_entity_type_binary, 
+                                                                                                                       entity_embeddings)
+    #print("feature_units: " + str(feature_units))
+    #print("len(feature_units): " + str(len(feature_units)))
+    #print("selected_units_.numpy(): " + str(selected_units_.numpy()))
+    #print("feature_units[selected_units_.numpy()]: " + str(feature_units[selected_units_.numpy()]))
+    if (selected_units_.numpy() < len(feature_units)):
+      selected_units_ = selected_units_.numpy()
+      self.selected_unit.append(feature_units[selected_units_])
+      #print("feature_units[selected_units_]: " + str(feature_units[selected_units_]))
     else:
-      if (self_food_cap - self_food_used <=3):
-        #print("scv_selected: " + str(scv_selected))
+      selected_units_ = None
 
-        if (self.scv_selected == False):
-          self.scv_selected = True
-          random_SCV = random.choice(unselected_SCV_list)
-          target = [random_SCV.x, random_SCV.y]
-          #action = [actions.FUNCTIONS.select_point("select", target)]
-          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-        else:
-          if ( (self_minerals >= 100) & (_BUILD_SUPPLY_DEPOT in available_actions) ):
-            #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-            random_point = random.choice(empty_space)
-            target = [random_point[0], random_point[1]]
-            #print("target: " + str(target))
+    target_unit_logits, target_unit = self.target_unit_head(autoregressive_embedding, action_acceptable_entity_type_binary, entity_embeddings)
+    if (target_unit < len(feature_units)):
+      target_unit = target_unit
+      #print("feature_units[target_unit]: " + str(feature_units[target_unit]))
+    else:
+      target_unit = None
 
-            self.previous_action = _BUILD_SUPPLY_DEPOT
-            action = [actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])]
-      elif (num_Refinery == 0):
-        if (_BUILD_REFINERY not in available_actions):
-          random_SCV = random.choice(unselected_SCV_list)
-          target = [random_SCV.x, random_SCV.y]
-          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-        elif ( (self_minerals >= 100) & (_BUILD_REFINERY in available_actions) ):
-          #target = [random_point[0], random_point[1]]
-          #print("target: " + str(target))
-          if (len(neutral_VespeneGeysers) != 0):
-            target = [neutral_VespeneGeysers[0].x, neutral_VespeneGeysers[0].y]
+    target_location_logits, target_location = self.location_head(autoregressive_embedding, action_type, map_)
+    #print("target_location: " + str(target_location))
+    if self.action_phase == 0 and selected_units_ is not None and (_SELECT_POINT in available_actions):
+      #selected_units = random.choice(self_SCVs) # 2. Selected Units Head
+      selected_units = feature_units[selected_units_]
+      #print("selected_units: " + str(selected_units))
 
-            self.previous_action = _BUILD_REFINERY
-            action = [actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])]
-      elif (self_Refinery[0].assigned_harvesters <= 3):
-        #print("self_Refinery[0].assigned_harvesters: " + str(self_Refinery[0].assigned_harvesters))
-        #print("Refinery loop")
-        if (self.scv_selected == False):
-          #print("scv_selected command")
-          self.scv_selected = True
-          random_SCV = random.choice(unselected_SCV_list)
-          target = [random_SCV.x, random_SCV.y]
-          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-          #print("select scv")
-        elif ( (_HARVEST_GATHER in available_actions) & (self.scv_selected == True) ):
-          #print("havest command")
-          self.scv_selected = False
-          target = [self_Refinery[0].x, self_Refinery[0].y]
-          action = [actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])]
-      elif (num_SCV <= 14):
-        if (_TRAIN_SCV not in available_actions):
-          if (len(self_CommandCenter) != 0):
-            target = [self_CommandCenter[0].x, self_CommandCenter[0].y]
-            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-            self.scv_selected = False
-        else:
-          action = [actions.FunctionCall(_TRAIN_SCV, [_NOT_QUEUED])]
-      elif (num_Marines < 5):
-        if (num_Barracks != 0):
-          if ( (self_minerals >= 50) & (_TRAIN_MARINE in available_actions) ):
+      select_point = [selected_units.x, selected_units.y]
+      action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
+      self.action_phase = 1
+    elif self.action_phase == 1 and action_type_list[action_type] in available_actions:
+      #target_unit = None # 3. Target Unit Head
+      target_unit = target_unit
 
-              self.previous_action = _TRAIN_MARINE
-              action = [actions.FunctionCall(_TRAIN_MARINE, [_NOT_QUEUED])]
-          else:
-            target = [self_Barracks[0].x, self_Barracks[0].y]
-            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-      elif (total_Barracks <= 2):
-        if ( (self_minerals >= 150) & (_BUILD_BARRACKS in available_actions) ):
-          #target = [self_CommandCenter[0].x + dis_x, self_CommandCenter[0].y + dis_y]
-          random_point = random.choice(empty_space)
-          target = [random_point[0], random_point[1]]
-          #print("target: " + str(target))
+      #position = random.choice(empty_space) # 4. Location Head
+      position = (target_location[0], target_location[1])
+      action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
 
-          self.previous_action = _BUILD_BARRACKS
-          action = [actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])]
-        else:
-          random_SCV = random.choice(unselected_SCV_list)
-          target = [random_SCV.x, random_SCV.y]
-          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-      elif (num_BarracksTechLab == 0):
-        #print("TechLab loop")
-        #print("num_BarracksTechLab: " + str(num_BarracksTechLab))
+    self.previous_action = action 
+    
+    policy_logits = None
+    new_state = None
 
-        if (_BUILD_TECHLAB not in available_actions):
-          #target = [self_Barracks[0].x, self_Barracks[0].y]
-          #random_point = random.choice(empty_space)
-          #target = [random_point[0], random_point[1]]
-          target = [self_Barracks[0].x, self_Barracks[0].y]
-          action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-        elif ( (self_minerals >= 100) & (self_vespene >= 25) & (_BUILD_TECHLAB in available_actions) ):
-          #target = [self_Barracks[0].x, self_Barracks[0].y]
-          random_point = random.choice(empty_space)
-          target = [random_point[0], random_point[1]]
+    action_type_, selected_units_, target_unit_, target_location_ = self.agent_model([feature_screen, embedded_feature_units, 
+                                                                                                        self.core_prev_state, 
+                                                                                                        embedded_scalar, scalar_context, action_acceptable_entity_type_binary])
+    #result = self.agent_model([feature_screen, embedded_feature_units, self.core_prev_state, embedded_scalar])
+    print("action_type_: " + str(action_type_))
+    print("selected_units_: " + str(selected_units_))
+    print("target_unit_: " + str(target_unit_))
+    print("target_location_: " + str(target_location_))
 
-          self.previous_action = _BUILD_TECHLAB
-          action = [actions.FunctionCall(_BUILD_TECHLAB, [_NOT_QUEUED, target])]
-      elif (num_Marauder < 5):
-        #print("Marauder loop")
-        if (num_Barracks != 0):
-          if ( (self_minerals >= 100) & (self_vespene >= 25) & (_TRAIN_MARAUDER in available_actions) ):
-              #print("_TRAIN_MARAUDER command")
-
-              self.previous_action = _TRAIN_MARAUDER
-              action = [actions.FunctionCall(_TRAIN_MARAUDER, [_NOT_QUEUED])]
-          else:
-            self.scv_selected = False
-            target = [self_Barracks[1].x, self_Barracks[1].y]
-            action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])]
-      elif (num_Marauder >= 3):
-        if ( (_SELECT_ARMY in available_actions) & (self.marauder_selected == False) ):
-          self.marauder_selected = True
-          self.scv_selected = False
-          action = [actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])]
-        elif ( (_SELECT_CONTROL_GROUP in available_actions) & (self.marauder_selected == True) ):
-          #marauder_selected = False
-          #random_point = random.choice(enermy)
-          #target = [random_point[0], random_point[1]]
-          action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, [[actions.ControlGroupAct.set], [1]])]
-          #action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, ["set", 1])]
-      else:
-        if ( (_SELECT_CONTROL_GROUP in available_actions) & (self.army_selected == False) ):
-          self.army_selected = True
-          action = [actions.FunctionCall(_SELECT_CONTROL_GROUP, [[actions.ControlGroupAct.recall], [1]])]
-        elif ( (_ATTACK_MINIMAP in available_actions) & (self.army_selected == True) ):
-          random_point = random.choice(enermy)
-          target = [random_point[0], random_point[1]]
-          action = [actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])]
-    '''
-    #actions.FUNCTIONS.select_point("select", target)
-    #target = [10, 10]
-    #action = actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
-    #print(action)
-    return action
+    return action, policy_logits, new_state
 
 
 agent1 = Agent()
+agent1.make_model()
+
 agent2 = Agent()
 
 obs = env.reset()
@@ -611,12 +394,12 @@ while True:
   #print("action: " + str(action))
   #print("num_Marauder: " + str(num_Marauder))
 
-  action_1 = agent1.step(obs[0])
+  action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
   #action_1 = [actions.FUNCTIONS.no_op()]
   #print("action_1: " + str(action_1))
 
-  action_2 = agent2.step(obs[1])
-  #action_2 = [actions.FUNCTIONS.no_op()]
+  #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
+  action_2 = [actions.FUNCTIONS.no_op()]
   obs = env.step([action_1, action_2])
   #print("env.action_space: " + str(env.action_space))
   #print("obs[0][1]: " + str(obs[0][1]))
