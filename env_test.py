@@ -65,6 +65,7 @@ _PLAYER_ENEMY = features.PlayerRelative.ENEMY
 _NO_OP = actions.FUNCTIONS.no_op.id
 
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 _SELECT_ALL = [2]
@@ -73,24 +74,42 @@ _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_ALL = [0]
 
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
+_SELECT_RECT = actions.FUNCTIONS.select_rect.id
 _SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
 _SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
 
+_SMART_SCREEN = actions.FUNCTIONS.Smart_screen.id
+_SMART_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
-_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+_ATTACK_MINIMAP = actions.FUNCTIONS.Smart_minimap.id
 
-_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
-_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
-_BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
-_BUILD_TECHLAB = actions.FUNCTIONS.Build_TechLab_screen.id
+_BUILD_COMMANDCENTER_SCREEN = actions.FUNCTIONS.Build_CommandCenter_screen.id
+_BUILD_SUPPLYDEPOT_SCREEN = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+_BUILD_BARRACKS_SCREEN = actions.FUNCTIONS.Build_Barracks_screen.id
+_BUILD_REFINERY_SCREEN = actions.FUNCTIONS.Build_Refinery_screen.id
+_BUILD_TECHLAB_SCREEN = actions.FUNCTIONS.Build_TechLab_screen.id
+_BUILD_TECHLAB_QUICK = actions.FUNCTIONS.Build_TechLab_quick.id
+_BUILD_REACTOR_QUICK = actions.FUNCTIONS.Build_Reactor_quick.id
+_BUILD_BUNKER_SCREEN = actions.Build_Bunker_screen.id
+_BUILD_STARPORT_SCREEN = actions.Build_Starport_screen.id
+_BUILD_FACTORY_SCREEN = actions.Build_Factory_screen.id
 
-_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
-_TRAIN_MARAUDER = actions.FUNCTIONS.Train_Marauder_quick.id
-_TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
+_TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick.id
+_TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick.id
+_TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick.id
+_TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick.id
+_TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick.id
+_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick
 
-_RETURN_SCV = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
-_HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
-_HARVEST_GATHER_SCV = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
+_RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
+_HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen.id
+_HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
+
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
+_LIFT_QUICK = actions.FUNCTIONS._Functions.Lift_quick.id
+_MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
+_LAND_SCREEN = actions.FUNCTIONS.Land_screen
 
 home_upgrade_array = np.zeros(89)
 away_upgrade_array = np.zeros(89)
@@ -273,21 +292,23 @@ class Agent(object):
     final_carry_state = predict_value[9]
 
     #print("action_type_logits: " + str(action_type_logits))
-    print("action_type: " + str(action_type))
+    #print("action_type: " + str(action_type))
     #print("selected_units_logits_: " + str(selected_units_logits_))
-    print("selected_units: " + str(selected_units))
+    #print("selected_units: " + str(selected_units))
     #print("target_unit_logits: " + str(target_unit_logits))
-    print("target_unit: " + str(target_unit))
+    #print("target_unit: " + str(target_unit))
     #print("target_location_logits: " + str(target_location_logits))
-    print("target_location[0]: " + str(target_location[0]))
-    print("target_location[1]: " + str(target_location[1]))
-    print("")
+    #print("target_location[0]: " + str(target_location[0]))
+    #print("target_location[1]: " + str(target_location[1]))
+    #print("")
     #print("final_memory_state: " + str(final_memory_state))
     #print("final_carry_state: " + str(final_carry_state))
 
-    self.core_prev_state = (final_memory_state, final_carry_state)
+    #self.core_prev_state = (final_memory_state, final_carry_state)
+    new_state = (final_memory_state, final_carry_state)
     # self.core_prev_state[0].shape: (1, 256)
     # self.core_prev_state[1].shape: (1, 256)
+    # 
 
     action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
     action = [actions.FUNCTIONS.no_op()]
@@ -319,11 +340,14 @@ class Agent(object):
 
     self.previous_action = action 
     
-    policy_logits = None
-    new_state = None
+    policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
+    new_state = self.core_prev_state
 
     return action, policy_logits, new_state
 
+
+#replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+#replay.get_random_trajectory()
 
 agent1 = Agent()
 agent1.make_model()
@@ -331,13 +355,25 @@ agent1.make_model()
 agent2 = Agent()
 
 obs = env.reset()
-#for i in range(0, 20000):
-while True:
-  #print("action: " + str(action))
-  #print("num_Marauder: " + str(num_Marauder))
 
+replay_index = 0
+while True:
+  #obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
+  #act = replay.home_trajectory[replay_index][1]
+  print("replay_index: " + str(replay_index))
+
+  replay_index += 1
+  #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
   action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
-  #action_1 = [actions.FUNCTIONS.no_op()]
+
+  #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
+  #print("action_1: " + str(action_1))
+  #print("policy_logits_1: " + str(policy_logits_1))
+  #print("new_state_1: " + str(new_state_1))
+
+  agent1.core_prev_state = new_state_1
+
+  action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
   #print("action_1: " + str(action_1))
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
