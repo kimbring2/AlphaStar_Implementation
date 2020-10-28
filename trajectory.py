@@ -127,7 +127,7 @@ class Trajectory(object):
 
 				screen_size_px = point.Point(*screen_size_px)
 				minimap_size_px = point.Point(*minimap_size_px)
-				interface = sc_pb.InterfaceOptions(raw=False, score=True,
+				interface = sc_pb.InterfaceOptions(raw=True, score=True,
 					feature_layer=sc_pb.SpatialCameraSetup(width=24))
 				screen_size_px.assign_to(interface.feature_layer.resolution)
 				minimap_size_px.assign_to(interface.feature_layer.minimap_resolution)
@@ -173,21 +173,33 @@ class Trajectory(object):
 				build_name = []
 				replay_step = 0
 
-				print("True loop")
+				#print("True loop")
 				while True:
 					replay_step += 1
-					#print("replay_step: " + str(replay_step))
+					#print("#####################################################")
+					print("replay_step: " + str(replay_step))
 
 					controller.step(step_mul)
 					obs = controller.observe()
+					#print("obs.actions: " + str(obs.actions))
+					#print("len(obs.actions): " + str(len(obs.actions)))
+					#print("")
 					#self.home_trajectory.append(obs)
 
+					agent_act = None
 					if (len(obs.actions) != 0):
 						action = (obs.actions)[0]
-						action_spatial = action.action_feature_layer
-						unit_command = action_spatial.unit_command
+						action_feature_layer = action.action_feature_layer
+						unit_command = action_feature_layer.unit_command
 						ability_id = unit_command.ability_id
 						function_name = function_dict[ability_id]
+						#print("action: " + str(action))
+						#print("action_feature_layer: " + str(action_feature_layer))
+						#print("unit_command: " + str(unit_command))
+						#print("ability_id: " + str(ability_id))
+						#print("function_name: " + str(function_name))
+						#print("#####################################################")
+						#print("")
 						if (function_name != 'build_queue'):
 							function_name_parse = function_name.split('_')
 							function_name_first = function_name_parse[0]
@@ -201,6 +213,9 @@ class Trajectory(object):
 								#print("function_name_parse[1]: " + str(function_name_parse[1]))
 								build_name.append(unit_name)
 								build_info.append(unit_info)
+					else:
+						#print("#####################################################")
+						print("")
 
 					if obs.player_result: # Episide over.
 						_state = StepType.LAST
@@ -210,7 +225,15 @@ class Trajectory(object):
 						_episode_steps += step_mul
 
 					agent_obs = _features.transform_obs(obs)
-					self.home_trajectory.append(agent_obs)
+					exec_actions = []
+					for ac in obs.actions:
+						try:
+							exec_act = _features.reverse_action(ac)
+						except ValueError:
+							exec_act = _features.actions.FunctionCall(0, [])  # no_op
+						exec_actions.append(exec_act)
+
+					self.home_trajectory.append([agent_obs, exec_actions])
 					step = TimeStep(step_type=_state, reward=0,
 				                    discount=discount, observation=agent_obs)
 
