@@ -68,7 +68,6 @@ _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
 _MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
 _NOT_QUEUED = [0]
 _QUEUED = [1]
-_SELECT_ALL = [2]
 
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_ALL = [0]
@@ -79,10 +78,10 @@ _SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
 _SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
 
 _SMART_SCREEN = actions.FUNCTIONS.Smart_screen.id
-_SMART_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+_SMART_MINIMAP = actions.FUNCTIONS.Smart_minimap.id
 
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
-_ATTACK_MINIMAP = actions.FUNCTIONS.Smart_minimap.id
+_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
 _BUILD_COMMANDCENTER_SCREEN = actions.FUNCTIONS.Build_CommandCenter_screen.id
 _BUILD_SUPPLYDEPOT_SCREEN = actions.FUNCTIONS.Build_SupplyDepot_screen.id
@@ -308,9 +307,48 @@ class Agent(object):
     new_state = (final_memory_state, final_carry_state)
     # self.core_prev_state[0].shape: (1, 256)
     # self.core_prev_state[1].shape: (1, 256)
-    # 
 
-    action_type_list = [_BUILD_SUPPLY_DEPOT, _BUILD_BARRACKS, _BUILD_REFINERY, _TRAIN_MARINE, _TRAIN_MARAUDER, _ATTACK_MINIMAP, _BUILD_TECHLAB]
+    # FunctionCall(function=<_Functions.no_op: 0>, arguments=[])
+
+
+    # FunctionCall(function=<_Functions.Smart_screen: 451>, arguments=[[<Queued.now: 0>], [98, 76]])
+    # FunctionCall(function=<_Functions.Smart_minimap: 452>, arguments=[[<Queued.now: 0>], [43, 44]])
+
+    # FunctionCall(function=<_Functions.select_point: 2>, arguments=[[<SelectPointAct.select: 0>], [81, 63]])
+    # FunctionCall(function=<_Functions.select_rect: 3>, arguments=[[<SelectAdd.select: 0>], [19, 26], [63, 58]])
+
+    # FunctionCall(function=<_Functions.move_camera: 1>, arguments=[[12, 18]])
+    
+    # FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.recall: 0>], [1]])
+    # FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.recall: 0>], [2]])
+
+    # FunctionCall(function=<_Functions.Train_Marine_quick: 477>, arguments=[[<Queued.now: 0>]])
+    # FunctionCall(function=<_Functions.Train_SiegeTank_quick: 492>, arguments=[[<Queued.now: 0>]])
+    # FunctionCall(function=<_Functions.Train_Medivac_quick: 478>, arguments=[[<Queued.now: 0>]])
+
+    # FunctionCall(function=<_Functions.Build_Bunker_screen: 43>, arguments=[[<Queued.now: 0>], [80, 53]])
+    # FunctionCall(function=<_Functions.Build_Reactor_quick: 71>, arguments=[[<Queued.now: 0>]])
+    # FunctionCall(function=<_Functions.Build_Factory_screen: 53>, arguments=[[<Queued.now: 0>], [92, 70]])
+    # FunctionCall(function=<_Functions.Build_Barracks_screen: 42>, arguments=[[<Queued.now: 0>], [103, 64]])
+    # FunctionCall(function=<_Functions.Build_Refinery_screen: 79>, arguments=[[<Queued.now: 0>], [25, 55]])
+
+    # FunctionCall(function=<_Functions.Morph_SupplyDepot_Lower_quick: 318>, arguments=[[<Queued.now: 0>]])
+    # FunctionCall(function=<_Functions.Morph_SiegeMode_quick: 317>, arguments=[[<Queued.now: 0>]])
+
+    # FunctionCall(function=<_Functions.Attack_screen: 12>, arguments=[[<Queued.now: 0>], [49, 90]])
+    # FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.now: 0>], [17, 42]])
+    # FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.queued: 1>], [11, 21]])
+
+    # FunctionCall(function=<_Functions.select_army: 7>, arguments=[[<SelectAdd.select: 0>]])
+
+    action_type_list = [_BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
+                            _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN
+                            _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
+                            _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, 
+                            _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN,
+                            _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, 
+                            _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY,
+                            _MOVE_SCREEN, _MOVE_CAMERA]
     action = [actions.FUNCTIONS.no_op()]
 
     selectable_entity_mask = np.zeros(512)
