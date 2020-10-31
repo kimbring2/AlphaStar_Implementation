@@ -90,25 +90,39 @@ _BUILD_REFINERY_SCREEN = actions.FUNCTIONS.Build_Refinery_screen.id
 _BUILD_TECHLAB_SCREEN = actions.FUNCTIONS.Build_TechLab_screen.id
 _BUILD_TECHLAB_QUICK = actions.FUNCTIONS.Build_TechLab_quick.id
 _BUILD_REACTOR_QUICK = actions.FUNCTIONS.Build_Reactor_quick.id
-_BUILD_BUNKER_SCREEN = actions.Build_Bunker_screen.id
-_BUILD_STARPORT_SCREEN = actions.Build_Starport_screen.id
-_BUILD_FACTORY_SCREEN = actions.Build_Factory_screen.id
+_BUILD_REACTOR_SCREEN = actions.FUNCTIONS.Build_Reactor_screen.id
+_BUILD_BUNKER_SCREEN = actions.FUNCTIONS.Build_Bunker_screen.id
+_BUILD_STARPORT_SCREEN = actions.FUNCTIONS.Build_Starport_screen.id
+_BUILD_FACTORY_SCREEN = actions.FUNCTIONS.Build_Factory_screen.id
 
 _TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick.id
 _TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick.id
 _TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick.id
 _TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick.id
 _TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick.id
-_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick
+_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick.id
 
 _RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
 _HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen.id
 _HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
 _SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
-_LIFT_QUICK = actions.FUNCTIONS._Functions.Lift_quick.id
+_LIFT_QUICK = actions.FUNCTIONS.Lift_quick.id
 _MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
-_LAND_SCREEN = actions.FUNCTIONS.Land_screen
+_MORPH_ORBITALCOMMAND_QUICK = actions.FUNCTIONS.Morph_OrbitalCommand_quick.id
+_LAND_SCREEN = actions.FUNCTIONS.Land_screen.id
+_CANCEL_LAST_QUICK = actions.FUNCTIONS.Cancel_Last_quick.id
+_RALLY_WORKERS_SCREEN = actions.FUNCTIONS.Rally_Workers_screen.id
+_HARVEST_RETURN_QUICK = actions.FUNCTIONS.Harvest_Return_quick.id
+
+action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
+                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN,
+                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
+                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, 
+                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN,
+                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK,
+                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY,
+                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK]
 
 home_upgrade_array = np.zeros(89)
 away_upgrade_array = np.zeros(89)
@@ -143,7 +157,7 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
-    self.core_prev_state = (tf.zeros([1, 256]), tf.zeros([1, 256]))
+    #self.core_prev_state = (tf.zeros([1, 256]), tf.zeros([1, 256]))
     self.action_phase = 0
     self.previous_action = None
     self.selected_unit = []
@@ -164,7 +178,7 @@ class Agent(object):
       whole_seq_output, final_memory_state, final_carry_state = Core(256)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
       lstm_output = tf.reshape(whole_seq_output, [1, 9 * 256])
       
-      action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(7)(lstm_output, scalar_context)
+      action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
       selected_units_logits_, selected_units_, autoregressive_embedding = SelectedUnitsHead()(autoregressive_embedding, 
                                                                                                                    action_type, 
                                                                                                                    entity_embeddings)
@@ -182,7 +196,7 @@ class Agent(object):
 
       self.agent_model = agent_model
   
-  def step(self, observation):
+  def step(self, observation, core_state):
     global home_upgrade_array
     global away_upgrade_array
     global previous_action
@@ -230,20 +244,20 @@ class Agent(object):
       previous_action = (self.previous_action)
 
       unit_name = None
-      if previous_action == _BUILD_SUPPLY_DEPOT:
+      if previous_action == _BUILD_SUPPLYDEPOT_SCREEN:
         #print("_BUILD_SUPPLY_DEPOT true")
         unit_name = 'SupplyDepot'
-      elif previous_action == _BUILD_BARRACKS:
+      elif previous_action == _BUILD_BARRACKS_SCREEN:
         unit_name = 'Barracks'
-      elif previous_action == _BUILD_REFINERY:
+      elif previous_action == _BUILD_REFINERY_SCREEN:
         unit_name = 'Refinery'
-      elif previous_action == _BUILD_TECHLAB:
+      elif previous_action == _BUILD_TECHLAB_SCREEN:
         unit_name = 'TechLab'
-      elif previous_action == _TRAIN_SCV:
+      elif previous_action == _TRAIN_SCV_QUICK:
         unit_name = 'SCV'
-      elif previous_action == _TRAIN_MARINE:
+      elif previous_action == _TRAIN_MARINE_QUICK:
         unit_name = 'Marine'
-      elif previous_action == _TRAIN_MARAUDER:
+      elif previous_action == _TRAIN_MARAUDER_QUICK:
         unit_name = 'Marauder'
 
       self.previous_action = None
@@ -278,7 +292,7 @@ class Agent(object):
     # embedded_scalar.shape: (1, 307)
     # embedded_entity.shape: (1, 256)
 
-    predict_value = self.agent_model([feature_screen, embedded_feature_units, self.core_prev_state, embedded_scalar, scalar_context])
+    predict_value = self.agent_model([feature_screen, embedded_feature_units, core_state, embedded_scalar, scalar_context])
     action_type_logits = predict_value[0]
     action_type = predict_value[1].numpy()
     selected_units_logits = predict_value[2]
@@ -304,12 +318,11 @@ class Agent(object):
     #print("final_carry_state: " + str(final_carry_state))
 
     #self.core_prev_state = (final_memory_state, final_carry_state)
-    new_state = (final_memory_state, final_carry_state)
+    core_new_state = (final_memory_state, final_carry_state)
     # self.core_prev_state[0].shape: (1, 256)
     # self.core_prev_state[1].shape: (1, 256)
 
     # FunctionCall(function=<_Functions.no_op: 0>, arguments=[])
-
 
     # FunctionCall(function=<_Functions.Smart_screen: 451>, arguments=[[<Queued.now: 0>], [98, 76]])
     # FunctionCall(function=<_Functions.Smart_minimap: 452>, arguments=[[<Queued.now: 0>], [43, 44]])
@@ -340,15 +353,6 @@ class Agent(object):
     # FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.queued: 1>], [11, 21]])
 
     # FunctionCall(function=<_Functions.select_army: 7>, arguments=[[<SelectAdd.select: 0>]])
-
-    action_type_list = [_BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
-                            _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN
-                            _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
-                            _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, 
-                            _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN,
-                            _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, 
-                            _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY,
-                            _MOVE_SCREEN, _MOVE_CAMERA]
     action = [actions.FUNCTIONS.no_op()]
 
     selectable_entity_mask = np.zeros(512)
@@ -379,13 +383,13 @@ class Agent(object):
     self.previous_action = action 
     
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
-    new_state = self.core_prev_state
+    new_state = core_new_state
 
     return action, policy_logits, new_state
 
 
-#replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
-#replay.get_random_trajectory()
+replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+replay.get_random_trajectory()
 
 agent1 = Agent()
 agent1.make_model()
@@ -395,28 +399,54 @@ agent2 = Agent()
 obs = env.reset()
 
 replay_index = 0
+core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
+optimizer = tf.keras.optimizers.Adam(0.001)
 while True:
-  #obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
-  #act = replay.home_trajectory[replay_index][1]
   print("replay_index: " + str(replay_index))
-
   replay_index += 1
-  #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
-  action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
 
-  #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
-  #print("action_1: " + str(action_1))
-  #print("policy_logits_1: " + str(policy_logits_1))
-  #print("new_state_1: " + str(new_state_1))
+  online_variables = agent1.agent_model.trainable_variables
+  with tf.GradientTape() as tape:
+    tape.watch(online_variables)
 
-  agent1.core_prev_state = new_state_1
+    obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
+    acts_human = replay.home_trajectory[replay_index][1]
+    #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
+    action_1, policy_logits_1, new_state_1 = agent1.step(obs, core_prev_state)
+
+    human_action_list = []
+    agent_action_logit_list = []
+    for act_human in acts_human:
+      human_function = str(act_human.function)
+      human_arguments = str(act_human.arguments)
+      human_action_name = human_function.split('.')[-1]
+      human_action_index = action_type_list.index(actions._Functions[human_action_name])
+      human_action_list.append(human_action_index)
+
+      agent_action_logit_list.append(policy_logits_1[0])
+
+    y_true = human_action_list
+    y_pred = agent_action_logit_list
+
+    scce = tf.keras.losses.SparseCategoricalCrossentropy()
+    #print("loss: " + str(scce(y_true, y_pred).numpy()))
+
+    all_losses = scce(y_true, y_pred)
+
+  gradients = tape.gradient(all_losses, online_variables)
+  optimizer.apply_gradients(zip(gradients, online_variables))
+  print("train")
+  print("")
+
+  #agent1.core_prev_state = new_state_1
+  core_prev_state = new_state_1
 
   action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
   #print("action_1: " + str(action_1))
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
-  action_2 = [actions.FUNCTIONS.no_op()]
-  obs = env.step([action_1, action_2])
+  #action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
+  #obs = env.step([action_1, action_2])
   #print("env.action_space: " + str(env.action_space))
   #print("obs[0][1]: " + str(obs[0][1]))
   #print("obs[0][0]: " + str(obs[0][0]))
