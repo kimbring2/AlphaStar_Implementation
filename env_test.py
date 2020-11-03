@@ -66,6 +66,7 @@ _NO_OP = actions.FUNCTIONS.no_op.id
 
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
 _MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
+_HOLDPOSITION_QUICK = actions.FUNCTIONS.HoldPosition_quick.id
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 
@@ -94,6 +95,8 @@ _BUILD_REACTOR_SCREEN = actions.FUNCTIONS.Build_Reactor_screen.id
 _BUILD_BUNKER_SCREEN = actions.FUNCTIONS.Build_Bunker_screen.id
 _BUILD_STARPORT_SCREEN = actions.FUNCTIONS.Build_Starport_screen.id
 _BUILD_FACTORY_SCREEN = actions.FUNCTIONS.Build_Factory_screen.id
+_BUILD_ARMORY_SCREEN = actions.FUNCTIONS.Build_Armory_screen.id
+_BUILD_ENGINNERINGBAY_SCREEN = actions.FUNCTIONS.Build_EngineeringBay_screen.id
 
 _TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick.id
 _TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick.id
@@ -101,6 +104,8 @@ _TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick.id
 _TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick.id
 _TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick.id
 _TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick.id
+_TRAIN_HELLION_QUICK = actions.FUNCTIONS.Train_Hellion_quick.id
+_TRAIN_VIKINGFIGHTER_QUICK = actions.FUNCTIONS.Train_VikingFighter_quick.id
 
 _RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
 _HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen.id
@@ -109,20 +114,33 @@ _HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 _SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
 _LIFT_QUICK = actions.FUNCTIONS.Lift_quick.id
 _MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
+_MORPH_SUPPLYDEPOT_RAISE_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick.id
 _MORPH_ORBITALCOMMAND_QUICK = actions.FUNCTIONS.Morph_OrbitalCommand_quick.id
 _LAND_SCREEN = actions.FUNCTIONS.Land_screen.id
 _CANCEL_LAST_QUICK = actions.FUNCTIONS.Cancel_Last_quick.id
 _RALLY_WORKERS_SCREEN = actions.FUNCTIONS.Rally_Workers_screen.id
 _HARVEST_RETURN_QUICK = actions.FUNCTIONS.Harvest_Return_quick.id
+_PATROL_SCREEN = actions.FUNCTIONS.Patrol_screen.id
+_EFFECT_COOLDOWNMULE_SCREEN = actions.FUNCTIONS.Effect_CalldownMULE_screen.id
+_BUILD_QUEUE = actions.FUNCTIONS.build_queue.id
+_SELECT_UNIT = actions.FUNCTIONS.select_unit.id
+_EFFECT_KD8CHARGE_SCREEN = actions.FUNCTIONS.Effect_KD8Charge_screen.id
+_HALT_QUICK = actions.FUNCTIONS.Halt_quick.id
+
+_RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick.id
+_RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick.id
+_UNLOAD = actions.FUNCTIONS.unload.id
 
 action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
-                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN,
+                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
                         _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
-                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, 
-                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN,
-                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK,
-                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY,
-                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK]
+                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
+                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, _RESEARCH_STIMPACK_QUICK,
+                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
+                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
+                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
+                        _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD,
+                        _TRAIN_VIKINGFIGHTER_QUICK]
 
 home_upgrade_array = np.zeros(89)
 away_upgrade_array = np.zeros(89)
@@ -224,7 +242,8 @@ class Agent(object):
     #time.shape : (64,)
 
     upgrade_value = get_upgrade_obs(feature_units)
-    if upgrade_value != -1:
+    print("upgrade_value: " + str(upgrade_value))
+    if upgrade_value != -1 and upgrade_value is not None :
       home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
       away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
 
@@ -401,16 +420,17 @@ obs = env.reset()
 replay_index = 0
 core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
 optimizer = tf.keras.optimizers.Adam(0.001)
-while True:
+writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Implementation/tfboard")
+for replay_index in range(0, len(replay.home_trajectory) - 1):
   print("replay_index: " + str(replay_index))
-  replay_index += 1
+  
+  obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
+  acts_human = replay.home_trajectory[replay_index][1]
 
   online_variables = agent1.agent_model.trainable_variables
   with tf.GradientTape() as tape:
     tape.watch(online_variables)
 
-    obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
-    acts_human = replay.home_trajectory[replay_index][1]
     #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
     action_1, policy_logits_1, new_state_1 = agent1.step(obs, core_prev_state)
 
@@ -432,10 +452,12 @@ while True:
     #print("loss: " + str(scce(y_true, y_pred).numpy()))
 
     all_losses = scce(y_true, y_pred)
+    print("all_losses: " + str(all_losses))
+    #tf.summary.scalar('all_losses', all_losses, step=replay_index)
 
-  gradients = tape.gradient(all_losses, online_variables)
-  optimizer.apply_gradients(zip(gradients, online_variables))
-  print("train")
+    gradients = tape.gradient(all_losses, online_variables)
+    optimizer.apply_gradients(zip(gradients, online_variables))
+  #print("train")
   print("")
 
   #agent1.core_prev_state = new_state_1
@@ -452,3 +474,5 @@ while True:
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   #print("")
+
+  #replay_index += 1
