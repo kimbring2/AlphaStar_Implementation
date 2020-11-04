@@ -181,12 +181,13 @@ class Agent(object):
     self.selected_unit = []
 
     self.agent_model = None
+    self.batch_size = 4
   
   def make_model(self):
       feature_screen = tf.keras.Input(shape=[27, 128, 128])
       embedded_feature_units = tf.keras.Input(shape=[512,464])
       core_prev_state = (tf.keras.Input(shape=[256]), tf.keras.Input(shape=[256]))
-      embedded_scalar = tf.keras.Input(shape=[307])
+      embedded_scalar = tf.keras.Input(shape=[842])
       scalar_context = tf.keras.Input(shape=[842])
       #action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
 
@@ -194,7 +195,7 @@ class Agent(object):
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
       
       whole_seq_output, final_memory_state, final_carry_state = Core(256)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
-      lstm_output = tf.reshape(whole_seq_output, [1, 9 * 256])
+      lstm_output = tf.reshape(whole_seq_output, [self.batch_size, int(16 * 128 / self.batch_size)])
       
       action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
       selected_units_logits_, selected_units_, autoregressive_embedding = SelectedUnitsHead()(autoregressive_embedding, 
@@ -210,11 +211,14 @@ class Agent(object):
                      final_memory_state, final_carry_state]
       )
 
-      agent_model.summary()
+      #agent_model.summary()
 
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
+    print("core_state[0].shape: " + str(core_state[0].shape))
+    print("core_state[1].shape: " + str(core_state[1].shape))
+
     global home_upgrade_array
     global away_upgrade_array
     global previous_action
@@ -242,7 +246,7 @@ class Agent(object):
     #time.shape : (64,)
 
     upgrade_value = get_upgrade_obs(feature_units)
-    print("upgrade_value: " + str(upgrade_value))
+    #print("upgrade_value: " + str(upgrade_value))
     if upgrade_value != -1 and upgrade_value is not None :
       home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
       away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
@@ -311,7 +315,16 @@ class Agent(object):
     # embedded_scalar.shape: (1, 307)
     # embedded_entity.shape: (1, 256)
 
-    predict_value = self.agent_model([feature_screen, embedded_feature_units, core_state, embedded_scalar, scalar_context])
+    feature_screen_list = np.vstack([feature_screen, feature_screen, feature_screen, feature_screen])
+    embedded_feature_units_list = np.vstack([embedded_feature_units, embedded_feature_units, embedded_feature_units, embedded_feature_units])
+    core_state_list = np.vstack([core_state, core_state, core_state, core_state])
+    embedded_scalar_list = np.vstack([embedded_scalar, embedded_scalar, embedded_scalar, embedded_scalar])
+    scalar_context_list = np.vstack([scalar_context, scalar_context, scalar_context, scalar_context])
+
+    #predict_value = self.agent_model([feature_screen, embedded_feature_units, core_state, embedded_scalar, scalar_context])
+    predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state_list, embedded_scalar_list, scalar_context_list])
+    #print("predict_value[0].shape: " + str(predict_value[0].shape))
+
     action_type_logits = predict_value[0]
     action_type = predict_value[1].numpy()
     selected_units_logits = predict_value[2]
@@ -407,8 +420,8 @@ class Agent(object):
     return action, policy_logits, new_state
 
 
-replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
-replay.get_random_trajectory()
+#replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+#replay.get_random_trajectory()
 
 agent1 = Agent()
 agent1.make_model()
@@ -416,7 +429,25 @@ agent1.make_model()
 agent2 = Agent()
 
 obs = env.reset()
+core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
+for i in range(0, 100):
+  print("i: " + str(i))
+  # action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
 
+  action_1, policy_logits_1, new_state_1 = agent1.step(obs[0], core_prev_state)
+  print("new_state_1: " + str(new_state_1))
+  #print("action_1: " + str(action_1))
+
+  #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
+  action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
+  obs = env.step([action_1, action_2])
+  #print("env.action_space: " + str(env.action_space))
+  #print("obs[0][1]: " + str(obs[0][1]))
+  #print("obs[0][0]: " + str(obs[0][0]))
+  #print("obs[1][0]: " + str(obs[1][0]))
+  #print("")
+
+'''
 replay_index = 0
 core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
 optimizer = tf.keras.optimizers.Adam(0.001)
@@ -424,15 +455,15 @@ writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Impleme
 for replay_index in range(0, len(replay.home_trajectory) - 1):
   print("replay_index: " + str(replay_index))
   
-  obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
+  #obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
   acts_human = replay.home_trajectory[replay_index][1]
 
   online_variables = agent1.agent_model.trainable_variables
   with tf.GradientTape() as tape:
     tape.watch(online_variables)
 
-    #action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
-    action_1, policy_logits_1, new_state_1 = agent1.step(obs, core_prev_state)
+    action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
+    #action_1, policy_logits_1, new_state_1 = agent1.step(obs, core_prev_state)
 
     human_action_list = []
     agent_action_logit_list = []
@@ -467,12 +498,11 @@ for replay_index in range(0, len(replay.home_trajectory) - 1):
   #print("action_1: " + str(action_1))
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
-  #action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
-  #obs = env.step([action_1, action_2])
+  action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
+  obs = env.step([action_1, action_2])
   #print("env.action_space: " + str(env.action_space))
   #print("obs[0][1]: " + str(obs[0][1]))
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   #print("")
-
-  #replay_index += 1
+'''
