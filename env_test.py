@@ -186,38 +186,49 @@ class Agent(object):
   def make_model(self):
       feature_screen = tf.keras.Input(shape=[27, 128, 128])
       embedded_feature_units = tf.keras.Input(shape=[512,464])
-      core_prev_state = (tf.keras.Input(shape=[256]), tf.keras.Input(shape=[256]))
-      embedded_scalar = tf.keras.Input(shape=[842])
+      core_prev_state = (tf.keras.Input(shape=[128]), tf.keras.Input(shape=[128]))
+      embedded_scalar = tf.keras.Input(shape=[307])
       scalar_context = tf.keras.Input(shape=[842])
       #action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
 
       map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
       
-      whole_seq_output, final_memory_state, final_carry_state = Core(256)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
-      lstm_output = tf.reshape(whole_seq_output, [self.batch_size, int(16 * 128 / self.batch_size)])
+      #print("embedded_entity: " + str(embedded_entity))
+      #print("embedded_spatial: " + str(embedded_spatial))
+      #print("embedded_scalar: " + str(embedded_scalar))
+      whole_seq_output, final_memory_state, final_carry_state = Core(128)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
+      lstm_output = tf.reshape(whole_seq_output, [self.batch_size, 128])
       
-      action_type_logits, action_type, autoregressive_embedding = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
-      selected_units_logits_, selected_units_, autoregressive_embedding = SelectedUnitsHead()(autoregressive_embedding, 
-                                                                                                                   action_type, 
-                                                                                                                   entity_embeddings)
-      target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding, action_type, entity_embeddings)
-      target_location_logits, target_location = LocationHead()(autoregressive_embedding, action_type, map_)
+      action_type_logits, action_type, autoregressive_embedding_action = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
+      selected_units_logits, selected_units, autoregressive_embedding_select = SelectedUnitsHead()(autoregressive_embedding_action, 
+                                                                                                                         action_type, 
+                                                                                                                         entity_embeddings)
 
+      target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding_select, action_type, entity_embeddings)
+
+      target_location_logits, target_location = LocationHead()(autoregressive_embedding_select, action_type, map_)
+      agent_model = tf.keras.Model(
+          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
+          outputs=[action_type_logits, action_type, selected_units_logits, selected_units, target_unit_logits, target_unit, target_location_logits, target_location, 
+                     final_memory_state, final_carry_state]
+      )
+
+      '''
       # Instantiate an end-to-end model predicting both priority and department
       agent_model = tf.keras.Model(
           inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
           outputs=[action_type_logits, action_type, selected_units_logits_, selected_units_, target_unit_logits, target_unit, target_location_logits, target_location, 
                      final_memory_state, final_carry_state]
       )
-
+      '''
       #agent_model.summary()
 
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
-    print("core_state[0].shape: " + str(core_state[0].shape))
-    print("core_state[1].shape: " + str(core_state[1].shape))
+    #print("core_state[0].shape: " + str(core_state[0].shape))
+    #print("core_state[1].shape: " + str(core_state[1].shape))
 
     global home_upgrade_array
     global away_upgrade_array
@@ -256,6 +267,7 @@ class Agent(object):
 
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
     embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
+    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
 
     cumulative_statistics = observation[3]['score_cumulative'] / 1000.0
     # cumulative_statistics.: [1050    2    0  600  400    0    0    0    0    0    0    0    0]
@@ -305,6 +317,8 @@ class Agent(object):
     # build_order_array.shape: (256,)
 
     scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
+    #print("scalar_context.shape: " + str(scalar_context.shape))
+
     scalar_context = np.reshape(scalar_context, [1, 842])
     # scalar_context.shape: (1, 842)
 
@@ -317,13 +331,15 @@ class Agent(object):
 
     feature_screen_list = np.vstack([feature_screen, feature_screen, feature_screen, feature_screen])
     embedded_feature_units_list = np.vstack([embedded_feature_units, embedded_feature_units, embedded_feature_units, embedded_feature_units])
-    core_state_list = np.vstack([core_state, core_state, core_state, core_state])
+    core_state_list = (np.vstack([core_state[0], core_state[0], core_state[0], core_state[0]]), np.vstack([core_state[1], core_state[1], core_state[1], core_state[1]]))  
     embedded_scalar_list = np.vstack([embedded_scalar, embedded_scalar, embedded_scalar, embedded_scalar])
     scalar_context_list = np.vstack([scalar_context, scalar_context, scalar_context, scalar_context])
 
     #predict_value = self.agent_model([feature_screen, embedded_feature_units, core_state, embedded_scalar, scalar_context])
+    #predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state, embedded_scalar_list, scalar_context_list])
     predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state_list, embedded_scalar_list, scalar_context_list])
-    #print("predict_value[0].shape: " + str(predict_value[0].shape))
+    #print("predict_value[1]: " + str(predict_value[1]))
+    #print("predict_value[3]: " + str(predict_value[3]))
 
     action_type_logits = predict_value[0]
     action_type = predict_value[1].numpy()
@@ -336,16 +352,16 @@ class Agent(object):
     final_memory_state = predict_value[8]
     final_carry_state = predict_value[9]
 
-    #print("action_type_logits: " + str(action_type_logits))
-    #print("action_type: " + str(action_type))
-    #print("selected_units_logits_: " + str(selected_units_logits_))
-    #print("selected_units: " + str(selected_units))
-    #print("target_unit_logits: " + str(target_unit_logits))
-    #print("target_unit: " + str(target_unit))
-    #print("target_location_logits: " + str(target_location_logits))
-    #print("target_location[0]: " + str(target_location[0]))
-    #print("target_location[1]: " + str(target_location[1]))
-    #print("")
+    print("action_type_logits: " + str(action_type_logits))
+    print("action_type: " + str(action_type))
+    print("selected_units_logits: " + str(selected_units_logits))
+    print("selected_units: " + str(selected_units))
+    print("target_unit_logits: " + str(target_unit_logits))
+    print("target_unit: " + str(target_unit))
+    print("target_location_logits: " + str(target_location_logits))
+    print("target_location[0]: " + str(target_location[0]))
+    print("target_location[1]: " + str(target_location[1]))
+    print("")
     #print("final_memory_state: " + str(final_memory_state))
     #print("final_carry_state: " + str(final_carry_state))
 
@@ -386,7 +402,7 @@ class Agent(object):
 
     # FunctionCall(function=<_Functions.select_army: 7>, arguments=[[<SelectAdd.select: 0>]])
     action = [actions.FUNCTIONS.no_op()]
-
+    '''
     selectable_entity_mask = np.zeros(512)
     for idx, feature_unit in enumerate(feature_units):
         selectable_entity_mask[idx] = 1
@@ -416,7 +432,9 @@ class Agent(object):
     
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
     new_state = core_new_state
-
+    '''
+    policy_logits = None
+    new_state = None
     return action, policy_logits, new_state
 
 
@@ -429,7 +447,7 @@ agent1.make_model()
 agent2 = Agent()
 
 obs = env.reset()
-core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
+core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 100):
   print("i: " + str(i))
   # action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
