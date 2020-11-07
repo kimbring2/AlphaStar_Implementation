@@ -131,7 +131,7 @@ _RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick.id
 _RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick.id
 _UNLOAD = actions.FUNCTIONS.unload.id
 
-action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
+action_type_list = [_BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
                         _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
                         _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
                         _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
@@ -150,8 +150,8 @@ class Agent(object):
   In practice, this needs to be instantiated with the right neural network
   architecture.
   """
-  def __init__(self):
-    self.home_race = 'Terran'
+  def __init__(self, race='Terran', batch_size=1):
+    self.home_race = race
     self.away_race = 'Terran'
 
     self.build_order = []
@@ -175,13 +175,12 @@ class Agent(object):
     self.first_attack = False
     self.second_attack = False
 
-    #self.core_prev_state = (tf.zeros([1, 256]), tf.zeros([1, 256]))
     self.action_phase = 0
     self.previous_action = None
     self.selected_unit = []
 
     self.agent_model = None
-    self.batch_size = 4
+    self.batch_size = batch_size
   
   def make_model(self):
       feature_screen = tf.keras.Input(shape=[27, 128, 128])
@@ -189,47 +188,34 @@ class Agent(object):
       core_prev_state = (tf.keras.Input(shape=[128]), tf.keras.Input(shape=[128]))
       embedded_scalar = tf.keras.Input(shape=[307])
       scalar_context = tf.keras.Input(shape=[842])
-      #action_acceptable_entity_type_binary = tf.keras.Input(shape=[512])
 
       map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
-      
-      #print("embedded_entity: " + str(embedded_entity))
-      #print("embedded_spatial: " + str(embedded_spatial))
-      #print("embedded_scalar: " + str(embedded_scalar))
-      whole_seq_output, final_memory_state, final_carry_state = Core(128)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
-      lstm_output = tf.reshape(whole_seq_output, [self.batch_size, 128])
-      
+      lstm_output, final_memory_state, final_carry_state = Core(128)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
       action_type_logits, action_type, autoregressive_embedding_action = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
+      '''
+      agent_model = tf.keras.Model(
+          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
+          outputs=[action_type_logits, action_type, final_memory_state, final_carry_state, lstm_output, autoregressive_embedding_action]
+      )
+      '''
       selected_units_logits, selected_units, autoregressive_embedding_select = SelectedUnitsHead()(autoregressive_embedding_action, 
                                                                                                                          action_type, 
                                                                                                                          entity_embeddings)
-
       target_unit_logits, target_unit = TargetUnitHead()(autoregressive_embedding_select, action_type, entity_embeddings)
 
       target_location_logits, target_location = LocationHead()(autoregressive_embedding_select, action_type, map_)
       agent_model = tf.keras.Model(
           inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
           outputs=[action_type_logits, action_type, selected_units_logits, selected_units, target_unit_logits, target_unit, target_location_logits, target_location, 
-                     final_memory_state, final_carry_state]
+                     final_memory_state, final_carry_state, autoregressive_embedding_action]
       )
-
-      '''
-      # Instantiate an end-to-end model predicting both priority and department
-      agent_model = tf.keras.Model(
-          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
-          outputs=[action_type_logits, action_type, selected_units_logits_, selected_units_, target_unit_logits, target_unit, target_location_logits, target_location, 
-                     final_memory_state, final_carry_state]
-      )
-      '''
+      
       #agent_model.summary()
 
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
-    #print("core_state[0].shape: " + str(core_state[0].shape))
-    #print("core_state[1].shape: " + str(core_state[1].shape))
-
     global home_upgrade_array
     global away_upgrade_array
     global previous_action
@@ -312,136 +298,124 @@ class Agent(object):
     for available_action in available_actions_list:
       available_actions_array[available_action] = 1
 
-    # available_actions_array.shape: (573,)
-    # cumulative_statistics.shape: (13,)
-    # build_order_array.shape: (256,)
-
     scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
-    #print("scalar_context.shape: " + str(scalar_context.shape))
-
     scalar_context = np.reshape(scalar_context, [1, 842])
-    # scalar_context.shape: (1, 842)
 
     embedded_feature_units = get_entity_obs(feature_units)
     embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
+    #print("embedded_feature_units: " + str(embedded_feature_units))
     action = [actions.FUNCTIONS.no_op()]
-    # embedded_spatial.shape: (1, 256)
-    # embedded_scalar.shape: (1, 307)
-    # embedded_entity.shape: (1, 256)
 
-    feature_screen_list = np.vstack([feature_screen, feature_screen, feature_screen, feature_screen])
-    embedded_feature_units_list = np.vstack([embedded_feature_units, embedded_feature_units, embedded_feature_units, embedded_feature_units])
-    core_state_list = (np.vstack([core_state[0], core_state[0], core_state[0], core_state[0]]), np.vstack([core_state[1], core_state[1], core_state[1], core_state[1]]))  
-    embedded_scalar_list = np.vstack([embedded_scalar, embedded_scalar, embedded_scalar, embedded_scalar])
-    scalar_context_list = np.vstack([scalar_context, scalar_context, scalar_context, scalar_context])
+    feature_screen_list = np.vstack([feature_screen])
+    embedded_feature_units_list = np.vstack([embedded_feature_units])
+    core_state_list = (np.vstack([core_state[0]]), np.vstack([core_state[1]]))  
+    embedded_scalar_list = np.vstack([embedded_scalar])
+    scalar_context_list = np.vstack([scalar_context])
 
-    #predict_value = self.agent_model([feature_screen, embedded_feature_units, core_state, embedded_scalar, scalar_context])
-    #predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state, embedded_scalar_list, scalar_context_list])
+    #print("scalar_context: " + str(scalar_context))
+    #predict_value = self.agent_model([[feature_screen], [embedded_feature_units], [core_state], [embedded_scalar], [scalar_context]])
     predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state_list, embedded_scalar_list, scalar_context_list])
     #print("predict_value[1]: " + str(predict_value[1]))
     #print("predict_value[3]: " + str(predict_value[3]))
 
-    action_type_logits = predict_value[0]
+    action_type_logits = predict_value[0].numpy()
     action_type = predict_value[1].numpy()
-    selected_units_logits = predict_value[2]
+    selected_units_logits = predict_value[2].numpy()
     selected_units = predict_value[3].numpy()
-    target_unit_logits = predict_value[4]
+    target_unit_logits = predict_value[4].numpy()
     target_unit = predict_value[5].numpy()
-    target_location_logits = predict_value[6]
-    target_location = predict_value[7]
-    final_memory_state = predict_value[8]
-    final_carry_state = predict_value[9]
-
-    print("action_type_logits: " + str(action_type_logits))
-    print("action_type: " + str(action_type))
-    print("selected_units_logits: " + str(selected_units_logits))
-    print("selected_units: " + str(selected_units))
-    print("target_unit_logits: " + str(target_unit_logits))
-    print("target_unit: " + str(target_unit))
-    print("target_location_logits: " + str(target_location_logits))
-    print("target_location[0]: " + str(target_location[0]))
-    print("target_location[1]: " + str(target_location[1]))
-    print("")
-    #print("final_memory_state: " + str(final_memory_state))
-    #print("final_carry_state: " + str(final_carry_state))
-
-    #self.core_prev_state = (final_memory_state, final_carry_state)
-    core_new_state = (final_memory_state, final_carry_state)
-    # self.core_prev_state[0].shape: (1, 256)
-    # self.core_prev_state[1].shape: (1, 256)
-
-    # FunctionCall(function=<_Functions.no_op: 0>, arguments=[])
-
-    # FunctionCall(function=<_Functions.Smart_screen: 451>, arguments=[[<Queued.now: 0>], [98, 76]])
-    # FunctionCall(function=<_Functions.Smart_minimap: 452>, arguments=[[<Queued.now: 0>], [43, 44]])
-
-    # FunctionCall(function=<_Functions.select_point: 2>, arguments=[[<SelectPointAct.select: 0>], [81, 63]])
-    # FunctionCall(function=<_Functions.select_rect: 3>, arguments=[[<SelectAdd.select: 0>], [19, 26], [63, 58]])
-
-    # FunctionCall(function=<_Functions.move_camera: 1>, arguments=[[12, 18]])
+    target_location_logits = predict_value[6].numpy()
+    target_location_x = predict_value[7][0].numpy()
+    target_location_y = predict_value[7][1].numpy()
+    final_memory_state = predict_value[8].numpy()
+    final_carry_state = predict_value[9].numpy()
     
-    # FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.recall: 0>], [1]])
-    # FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.recall: 0>], [2]])
+    #print("lstm_output: " + str(lstm_output))
+    #print("action_type_logits: " + str(action_type_logits))
+    #print("action_type[0]: " + str(action_type[0]))
+    #print("selected_units_logits: " + str(selected_units_logits))
+    #print("selected_units[0]: " + str(selected_units[0]))
+    #print("target_unit_logits: " + str(target_unit_logits))
+    #print("target_unit[0]: " + str(target_unit[0]))
+    #print("target_location_logits: " + str(target_location_logits))
+    #print("target_location_x[0]: " + str(target_location_x[0]))
+    #print("target_location_y[0]: " + str(target_location_y[0]))
+    #print("final_memory_state.shape: " + str(final_memory_state.shape))
+    #print("final_carry_state.shape: " + str(final_carry_state.shape))
+    #print("autoregressive_embedding: " + str(autoregressive_embedding))
 
-    # FunctionCall(function=<_Functions.Train_Marine_quick: 477>, arguments=[[<Queued.now: 0>]])
-    # FunctionCall(function=<_Functions.Train_SiegeTank_quick: 492>, arguments=[[<Queued.now: 0>]])
-    # FunctionCall(function=<_Functions.Train_Medivac_quick: 478>, arguments=[[<Queued.now: 0>]])
-
-    # FunctionCall(function=<_Functions.Build_Bunker_screen: 43>, arguments=[[<Queued.now: 0>], [80, 53]])
-    # FunctionCall(function=<_Functions.Build_Reactor_quick: 71>, arguments=[[<Queued.now: 0>]])
-    # FunctionCall(function=<_Functions.Build_Factory_screen: 53>, arguments=[[<Queued.now: 0>], [92, 70]])
-    # FunctionCall(function=<_Functions.Build_Barracks_screen: 42>, arguments=[[<Queued.now: 0>], [103, 64]])
-    # FunctionCall(function=<_Functions.Build_Refinery_screen: 79>, arguments=[[<Queued.now: 0>], [25, 55]])
-
-    # FunctionCall(function=<_Functions.Morph_SupplyDepot_Lower_quick: 318>, arguments=[[<Queued.now: 0>]])
-    # FunctionCall(function=<_Functions.Morph_SiegeMode_quick: 317>, arguments=[[<Queued.now: 0>]])
-
-    # FunctionCall(function=<_Functions.Attack_screen: 12>, arguments=[[<Queued.now: 0>], [49, 90]])
-    # FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.now: 0>], [17, 42]])
-    # FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.queued: 1>], [11, 21]])
-
-    # FunctionCall(function=<_Functions.select_army: 7>, arguments=[[<SelectAdd.select: 0>]])
+    #print("")
+    
+    core_new_state = (final_memory_state, final_carry_state)
+    
+    #print("action_type_logits.shape[0]: " + str(action_type_logits.shape[0]))
     action = [actions.FUNCTIONS.no_op()]
-    '''
     selectable_entity_mask = np.zeros(512)
     for idx, feature_unit in enumerate(feature_units):
         selectable_entity_mask[idx] = 1
 
     if (selected_units < len(feature_units)):
-      self.selected_unit.append(feature_units[selected_units])
+      self.selected_unit.append(feature_units[selected_units[0]])
     else:
       selected_units = None
 
+    #print("target_unit[i]: " + str(target_unit[i]))
     if (target_unit < len(feature_units)):
-      target_unit = target_unit
+      target_unit = target_unit[0]
     else:
       target_unit = None
 
     if self.action_phase == 0 and selected_units is not None and (_SELECT_POINT in available_actions):
-      selected_units_info = feature_units[selected_units]
+      selected_units_info = feature_units[selected_units[0]]
+      #print("selected_units_info: " + str(selected_units_info))
 
       select_point = [selected_units_info.x, selected_units_info.y]
       action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
       self.action_phase = 1
-    elif self.action_phase == 1 and action_type_list[action_type] in available_actions:
-      target_unit = target_unit
-      position = (target_location[0], target_location[1])
-      action = [actions.FunctionCall(action_type_list[action_type], [_NOT_QUEUED, position])]
+    elif self.action_phase == 1 and action_type_list[action_type[0]] in available_actions:
+      position = (target_location_x, target_location_y)
+      action = [actions.FunctionCall(action_type_list[action_type[0]], [_NOT_QUEUED, position])]
 
     self.previous_action = action 
-    
+  
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
+    #new_state = core_new_state
+    #policy_logits = None
     new_state = core_new_state
-    '''
-    policy_logits = None
-    new_state = None
     return action, policy_logits, new_state
+    
+    def unroll(self, trajectory):
+      """Unrolls the network over the trajectory.
 
+      The actions taken by the agent and the initial state of the unroll are
+      dictated by trajectory.
+      """
+      # We omit the details of network inference here.
+    return policy_logits, baselines
+
+'''
+def supervised_update(agent, optimizer, trajectories):
+  """Update the agent parameters based on the losses."""
+
+  parameters = agent.get_weights()
+  # Compute the forward pass for the window
+  policy_logits, _ = agent.unroll(trajectories)
+
+  # Define MLE loss
+  mle_loss = tf.nn.softmax_cross_entropy_with_logits(
+      logits=policy_logits, labels=trajectories[0].target_policy)
+
+  # Define L2 regularization loss
+  l2_loss = (tf.reduce_sum([tf.nn.l2_loss(weight) for weight in parameters]))
+
+  loss = mle_loss + 1e-5 * l2_loss
+  agent.set_weights(optimizer.minimize(loss))
+'''
 
 #replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
 #replay.get_random_trajectory()
 
-agent1 = Agent()
+agent1 = Agent(race='Terran', batch_size=1)
 agent1.make_model()
 
 agent2 = Agent()
@@ -453,8 +427,10 @@ for i in range(0, 100):
   # action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
 
   action_1, policy_logits_1, new_state_1 = agent1.step(obs[0], core_prev_state)
-  print("new_state_1: " + str(new_state_1))
+  #print("new_state_1[0].shape: " + str(new_state_1[0].shape))
+  #print("new_state_1[1].shape: " + str(new_state_1[1].shape))
   #print("action_1: " + str(action_1))
+  core_prev_state = new_state_1
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
   action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
