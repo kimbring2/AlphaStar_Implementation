@@ -131,7 +131,7 @@ _RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick.id
 _RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick.id
 _UNLOAD = actions.FUNCTIONS.unload.id
 
-action_type_list = [_BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
+action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
                         _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
                         _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
                         _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
@@ -218,70 +218,68 @@ class Agent(object):
   def step(self, observation, core_state):
     global home_upgrade_array
     global away_upgrade_array
-    global previous_action
 
-    """Performs inference on the observation, given hidden state last_state."""
-    # We are omitting the details of network inference here.
-    feature_screen = observation[3]['feature_screen']
-    # feature_screen.shape: (27, 128, 128)
-
-    feature_minimap = observation[3]['feature_minimap']
-    feature_units = observation[3]['feature_units']
-    feature_player = observation[3]['player']
-    score_by_category = observation[3]['score_by_category']
-    game_loop = observation[3]['game_loop']
-    available_actions = observation[3]['available_actions']
-    # available_actions: [  0   1   2   3   4 264  12  13 274 549 451 452 453 331 332 333 334  79]
+    feature_screen = observation['feature_screen']
+    feature_minimap = observation['feature_minimap']
+    feature_units = observation['feature_units']
+    feature_player = observation['player']
+    score_by_category = observation['score_by_category']
+    game_loop = observation['game_loop']
+    available_actions = observation['available_actions']
 
     agent_statistics = get_agent_statistics(score_by_category)
-    # agent_statistics.shape: (55,)
-
     race = get_race_onehot(self.home_race, self.away_race)
-    # race.shape: (10,)
-
     time = get_gameloop_obs(game_loop)
-    #time.shape : (64,)
 
     upgrade_value = get_upgrade_obs(feature_units)
-    #print("upgrade_value: " + str(upgrade_value))
     if upgrade_value != -1 and upgrade_value is not None :
       home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
       away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
 
-    # home_upgrade_array.shape: (89,)
-    # away_upgrade_array.shape: (89,)
-
     embedded_scalar = np.concatenate((agent_statistics, race, time, home_upgrade_array, away_upgrade_array), axis=0)
     embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
-    #print("embedded_scalar.shape: " + str(embedded_scalar.shape))
 
-    cumulative_statistics = observation[3]['score_cumulative'] / 1000.0
-    # cumulative_statistics.: [1050    2    0  600  400    0    0    0    0    0    0    0    0]
-
+    cumulative_statistics = observation['score_cumulative'] / 1000.0
     cumulative_statistics_array = np.log(cumulative_statistics + 1)
 
     build_order_array = np.zeros(256)
     if (self.previous_action is not None):
-      previous_action = (self.previous_action)
-
       unit_name = None
-      if previous_action == _BUILD_SUPPLYDEPOT_SCREEN:
-        #print("_BUILD_SUPPLY_DEPOT true")
-        unit_name = 'SupplyDepot'
-      elif previous_action == _BUILD_BARRACKS_SCREEN:
+      if self.previous_action == _BUILD_BARRACKS_SCREEN:
         unit_name = 'Barracks'
-      elif previous_action == _BUILD_REFINERY_SCREEN:
+      elif self.previous_action == _BUILD_REFINERY_SCREEN:
         unit_name = 'Refinery'
-      elif previous_action == _BUILD_TECHLAB_SCREEN:
+      elif self.previous_action == _BUILD_TECHLAB_SCREEN or self.previous_action == _BUILD_TECHLAB_QUICK:
         unit_name = 'TechLab'
-      elif previous_action == _TRAIN_SCV_QUICK:
-        unit_name = 'SCV'
-      elif previous_action == _TRAIN_MARINE_QUICK:
+      elif self.previous_action == _BUILD_COMMANDCENTER_SCREEN:
+        unit_name = 'TechLab'
+      elif self.previous_action == _BUILD_REACTOR_SCREEN or self.previous_action == _BUILD_REACTOR_QUICK:
+        unit_name = 'Reactor'
+      elif self.previous_action == _BUILD_BUNKER_SCREEN:
+        unit_name = 'Bunker'
+      elif self.previous_action == _BUILD_STARPORT_SCREEN:
+        unit_name = 'Starport'
+      elif self.previous_action == _BUILD_FACTORY_SCREEN:
+        unit_name = 'Factory'
+      elif self.previous_action == _BUILD_ARMORY_SCREEN:
+        unit_name = 'Armory'
+      elif self.previous_action == _BUILD_ENGINNERINGBAY_SCREEN:
+        unit_name = 'EngineeringBay'
+      elif self.previous_action == _TRAIN_MARINE_QUICK:
         unit_name = 'Marine'
-      elif previous_action == _TRAIN_MARAUDER_QUICK:
+      elif self.previous_action == _TRAIN_MARAUDER_QUICK:
         unit_name = 'Marauder'
+      elif self.previous_action == _TRAIN_SIEGETANK_QUICK:
+        unit_name = 'SiegeTank'
+      elif self.previous_action == _TRAIN_MEDIVAC_QUICK:
+        unit_name = 'Medivac'
+      elif self.previous_action == _TRAIN_REAPER_QUICK:
+        unit_name = 'Reaper'
+      elif self.previous_action == _TRAIN_HELLION_QUICK:
+        unit_name = 'Hellion'
+      elif self.previous_action == _TRAIN_VIKINGFIGHTER_QUICK:
+        unit_name = 'VikingFighter'
 
-      self.previous_action = None
       if unit_name is not None:
         unit_info = int(units_new.get_unit_type(self.home_race, unit_name)[0])
         build_order_array[unit_info] = 1
@@ -303,28 +301,23 @@ class Agent(object):
 
     embedded_feature_units = get_entity_obs(feature_units)
     embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
-    #print("embedded_feature_units: " + str(embedded_feature_units))
-    action = [actions.FUNCTIONS.no_op()]
 
-    feature_screen_list = np.vstack([feature_screen])
-    embedded_feature_units_list = np.vstack([embedded_feature_units])
-    core_state_list = (np.vstack([core_state[0]]), np.vstack([core_state[1]]))  
-    embedded_scalar_list = np.vstack([embedded_scalar])
-    scalar_context_list = np.vstack([scalar_context])
+    feature_screen_array  = np.vstack([feature_screen])
+    embedded_feature_units_array = np.vstack([embedded_feature_units])
+    core_state_array = (np.vstack([core_state[0]]), np.vstack([core_state[1]]))  
+    embedded_scalar_array = np.vstack([embedded_scalar])
+    scalar_context_array = np.vstack([scalar_context])
 
-    #print("scalar_context: " + str(scalar_context))
-    #predict_value = self.agent_model([[feature_screen], [embedded_feature_units], [core_state], [embedded_scalar], [scalar_context]])
-    predict_value = self.agent_model([feature_screen_list, embedded_feature_units_list, core_state_list, embedded_scalar_list, scalar_context_list])
-    #print("predict_value[1]: " + str(predict_value[1]))
-    #print("predict_value[3]: " + str(predict_value[3]))
+    predict_value = self.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
+                                             embedded_scalar_array, scalar_context_array])
 
-    action_type_logits = predict_value[0].numpy()
+    action_type_logits = predict_value[0]
     action_type = predict_value[1].numpy()
-    selected_units_logits = predict_value[2].numpy()
+    selected_units_logits = predict_value[2]
     selected_units = predict_value[3].numpy()
-    target_unit_logits = predict_value[4].numpy()
+    target_unit_logits = predict_value[4]
     target_unit = predict_value[5].numpy()
-    target_location_logits = predict_value[6].numpy()
+    target_location_logits = predict_value[6]
     target_location_x = predict_value[7][0].numpy()
     target_location_y = predict_value[7][1].numpy()
     final_memory_state = predict_value[8].numpy()
@@ -345,81 +338,49 @@ class Agent(object):
     #print("autoregressive_embedding: " + str(autoregressive_embedding))
 
     #print("")
-    
     core_new_state = (final_memory_state, final_carry_state)
-    
-    #print("action_type_logits.shape[0]: " + str(action_type_logits.shape[0]))
+
     action = [actions.FUNCTIONS.no_op()]
-    selectable_entity_mask = np.zeros(512)
-    for idx, feature_unit in enumerate(feature_units):
-        selectable_entity_mask[idx] = 1
-
-    if (selected_units < len(feature_units)):
-      self.selected_unit.append(feature_units[selected_units[0]])
+    if action_type[0] == 0:
+      action = action
     else:
-      selected_units = None
+      selectable_entity_mask = np.zeros(512)
+      for idx, feature_unit in enumerate(feature_units):
+          selectable_entity_mask[idx] = 1
 
-    #print("target_unit[i]: " + str(target_unit[i]))
-    if (target_unit < len(feature_units)):
-      target_unit = target_unit[0]
-    else:
-      target_unit = None
+      if (selected_units < len(feature_units)):
+        self.selected_unit.append(feature_units[selected_units[0]])
+      else:
+        selected_units = None
 
-    if self.action_phase == 0 and selected_units is not None and (_SELECT_POINT in available_actions):
-      selected_units_info = feature_units[selected_units[0]]
-      #print("selected_units_info: " + str(selected_units_info))
+      if (target_unit < len(feature_units)):
+        target_unit = target_unit[0]
+      else:
+        target_unit = None
 
-      select_point = [selected_units_info.x, selected_units_info.y]
-      action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
-      self.action_phase = 1
-    elif self.action_phase == 1 and action_type_list[action_type[0]] in available_actions:
-      position = (target_location_x, target_location_y)
-      action = [actions.FunctionCall(action_type_list[action_type[0]], [_NOT_QUEUED, position])]
+      if self.action_phase == 0 and selected_units is not None and (_SELECT_POINT in available_actions):
+        selected_units_info = feature_units[selected_units[0]]
+        select_point = [selected_units_info.x, selected_units_info.y]
+        action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
+        self.action_phase = 1
+      elif self.action_phase == 1 and action_type_list[action_type[0]] in available_actions:
+        position = (target_location_x, target_location_y)
+        action = [actions.FunctionCall(action_type_list[action_type[0]], [_NOT_QUEUED, position])]
 
-    self.previous_action = action 
-  
+      self.previous_action = action 
+
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
-    #new_state = core_new_state
-    #policy_logits = None
     new_state = core_new_state
+
     return action, policy_logits, new_state
-    
-    def unroll(self, trajectory):
-      """Unrolls the network over the trajectory.
 
-      The actions taken by the agent and the initial state of the unroll are
-      dictated by trajectory.
-      """
-      # We omit the details of network inference here.
-    return policy_logits, baselines
-
-'''
-def supervised_update(agent, optimizer, trajectories):
-  """Update the agent parameters based on the losses."""
-
-  parameters = agent.get_weights()
-  # Compute the forward pass for the window
-  policy_logits, _ = agent.unroll(trajectories)
-
-  # Define MLE loss
-  mle_loss = tf.nn.softmax_cross_entropy_with_logits(
-      logits=policy_logits, labels=trajectories[0].target_policy)
-
-  # Define L2 regularization loss
-  l2_loss = (tf.reduce_sum([tf.nn.l2_loss(weight) for weight in parameters]))
-
-  loss = mle_loss + 1e-5 * l2_loss
-  agent.set_weights(optimizer.minimize(loss))
-'''
-
-#replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
-#replay.get_random_trajectory()
 
 agent1 = Agent(race='Terran', batch_size=1)
 agent1.make_model()
 
 agent2 = Agent()
 
+'''
 obs = env.reset()
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 100):
@@ -440,63 +401,58 @@ for i in range(0, 100):
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   #print("")
-
 '''
+
+replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+replay.get_random_trajectory()
+
 replay_index = 0
-core_prev_state = (np.zeros([1, 256]), np.zeros([1, 256]))
+core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 optimizer = tf.keras.optimizers.Adam(0.001)
 writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Implementation/tfboard")
-for replay_index in range(0, len(replay.home_trajectory) - 1):
+for p in range(0, 100):
   print("replay_index: " + str(replay_index))
-  
-  #obs = [0, 0, 0, replay.home_trajectory[replay_index][0]]
-  acts_human = replay.home_trajectory[replay_index][1]
 
   online_variables = agent1.agent_model.trainable_variables
   with tf.GradientTape() as tape:
     tape.watch(online_variables)
 
-    action_1, policy_logits_1, new_state_1 = agent1.step(obs[0])
-    #action_1, policy_logits_1, new_state_1 = agent1.step(obs, core_prev_state)
+    loss_sum = 0
+    for i in range(replay_index, replay_index + 8):
+      #print("i: " + str(i))
+        
+      trajectory = replay.home_trajectory[i][0]
+      acts_human = replay.home_trajectory[i][1]
+      #print("acts_human: " + str(acts_human))
+      action_1, policy_logits_1, new_state_1 = agent1.step(trajectory, core_prev_state)
+      #print("action_1: " + str(action_1))
+      #print("")
+      core_prev_state = new_state_1
 
-    human_action_list = []
-    agent_action_logit_list = []
-    for act_human in acts_human:
-      human_function = str(act_human.function)
-      human_arguments = str(act_human.arguments)
-      human_action_name = human_function.split('.')[-1]
-      human_action_index = action_type_list.index(actions._Functions[human_action_name])
-      human_action_list.append(human_action_index)
+      human_action_list = []
+      agent_action_logit_list = []
+      for act_human in acts_human:
+        human_function = str(act_human.function)
+        human_arguments = str(act_human.arguments)
+        human_action_name = human_function.split('.')[-1]
+        human_action_index = action_type_list.index(actions._Functions[human_action_name])
+        human_action_list.append(human_action_index)
 
-      agent_action_logit_list.append(policy_logits_1[0])
+        agent_action_logit_list.append(policy_logits_1[0])
 
-    y_true = human_action_list
-    y_pred = agent_action_logit_list
+        replay_index += 1
+        if replay_index == len(replay.home_trajectory):
+          print("Replay end")
+          break
 
-    scce = tf.keras.losses.SparseCategoricalCrossentropy()
-    #print("loss: " + str(scce(y_true, y_pred).numpy()))
+      y_true = human_action_list
+      y_pred = agent_action_logit_list
 
-    all_losses = scce(y_true, y_pred)
-    print("all_losses: " + str(all_losses))
-    #tf.summary.scalar('all_losses', all_losses, step=replay_index)
+      scce = tf.keras.losses.SparseCategoricalCrossentropy()
+      all_losses = scce(y_true, y_pred)
+      loss_sum += all_losses
 
-    gradients = tape.gradient(all_losses, online_variables)
+    print("loss_sum: " + str(loss_sum))
+    #tf.summary.scalar('loss_sum', loss_sum, step=replay_index)
+    gradients = tape.gradient(loss_sum, online_variables)
     optimizer.apply_gradients(zip(gradients, online_variables))
-  #print("train")
-  print("")
-
-  #agent1.core_prev_state = new_state_1
-  core_prev_state = new_state_1
-
-  action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
-  #print("action_1: " + str(action_1))
-
-  #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
-  action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
-  obs = env.step([action_1, action_2])
-  #print("env.action_space: " + str(env.action_space))
-  #print("obs[0][1]: " + str(obs[0][1]))
-  #print("obs[0][0]: " + str(obs[0][0]))
-  #print("obs[1][0]: " + str(obs[1][0]))
-  #print("")
-'''
