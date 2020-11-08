@@ -3,6 +3,9 @@ import numpy as np
 import units_new
 import upgrades_new
 import math
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 import tensorflow as tf
 
 
@@ -18,11 +21,221 @@ terran_ground_unit_list = ['Ghost', 'GhostAlternate', 'GhostNova', 'Hellion', 'H
                               'Nuke', 'PointDefenseDrone']
 
 
+_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
+_PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
+_PLAYER_SELF = features.PlayerRelative.SELF
+_PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
+_PLAYER_ENEMY = features.PlayerRelative.ENEMY
+
+# Action part
+_NO_OP = actions.FUNCTIONS.no_op.id
+
+_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
+_HOLDPOSITION_QUICK = actions.FUNCTIONS.HoldPosition_quick.id
+_NOT_QUEUED = [0]
+_QUEUED = [1]
+
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_ALL = [0]
+
+_SELECT_POINT = actions.FUNCTIONS.select_point.id
+_SELECT_RECT = actions.FUNCTIONS.select_rect.id
+_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
+
+_SMART_SCREEN = actions.FUNCTIONS.Smart_screen.id
+_SMART_MINIMAP = actions.FUNCTIONS.Smart_minimap.id
+
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
+_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+
+_BUILD_COMMANDCENTER_SCREEN = actions.FUNCTIONS.Build_CommandCenter_screen.id
+_BUILD_SUPPLYDEPOT_SCREEN = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+_BUILD_BARRACKS_SCREEN = actions.FUNCTIONS.Build_Barracks_screen.id
+_BUILD_REFINERY_SCREEN = actions.FUNCTIONS.Build_Refinery_screen.id
+_BUILD_TECHLAB_SCREEN = actions.FUNCTIONS.Build_TechLab_screen.id
+_BUILD_TECHLAB_QUICK = actions.FUNCTIONS.Build_TechLab_quick.id
+_BUILD_REACTOR_QUICK = actions.FUNCTIONS.Build_Reactor_quick.id
+_BUILD_REACTOR_SCREEN = actions.FUNCTIONS.Build_Reactor_screen.id
+_BUILD_BUNKER_SCREEN = actions.FUNCTIONS.Build_Bunker_screen.id
+_BUILD_STARPORT_SCREEN = actions.FUNCTIONS.Build_Starport_screen.id
+_BUILD_FACTORY_SCREEN = actions.FUNCTIONS.Build_Factory_screen.id
+_BUILD_ARMORY_SCREEN = actions.FUNCTIONS.Build_Armory_screen.id
+_BUILD_ENGINNERINGBAY_SCREEN = actions.FUNCTIONS.Build_EngineeringBay_screen.id
+
+_TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick.id
+_TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick.id
+_TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick.id
+_TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick.id
+_TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick.id
+_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick.id
+_TRAIN_HELLION_QUICK = actions.FUNCTIONS.Train_Hellion_quick.id
+_TRAIN_VIKINGFIGHTER_QUICK = actions.FUNCTIONS.Train_VikingFighter_quick.id
+
+_RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
+_HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen.id
+_HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
+
+_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
+_LIFT_QUICK = actions.FUNCTIONS.Lift_quick.id
+_MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
+_MORPH_SUPPLYDEPOT_RAISE_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick.id
+_MORPH_ORBITALCOMMAND_QUICK = actions.FUNCTIONS.Morph_OrbitalCommand_quick.id
+_LAND_SCREEN = actions.FUNCTIONS.Land_screen.id
+_CANCEL_LAST_QUICK = actions.FUNCTIONS.Cancel_Last_quick.id
+_RALLY_WORKERS_SCREEN = actions.FUNCTIONS.Rally_Workers_screen.id
+_HARVEST_RETURN_QUICK = actions.FUNCTIONS.Harvest_Return_quick.id
+_PATROL_SCREEN = actions.FUNCTIONS.Patrol_screen.id
+_EFFECT_COOLDOWNMULE_SCREEN = actions.FUNCTIONS.Effect_CalldownMULE_screen.id
+_BUILD_QUEUE = actions.FUNCTIONS.build_queue.id
+_SELECT_UNIT = actions.FUNCTIONS.select_unit.id
+_EFFECT_KD8CHARGE_SCREEN = actions.FUNCTIONS.Effect_KD8Charge_screen.id
+_HALT_QUICK = actions.FUNCTIONS.Halt_quick.id
+
+_RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick.id
+_RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick.id
+_UNLOAD = actions.FUNCTIONS.unload.id
+
+action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
+                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
+                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
+                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
+                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, _RESEARCH_STIMPACK_QUICK,
+                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
+                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
+                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
+                        _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD,
+                        _TRAIN_VIKINGFIGHTER_QUICK]
+
+
 def bin_array(num, m):
     """Convert a positive integer num into an m-bit bit vector"""
     return np.array(list(np.binary_repr(num).zfill(m))).astype(np.int8)
 
 
+def get_model_input(agent, observation):
+  feature_screen = observation['feature_screen']
+  feature_minimap = observation['feature_minimap']
+  feature_units = observation['feature_units']
+  feature_player = observation['player']
+  score_by_category = observation['score_by_category']
+  game_loop = observation['game_loop']
+  available_actions = observation['available_actions']
+
+  agent_statistics = get_agent_statistics(score_by_category)
+  race = get_race_onehot(agent.home_race, agent.away_race)
+  time = get_gameloop_obs(game_loop)
+
+  upgrade_value = get_upgrade_obs(feature_units)
+  if upgrade_value != -1 and upgrade_value is not None :
+    agent.home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
+    agent.away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
+
+  embedded_scalar = np.concatenate((agent_statistics, race, time, agent.home_upgrade_array, agent.away_upgrade_array), axis=0)
+  embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
+
+  cumulative_statistics = observation['score_cumulative'] / 1000.0
+  cumulative_statistics_array = np.log(cumulative_statistics + 1)
+
+  build_order_array = np.zeros(256)
+  if (agent.previous_action is not None):
+    unit_name = None
+    if agent.previous_action == _BUILD_BARRACKS_SCREEN:
+      unit_name = 'Barracks'
+    elif agent.previous_action == _BUILD_REFINERY_SCREEN:
+      unit_name = 'Refinery'
+    elif agent.previous_action == _BUILD_TECHLAB_SCREEN or agent.previous_action == _BUILD_TECHLAB_QUICK:
+      unit_name = 'TechLab'
+    elif agent.previous_action == _BUILD_COMMANDCENTER_SCREEN:
+      unit_name = 'TechLab'
+    elif agent.previous_action == _BUILD_REACTOR_SCREEN or agent.previous_action == _BUILD_REACTOR_QUICK:
+      unit_name = 'Reactor'
+    elif agent.previous_action == _BUILD_BUNKER_SCREEN:
+      unit_name = 'Bunker'
+    elif agent.previous_action == _BUILD_STARPORT_SCREEN:
+      unit_name = 'Starport'
+    elif agent.previous_action == _BUILD_FACTORY_SCREEN:
+      unit_name = 'Factory'
+    elif agent.previous_action == _BUILD_ARMORY_SCREEN:
+      unit_name = 'Armory'
+    elif agent.previous_action == _BUILD_ENGINNERINGBAY_SCREEN:
+      unit_name = 'EngineeringBay'
+    elif agent.previous_action == _TRAIN_MARINE_QUICK:
+      unit_name = 'Marine'
+    elif agent.previous_action == _TRAIN_MARAUDER_QUICK:
+      unit_name = 'Marauder'
+    elif agent.previous_action == _TRAIN_SIEGETANK_QUICK:
+      unit_name = 'SiegeTank'
+    elif agent.previous_action == _TRAIN_MEDIVAC_QUICK:
+      unit_name = 'Medivac'
+    elif agent.previous_action == _TRAIN_REAPER_QUICK:
+      unit_name = 'Reaper'
+    elif agent.previous_action == _TRAIN_HELLION_QUICK:
+      unit_name = 'Hellion'
+    elif agent.previous_action == _TRAIN_VIKINGFIGHTER_QUICK:
+      unit_name = 'VikingFighter'
+
+    if unit_name is not None:
+      unit_info = int(units_new.get_unit_type(agent.home_race, unit_name)[0])
+      build_order_array[unit_info] = 1
+
+      if len(agent.build_order) <= 20:
+        agent.build_order.append(build_order_array)
+
+      unit_name = None
+
+  feature_screen = np.expand_dims(feature_screen, axis=0)
+  available_actions_array = np.zeros(573)
+  available_actions_list = available_actions.tolist()
+  for available_action in available_actions_list:
+    available_actions_array[available_action] = 1
+
+  scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
+  scalar_context = np.reshape(scalar_context, [1, 842])
+
+  embedded_feature_units = get_entity_obs(feature_units)
+  embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
+
+  return feature_screen, embedded_feature_units, embedded_scalar, scalar_context
+
+
+def get_action_from_prediction(agent, observation, action_type, selected_units, target_unit, target_location_x, target_location_y):
+  feature_units = observation['feature_units']
+  available_actions = observation['available_actions']
+
+  action = [actions.FUNCTIONS.no_op()]
+  if action_type[0] == 0:
+      action = action
+  else:
+    selectable_entity_mask = np.zeros(512)
+    for idx, feature_unit in enumerate(feature_units):
+        selectable_entity_mask[idx] = 1
+
+    if (selected_units < len(feature_units)):
+      agent.selected_unit.append(feature_units[selected_units[0]])
+    else:
+      selected_units = None
+
+    if (target_unit < len(feature_units)):
+      target_unit = target_unit[0]
+    else:
+      target_unit = None
+
+    if agent.action_phase == 0 and selected_units is not None and (_SELECT_POINT in available_actions):
+      selected_units_info = feature_units[selected_units[0]]
+      select_point = [selected_units_info.x, selected_units_info.y]
+      action = [actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, select_point])]
+      agent.action_phase = 1
+    elif agent.action_phase == 1 and action_type_list[action_type[0]] in available_actions:
+      position = (target_location_x, target_location_y)
+      action = [actions.FunctionCall(action_type_list[action_type[0]], [_NOT_QUEUED, position])]
+
+    agent.previous_action = action 
+
+    return action
+
+#def get_Selectable_units(feature_units):
 def get_entity_obs(feature_units):
     unit_type = []
     #unit_attributes = []
@@ -67,11 +280,19 @@ def get_entity_obs(feature_units):
     is_selected = []
     #was_targeted = []
     #print("len(feature_units): " + str(len(feature_units)))
+    skip_num = 0
     for unit in feature_units:
       unit_info = str(units.get_unit_type(unit.unit_type))
       unit_info = unit_info.split(".")
       unit_race = unit_info[0]
       unit_name = unit_info[1]
+
+      #print("unit_race: " + str(unit_race))
+      #print("unit_name: " + str(unit_name))
+      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
+      if unit_race != "Terran" and unit_race != "Neutral":
+        skip_num += 1
+        continue
 
       #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
       unit_info = int(units_new.get_unit_type(unit_race, unit_name)[0])
@@ -129,7 +350,7 @@ def get_entity_obs(feature_units):
       assigned_harvesters.append(assigned_harvesters_onehot[0])
       ideal_harvesters.append(ideal_harvesters_onehot[0])
 
-      weapon_cooldown_onehot =  np.identity(32)[unit.weapon_cooldown:unit.weapon_cooldown+1]
+      weapon_cooldown_onehot = np.identity(32)[unit.weapon_cooldown:unit.weapon_cooldown+1]
       weapon_cooldown.append(weapon_cooldown_onehot[0])
 
       order_queue_length.append(unit.order_length)
@@ -173,9 +394,10 @@ def get_entity_obs(feature_units):
     print("")
     '''
     input_list = []
-    #print("len(current_health): " + str(len(current_health)))
+    #print("skip_num: " + str(skip_num))
 
-    length = len(feature_units)
+    length = len(feature_units) - skip_num
+    #print("length: " + str(length))
     if length > 100:
       length = 100
 
@@ -183,7 +405,7 @@ def get_entity_obs(feature_units):
       entity_array = np.concatenate((unit_type[i], current_health[i], current_shields[i], current_energy[i], x_position[i], y_position[i],
                                           assigned_harvesters[i], ideal_harvesters[i], weapon_cooldown[i], weapon_upgrades[i], armor_upgrades[i],
                                           shield_upgrades[i], is_selected[i]), axis=0, out=None)
-      #print("input_array.shape: " + str(input_array.shape))
+      #print("entity_array: " + str(entity_array))
 
       input_list.append(entity_array)
 
@@ -194,6 +416,7 @@ def get_entity_obs(feature_units):
     #print("len(input_list): " + str(len(input_list)))
     input_array = np.array(input_list)
     #print("input_array.shape: " + str(input_array.shape))
+    #print("input_array: " + str(input_array))
     #print("")
     
     return input_array
@@ -202,7 +425,7 @@ def get_entity_obs(feature_units):
  # feature_player: [ 2 95  0 12 15  0 12  0  0  0  0]
 # player_id, minerals, vespene, food_used, food_cap, food_army, food_workers, idle_worker_count, army_count, warp_gate_count, larva_count 
 def get_agent_statistics(score_by_category):
-  score_by_category = score_by_category.flatten()
+  score_by_category = score_by_category.flatten() / 1000.0
   agent_statistics = np.log(score_by_category + 1)
 
   return agent_statistics
@@ -210,11 +433,20 @@ def get_agent_statistics(score_by_category):
 
 def get_upgrade_obs(feature_units):
     for unit in feature_units:
+      #print("unit: " + str(unit))
+
       unit_info = str(units.get_unit_type(unit.unit_type))
       unit_info = unit_info.split(".")
       unit_race = unit_info[0]
       unit_name = unit_info[1]
       #print("unit_name: " + str(unit_name))
+
+      #print("unit_race: " + str(unit_race))
+      #print("unit_name: " + str(unit_name))
+      #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
+      if unit_race != "Terran" or unit_race != "Neutral":
+        #skip_num += 1
+        continue
 
       #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
       unit_category = units_new.get_unit_type(unit_race, unit_name)[1]
@@ -367,7 +599,8 @@ def positional_encoding(position, d_model):
     
   return tf.cast(pos_encoding, dtype=tf.float32)
 
-pos_encoding = positional_encoding(16000, 64)
+with tf.device('/cpu:0'):
+  pos_encoding = positional_encoding(16000, 64)
 
 
 def get_gameloop_obs(game_loop):
@@ -377,10 +610,7 @@ def get_gameloop_obs(game_loop):
   return time.numpy().flatten()
 
 
-'''
 def get_spatial_obs(feature_screen):
-  time = pos_encoding[:, game_loop[0], :]
-  #print("time.shape : " + str(time.shape))
+  spatial_input  = np.reshape(feature_screen, [1,128,128,27])
 
-  return time.numpy().flatten()
-'''
+  return spatial_input

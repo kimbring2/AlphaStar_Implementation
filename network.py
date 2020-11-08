@@ -171,8 +171,13 @@ class ResBlock_MLP(tf.keras.layers.Layer):
         super(ResBlock_MLP, self).__init__(**kwargs)
 
     def call(self, inputs, training):
+        #print("inputs: " + str(inputs))
+
         net = self.bn_0(inputs, training=training)
+        #print("net: " + str(net))
+
         net = tf.keras.layers.ReLU()(net)
+        #print("net: " + str(net))
 
         shortcut = self.shortcut(net)
 
@@ -195,15 +200,20 @@ class ActionTypeHead(tf.keras.layers.Layer):
   
   def call(self, lstm_output, scalar_context):
     #print("lstm_output.shape: " + str(lstm_output.shape))
+    #print("lstm_output: " + str(lstm_output))
 
     batch_size = tf.shape(scalar_context)[0]
 
-    out = self.model(lstm_output, True)
+    out = self.model(lstm_output, False)
+    #print("out: " + str(out))
+
     scalar_context = tf.cast(scalar_context, tf.float32) 
-    out_gate = tf.keras.layers.Dense(54)(scalar_context)
+    out_gate = tf.keras.layers.Dense(self.action_num)(scalar_context)
+    #print("out_gate: " + str(out_gate))
 
     out_gated = out * out_gate
     action_type_logits = tf.keras.layers.Dense(self.action_num)(out_gated)
+    #print("action_type_logits[0]: " + str(action_type_logits[0]))
     action_type = sample(action_type_logits[0])
 
     action_type_onehot = tf.one_hot(action_type, self.action_num)
