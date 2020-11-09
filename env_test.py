@@ -4,7 +4,7 @@ import sys
 import units_new
 import upgrades_new
 
-from utils import get_model_input, get_action_from_prediction
+from utils import get_model_input, get_action_from_prediction, action_len, action_type_list
 from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead, LocationHead
 from trajectory import Trajectory
 
@@ -55,95 +55,6 @@ env.reset()
 
 #env.save_replay("rulebase_replay")
 
-_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
-_PLAYER_SELF = features.PlayerRelative.SELF
-_PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
-_PLAYER_ENEMY = features.PlayerRelative.ENEMY
-
-# Action part
-_NO_OP = actions.FUNCTIONS.no_op.id
-
-_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
-_MOVE_CAMERA = actions.FUNCTIONS.move_camera.id
-_HOLDPOSITION_QUICK = actions.FUNCTIONS.HoldPosition_quick.id
-_NOT_QUEUED = [0]
-_QUEUED = [1]
-
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
-_SELECT_ALL = [0]
-
-_SELECT_POINT = actions.FUNCTIONS.select_point.id
-_SELECT_RECT = actions.FUNCTIONS.select_rect.id
-_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
-_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
-
-_SMART_SCREEN = actions.FUNCTIONS.Smart_screen.id
-_SMART_MINIMAP = actions.FUNCTIONS.Smart_minimap.id
-
-_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
-_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
-
-_BUILD_COMMANDCENTER_SCREEN = actions.FUNCTIONS.Build_CommandCenter_screen.id
-_BUILD_SUPPLYDEPOT_SCREEN = actions.FUNCTIONS.Build_SupplyDepot_screen.id
-_BUILD_BARRACKS_SCREEN = actions.FUNCTIONS.Build_Barracks_screen.id
-_BUILD_REFINERY_SCREEN = actions.FUNCTIONS.Build_Refinery_screen.id
-_BUILD_TECHLAB_SCREEN = actions.FUNCTIONS.Build_TechLab_screen.id
-_BUILD_TECHLAB_QUICK = actions.FUNCTIONS.Build_TechLab_quick.id
-_BUILD_REACTOR_QUICK = actions.FUNCTIONS.Build_Reactor_quick.id
-_BUILD_REACTOR_SCREEN = actions.FUNCTIONS.Build_Reactor_screen.id
-_BUILD_BUNKER_SCREEN = actions.FUNCTIONS.Build_Bunker_screen.id
-_BUILD_STARPORT_SCREEN = actions.FUNCTIONS.Build_Starport_screen.id
-_BUILD_FACTORY_SCREEN = actions.FUNCTIONS.Build_Factory_screen.id
-_BUILD_ARMORY_SCREEN = actions.FUNCTIONS.Build_Armory_screen.id
-_BUILD_ENGINNERINGBAY_SCREEN = actions.FUNCTIONS.Build_EngineeringBay_screen.id
-
-_TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick.id
-_TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick.id
-_TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick.id
-_TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick.id
-_TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick.id
-_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick.id
-_TRAIN_HELLION_QUICK = actions.FUNCTIONS.Train_Hellion_quick.id
-_TRAIN_VIKINGFIGHTER_QUICK = actions.FUNCTIONS.Train_VikingFighter_quick.id
-
-_RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick.id
-_HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen.id
-_HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
-
-_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group.id
-_LIFT_QUICK = actions.FUNCTIONS.Lift_quick.id
-_MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
-_MORPH_SUPPLYDEPOT_RAISE_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick.id
-_MORPH_ORBITALCOMMAND_QUICK = actions.FUNCTIONS.Morph_OrbitalCommand_quick.id
-_LAND_SCREEN = actions.FUNCTIONS.Land_screen.id
-_CANCEL_LAST_QUICK = actions.FUNCTIONS.Cancel_Last_quick.id
-_RALLY_WORKERS_SCREEN = actions.FUNCTIONS.Rally_Workers_screen.id
-_HARVEST_RETURN_QUICK = actions.FUNCTIONS.Harvest_Return_quick.id
-_PATROL_SCREEN = actions.FUNCTIONS.Patrol_screen.id
-_EFFECT_COOLDOWNMULE_SCREEN = actions.FUNCTIONS.Effect_CalldownMULE_screen.id
-_BUILD_QUEUE = actions.FUNCTIONS.build_queue.id
-_SELECT_UNIT = actions.FUNCTIONS.select_unit.id
-_EFFECT_KD8CHARGE_SCREEN = actions.FUNCTIONS.Effect_KD8Charge_screen.id
-_HALT_QUICK = actions.FUNCTIONS.Halt_quick.id
-
-_RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick.id
-_RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick.id
-_UNLOAD = actions.FUNCTIONS.unload.id
-
-action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
-                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
-                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
-                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
-                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, _RESEARCH_STIMPACK_QUICK,
-                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
-                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
-                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
-                        _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD,
-                        _TRAIN_VIKINGFIGHTER_QUICK]
-
-home_upgrade_array = np.zeros(89)
-away_upgrade_array = np.zeros(89)
 class Agent(object):
   """Demonstrates agent interface.
 
@@ -195,7 +106,7 @@ class Agent(object):
       map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
       lstm_output, final_memory_state, final_carry_state = Core(128)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
-      action_type_logits, action_type, autoregressive_embedding_action = ActionTypeHead(len(action_type_list))(lstm_output, scalar_context)
+      action_type_logits, action_type, autoregressive_embedding_action = ActionTypeHead(action_len)(lstm_output, scalar_context)
       selected_units_logits, selected_units, autoregressive_embedding_select = SelectedUnitsHead()(autoregressive_embedding_action, 
                                                                                                                          action_type, 
                                                                                                                          entity_embeddings)
@@ -224,48 +135,51 @@ class Agent(object):
     predict_value = self.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
                                              embedded_scalar_array, scalar_context_array])
 
+    #print("predict_value: " + str(predict_value))
+
     action_type_logits = predict_value[0]
-    action_type = predict_value[1].numpy()
+    action_type = predict_value[1]
     selected_units_logits = predict_value[2]
-    selected_units = predict_value[3].numpy()
+    selected_units = predict_value[3]
     target_unit_logits = predict_value[4]
-    target_unit = predict_value[5].numpy()
+    target_unit = predict_value[5]
     target_location_logits = predict_value[6]
-    target_location_x = predict_value[7][0].numpy()
-    target_location_y = predict_value[7][1].numpy()
-    final_memory_state = predict_value[8].numpy()
-    final_carry_state = predict_value[9].numpy()
+    target_location_x = predict_value[7][0]
+    target_location_y = predict_value[7][1]
+    final_memory_state = predict_value[8]
+    final_carry_state = predict_value[9]
     
-    #print("lstm_output: " + str(lstm_output))
-    #print("action_type_logits: " + str(action_type_logits))
-    print("action_type[0]: " + str(action_type[0]))
+    #print("action_type_logits.shape: " + str(action_type_logits.shape))
+    #print("action_type: " + str(action_type))
     #print("selected_units_logits: " + str(selected_units_logits))
-    print("selected_units[0]: " + str(selected_units[0]))
+    #print("selected_units: " + str(selected_units))
     #print("target_unit_logits: " + str(target_unit_logits))
-    print("target_unit[0]: " + str(target_unit[0]))
+    #print("target_unit: " + str(target_unit))
     #print("target_location_logits: " + str(target_location_logits))
-    print("target_location_x[0]: " + str(target_location_x[0]))
-    print("target_location_y[0]: " + str(target_location_y[0]))
+    #print("target_location_x: " + str(target_location_x))
+    #print("target_location_y: " + str(target_location_y))
     #print("final_memory_state.shape: " + str(final_memory_state.shape))
     #print("final_carry_state.shape: " + str(final_carry_state.shape))
-    #print("autoregressive_embedding: " + str(autoregressive_embedding))
     #print("")
 
     core_new_state = (final_memory_state, final_carry_state)
+    '''
     action = get_action_from_prediction(self, observation, 
-                                                action_type, selected_units, target_unit, target_location_x, target_location_y)
-
+                                                action_type.numpy(), selected_units.numpy(), target_unit.numpy(), target_location_x.numpy(), 
+                                                target_location_y.numpy())
+    '''
+    action = [actions.FUNCTIONS.no_op()]
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
     new_state = core_new_state
-
+    
     return action, policy_logits, new_state
 
 
-agent1 = Agent(race='Terran', batch_size=1)
+agent1 = Agent(race='Terran', batch_size=4)
 agent1.make_model()
 
 agent2 = Agent()
-
+'''
 obs = env.reset()
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 1000):
@@ -295,50 +209,93 @@ replay_index = 0
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 optimizer = tf.keras.optimizers.Adam(0.001)
 writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Implementation/tfboard")
-for p in range(0, 100):
+for p in range(0, 1000):
   print("replay_index: " + str(replay_index))
 
   online_variables = agent1.agent_model.trainable_variables
   with tf.GradientTape() as tape:
     tape.watch(online_variables)
 
-    loss_sum = 0
-    for i in range(replay_index, replay_index + 8):
-      #print("i: " + str(i))
-        
+    feature_screen_list = []
+    embedded_feature_units_list = []
+    core_state0_list = []
+    core_state1_list = []
+    embedded_scalar_list = [] 
+    scalar_context_list = []
+    acts_human_list = []
+    for i in range(replay_index, replay_index + 4):
       trajectory = replay.home_trajectory[i][0]
       acts_human = replay.home_trajectory[i][1]
-      #print("acts_human: " + str(acts_human))
+
       action_1, policy_logits_1, new_state_1 = agent1.step(trajectory, core_prev_state)
-      #print("action_1: " + str(action_1))
-      #print("")
+      #print("acts_human: " + str(acts_human))
+      acts_human_list.append(acts_human)
       core_prev_state = new_state_1
 
+      feature_screen, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(agent1, trajectory)
+      feature_screen_list.append(feature_screen)
+      embedded_feature_units_list.append(embedded_feature_units)
+      core_state0_list.append(core_prev_state[0])
+      core_state1_list.append(core_prev_state[1])
+      embedded_scalar_list.append(embedded_scalar)
+      scalar_context_list.append(scalar_context)
+
+    feature_screen_array  = np.vstack(feature_screen_list)
+    embedded_feature_units_array = np.vstack(embedded_feature_units_list)
+    core_state_array = (np.vstack(core_state0_list), np.vstack(core_state1_list))  
+    embedded_scalar_array = np.vstack(embedded_scalar_list)
+    scalar_context_array = np.vstack(scalar_context_list)
+
+    predict_value = agent1.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
+                                                embedded_scalar_array, scalar_context_array])
+    #print("len(predict_value): " + str(len(predict_value)))
+    #print("acts_human_list: " + str(acts_human_list))
+    #print("")
+    loss_sum = 0 
+    for i in range(0, 4):
+      acts_human = acts_human_list[i]
+      #print("acts_human: " + str(acts_human))
+
       human_action_list = []
+      human_position_list = []
       agent_action_logit_list = []
+      agent_position_logit_list = []
       for act_human in acts_human:
         human_function = str(act_human.function)
         human_arguments = str(act_human.arguments)
         human_action_name = human_function.split('.')[-1]
         human_action_index = action_type_list.index(actions._Functions[human_action_name])
+        #print("human_action_index: " + str(human_action_index))
+
         human_action_list.append(human_action_index)
+        human_position_list.append(1000)
+        #print("predict_value[0][0][i].shape: " + str(predict_value[0][0][i].shape))
+        agent_action_logit_list.append(predict_value[0][0][i])
+        #print("predict_value[6]: " + str(predict_value[6]))
+        agent_position_logit_list.append(predict_value[6][i])
+    
+    #print("human_action_list: " + str(human_action_list))
+    #print("agent_action_logit_list: " + str(agent_action_logit_list))
+    action_true = human_action_list
+    action_pred = agent_action_logit_list
 
-        agent_action_logit_list.append(policy_logits_1[0])
+    #print("human_position_list: " + str(human_position_list))
+    #print("agent_position_logit_list: " + str(agent_position_logit_list))
+    position_true = human_position_list
+    position_pred = agent_position_logit_list
 
-        replay_index += 1
-        if replay_index == len(replay.home_trajectory):
-          print("Replay end")
-          break
+    scce = tf.keras.losses.SparseCategoricalCrossentropy()
+    action_loss = scce(action_true, action_pred)
+    position_loss = scce(position_true, position_pred)
+    all_losses = 0.5 * action_loss + 0.5 * position_loss
+    #loss_sum += all_losses
 
-      y_true = human_action_list
-      y_pred = agent_action_logit_list
-
-      scce = tf.keras.losses.SparseCategoricalCrossentropy()
-      all_losses = scce(y_true, y_pred)
-      loss_sum += all_losses
-
-    print("loss_sum: " + str(loss_sum))
+    #print("all_losses: " + str(all_losses))
     #tf.summary.scalar('loss_sum', loss_sum, step=replay_index)
-    gradients = tape.gradient(loss_sum, online_variables)
+    gradients = tape.gradient(all_losses, online_variables)
     optimizer.apply_gradients(zip(gradients, online_variables))
-'''
+
+    replay_index += 1
+    if replay_index == len(replay.home_trajectory):
+        print("Replay end")
+        break
