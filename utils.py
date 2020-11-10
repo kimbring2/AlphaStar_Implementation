@@ -224,6 +224,8 @@ FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<Control
 
 FunctionCall(function=<_Functions.select_point: 2>, arguments=[[<SelectPointAct.select: 0>], [69, 64]])
 
+FunctionCall(function=<_Functions.select_unit: 5>, arguments=[[<SelectUnitAct.select: 0>], [1]]
+
 FunctionCall(function=<_Functions.select_rect: 3>, arguments=[[<SelectAdd.add: 1>], [79, 11], [124, 49]]
 
 FunctionCall(function=<_Functions.Build_SupplyDepot_screen: 91>, arguments=[[<Queued.now: 0>], [79, 28]])
@@ -245,82 +247,128 @@ FunctionCall(function=<_Functions.Research_CombatShield_quick: 361>, arguments=[
 FunctionCall(function=<_Functions.Stop_quick: 453>, arguments=[[<Queued.now: 0>]])
 '''
 def get_action_from_prediction(agent, observation, action_type, selected_units, target_unit, target_location_x, target_location_y):
+  print("action_type: " + str(action_type))
+  print("selected_units: " + str(selected_units))
+  print("target_unit: " + str(target_unit))
+  print("target_location_x: " + str(target_location_x))
+  print("target_location_y: " + str(target_location_y))
+
   feature_units = observation['feature_units']
   available_actions = observation['available_actions']
   
   action_type = action_type_list[action_type[0]]
   
-  print("action_type: " + str(action_type))
-  print("action_type.id: " + str(action_type.id))
-  print("action_type.name: " + str(action_type.name))
-  print("action_type.ability_id: " + str(action_type.ability_id))
-  print("action_type.general_id: " + str(action_type.general_id))
-  print("action_type.function_type: " + str(action_type.function_type))
+  #print("action_type: " + str(action_type))
+  #print("action_type.id: " + str(action_type.id))
+  #print("action_type.name: " + str(action_type.name))
+  #print("action_type.ability_id: " + str(action_type.ability_id))
+  #print("action_type.general_id: " + str(action_type.general_id))
+  #print("action_type.function_type: " + str(action_type.function_type))
   # action_type.function_type: <function cmd_screen at 0x7fee91fa8ae8>
   # action_type.function_type: <function cmd_quick at 0x7fee91fa8a60>
 
-  print("action_type.args: " + str(action_type.args))
+  argument = []
+  #print("action_type.args: " + str(action_type.args))
   for action_type_arg in action_type.args:
-    print("action_type_arg: " + str(action_type_arg))
-    print("action_type_arg.id: " + str(action_type_arg.id))
-    print("action_type_arg.name: " + str(action_type_arg.name))
-    print("action_type_arg.sizes: " + str(action_type_arg.sizes))
-    print("action_type_arg.fn: " + str(action_type_arg.fn))
-    print("action_type_arg.count: " + str(action_type_arg.count))
-    '''
-    action_type_arg.id: 0
-    action_type_arg.name: screen
-    action_type_arg.sizes: (0, 0)
-
-    action_type_arg.id: 1
-    action_type_arg.name: minimap
-    action_type_arg.sizes: (0, 0)
-
-    action_type_arg.id: 3
-    action_type_arg.name: queued
-    action_type_arg.sizes: (2,)
+    #print("action_type_arg: " + str(action_type_arg))
+    #print("action_type_arg.id: " + str(action_type_arg.id))
+    #print("action_type_arg.name: " + str(action_type_arg.name))
+    #print("action_type_arg.sizes: " + str(action_type_arg.sizes))
+    #print("action_type_arg.fn: " + str(action_type_arg.fn))
+    #print("action_type_arg.count: " + str(action_type_arg.count))
+    
+    if action_type_arg.id == 0:
+      # action_type_arg.name: screen
+      # action_type_arg.sizes: (0, 0)
+      argument.append([target_location_x, target_location_y])
+    elif action_type_arg.id == 1:
+      # action_type_arg.name: minimap
+      # action_type_arg.sizes: (0, 0)
+      pass
+    elif action_type_arg.id == 2:
+      pass
+    elif action_type_arg.id == 3:
+      # action_type_arg.name: queued
+      # action_type_arg.sizes: (2,)
+      act_name = 'now'
+      if act_name == 'now':
+        argument.append([0])
+      elif act_name == 'queued':
+        argument.append([1])
+    elif action_type_arg.id == 4:
+      # action_type_arg.name: control_group_act
+      # action_type_arg.sizes: (5,)
+      act_name = 'recall'
+      if act_name == 'recall':
+        argument.append([0])
+      elif act_name == 'set':
+        argument.append([1])
+    elif action_type_arg.id == 5:
+      # action_type_arg.name: control_group_id
+      # action_type_arg.sizes: (10,)
+      argument.append(selected_units)
+    elif action_type_arg.id == 6:
+      # action_type_arg.name: select_point_act
+      # action_type_arg.sizes: (4,)
+      act_name = 'select'
+      if act_name == 'select':
+        argument.append([0])
+      elif act_name == 'toggle':
+        argument.append([1])
+      elif act_name == 'select_all_type':
+        argument.append([2])
+      elif act_name == 'add_all_type':
+        argument.append([3])
+    elif action_type_arg.id == 7:
+      # action_type_arg.name: select_add
+      # action_type_arg.sizes: (2,)
+      act_name = 'add'
+      if act_name == 'add':
+        argument.append([1])
+      elif act_name == 'select':
+        argument.append([0])
+    elif action_type_arg.id == 8:
+      # action_type_arg.name: select_unit_act
+      # action_type_arg.sizes: (4,)
+      act_name = 'select'
+      if act_name == 'select':
+        argument.append([0])
+      elif act_name == 'deselect':
+        argument.append([1])
+      elif act_name == 'select_all_type':
+        argument.append([2])
+      elif act_name == 'deselect_all_type':
+        argument.append([3])
+    elif action_type_arg.id == 9:
+      # action_type_arg.name: select_unit_id
+      # action_type_arg.sizes: (500,)
+      argument.append(selected_units)
+    elif action_type_arg.id == 10:
+      # action_type_arg.name: select_worker
+      # action_type_arg.sizes: (4,)
+      act_name = 'select'
+      if act_name == 'select':
+        argument.append([0])
+      elif act_name == 'add':
+        argument.append([1])
+      elif act_name == 'select_all':
+        argument.append([2])
+      elif act_name == 'add_all':
+        argument.append([3])
+    elif action_type_arg.id == 11:
+      # action_type_arg.name: build_queue_id
+      # action_type_arg.sizes: (10,)
+      argument.append(0)
+    elif action_type_arg.id == 12:
+      # action_type_arg.name: unload_id
+      # action_type_arg.sizes: (500,)
+      argument.append(0)
   
-    action_type_arg.id: 4
-    action_type_arg.name: control_group_act
-    action_type_arg.sizes: (5,)
-
-    action_type_arg.id: 5
-    action_type_arg.name: control_group_id
-    action_type_arg.sizes: (10,)
-
-    action_type_arg.id: 6
-    action_type_arg.name: select_point_act
-    action_type_arg.sizes: (4,)
-
-    action_type_arg.id: 7
-    action_type_arg.name: select_add
-    action_type_arg.sizes: (2,)
-
-    action_type_arg.id: 8
-    action_type_arg.name: select_unit_act
-    action_type_arg.sizes: (4,)
-
-    action_type_arg.id: 9
-    action_type_arg.name: select_unit_id
-    action_type_arg.sizes: (500,)
-
-    action_type_arg.id: 10
-    action_type_arg.name: select_worker
-    action_type_arg.sizes: (4,)
-
-    action_type_arg.id: 11
-    action_type_arg.name: build_queue_id
-    action_type_arg.sizes: (10,)
-
-    action_type_arg.id: 12
-    action_type_arg.name: unload_id
-    action_type_arg.sizes: (500,)
-    '''
-
-  print("action_type.avail_fn: " + str(action_type.avail_fn))
-  print("action_type.raw: " + str(action_type.raw))
-  
+    print("")
+    print("")
+    
   action = [actions.FUNCTIONS.no_op()]
+  '''
   if action_type[0] == 0:
       action = action
   else:
@@ -348,8 +396,8 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
       action = [actions.FunctionCall(action_type_list[action_type[0]].id, [_NOT_QUEUED, position])]
 
     agent.previous_action = action 
-
-    return action
+    '''
+  return action
 
 
 def get_entity_obs(feature_units):
