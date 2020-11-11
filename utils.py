@@ -28,91 +28,107 @@ _PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
 _PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
 # Action part
-_NO_OP = actions.FUNCTIONS.no_op
+_NO_OP = [actions.FUNCTIONS.no_op]
 
-_MOVE_SCREEN = actions.FUNCTIONS.Move_screen
-_MOVE_CAMERA = actions.FUNCTIONS.move_camera
-_HOLDPOSITION_QUICK = actions.FUNCTIONS.HoldPosition_quick
+_MOVE_SCREEN = [actions.FUNCTIONS.Move_screen]
+_MOVE_CAMERA = [actions.FUNCTIONS.move_camera]
+_HOLDPOSITION_QUICK = [actions.FUNCTIONS.HoldPosition_quick]
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 
-_SELECT_ARMY = actions.FUNCTIONS.select_army
+_SELECT_ARMY = [actions.FUNCTIONS.select_army]
 _SELECT_ALL = [0]
 
-_SELECT_POINT = actions.FUNCTIONS.select_point
-_SELECT_RECT = actions.FUNCTIONS.select_rect
-_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker
-_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group
+_SELECT_POINT_SELECT = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select]
+_SELECT_POINT_TOGGLE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.toggle]
+_SELECT_POINT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select_all_type]
+_SELECT_POINT_ADD_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.add_all_type]
 
-_SMART_SCREEN = actions.FUNCTIONS.Smart_screen
-_SMART_MINIMAP = actions.FUNCTIONS.Smart_minimap
+_SELECT_RECT_SELECT = [actions.FUNCTIONS.select_rect, actions.SelectAdd.select]
+_SELECT_RECT_ADD = [actions.FUNCTIONS.select_rect, actions.SelectAdd.add]
 
-_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen
-_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap
+_SELECT_IDLE_WORKER_SELECT = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select]
+_SELECT_IDLE_WORKER_ADD = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add]
+_SELECT_IDLE_WORKER_SELECT_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select_all]
+_SELECT_IDLE_WORKER_ADD_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add_all]
 
-_BUILD_COMMANDCENTER_SCREEN = actions.FUNCTIONS.Build_CommandCenter_screen
-_BUILD_SUPPLYDEPOT_SCREEN = actions.FUNCTIONS.Build_SupplyDepot_screen
-_BUILD_BARRACKS_SCREEN = actions.FUNCTIONS.Build_Barracks_screen
-_BUILD_REFINERY_SCREEN = actions.FUNCTIONS.Build_Refinery_screen
-_BUILD_TECHLAB_SCREEN = actions.FUNCTIONS.Build_TechLab_screen
-_BUILD_TECHLAB_QUICK = actions.FUNCTIONS.Build_TechLab_quick
-_BUILD_REACTOR_QUICK = actions.FUNCTIONS.Build_Reactor_quick
-_BUILD_REACTOR_SCREEN = actions.FUNCTIONS.Build_Reactor_screen
-_BUILD_BUNKER_SCREEN = actions.FUNCTIONS.Build_Bunker_screen
-_BUILD_STARPORT_SCREEN = actions.FUNCTIONS.Build_Starport_screen
-_BUILD_FACTORY_SCREEN = actions.FUNCTIONS.Build_Factory_screen
-_BUILD_ARMORY_SCREEN = actions.FUNCTIONS.Build_Armory_screen
-_BUILD_ENGINNERINGBAY_SCREEN = actions.FUNCTIONS.Build_EngineeringBay_screen
+_SELECT_CONTROL_GROUP_RECALL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.recall]
+_SELECT_CONTROL_GROUP_SET = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set]
 
-_TRAIN_MARINE_QUICK = actions.FUNCTIONS.Train_Marine_quick
-_TRAIN_MARAUDER_QUICK = actions.FUNCTIONS.Train_Marauder_quick
-_TRAIN_SCV_QUICK = actions.FUNCTIONS.Train_SCV_quick
-_TRAIN_SIEGETANK_QUICK = actions.FUNCTIONS.Train_SiegeTank_quick
-_TRAIN_MEDIVAC_QUICK = actions.FUNCTIONS.Train_Medivac_quick
-_TRAIN_REAPER_QUICK = actions.FUNCTIONS.Train_Reaper_quick
-_TRAIN_HELLION_QUICK = actions.FUNCTIONS.Train_Hellion_quick
-_TRAIN_VIKINGFIGHTER_QUICK = actions.FUNCTIONS.Train_VikingFighter_quick
+_SELECT_UNIT_SELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select]
+_SELECT_UNIT_DESELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect]
+_SELECT_UNIT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select_all_type]
+_SELECT_UNIT_DESELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect_all_type]
 
-_RETURN_SCV_QUICK = actions.FUNCTIONS.Harvest_Return_SCV_quick
-_HARVEST_GATHER_SCREEN = actions.FUNCTIONS.Harvest_Gather_screen
-_HARVEST_GATHER_SCV_SCREEN = actions.FUNCTIONS.Harvest_Gather_SCV_screen
+_SMART_SCREEN = [actions.FUNCTIONS.Smart_screen]
+_SMART_MINIMAP = [actions.FUNCTIONS.Smart_minimap]
 
-_SELECT_CONTROL_GROUP = actions.FUNCTIONS.select_control_group
-_LIFT_QUICK = actions.FUNCTIONS.Lift_quick
-_MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick
-_MORPH_SUPPLYDEPOT_RAISE_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick
-_MORPH_ORBITALCOMMAND_QUICK = actions.FUNCTIONS.Morph_OrbitalCommand_quick
-_LAND_SCREEN = actions.FUNCTIONS.Land_screen
-_CANCEL_LAST_QUICK = actions.FUNCTIONS.Cancel_Last_quick
-_RALLY_WORKERS_SCREEN = actions.FUNCTIONS.Rally_Workers_screen
-_HARVEST_RETURN_QUICK = actions.FUNCTIONS.Harvest_Return_quick
-_PATROL_SCREEN = actions.FUNCTIONS.Patrol_screen
-_EFFECT_COOLDOWNMULE_SCREEN = actions.FUNCTIONS.Effect_CalldownMULE_screen
-_BUILD_QUEUE = actions.FUNCTIONS.build_queue
-_SELECT_UNIT = actions.FUNCTIONS.select_unit
-_EFFECT_KD8CHARGE_SCREEN = actions.FUNCTIONS.Effect_KD8Charge_screen
-_EFFECT_SPRAY_SCREEN = actions.FUNCTIONS.Effect_Spray_screen
-_HALT_QUICK = actions.FUNCTIONS.Halt_quick
+_ATTACK_SCREEN = [actions.FUNCTIONS.Attack_screen]
+_ATTACK_MINIMAP = [actions.FUNCTIONS.Attack_minimap]
 
-_RESEARCH_STIMPACK_QUICK = actions.FUNCTIONS.Research_Stimpack_quick
-_RESEARCH_COMBATSHIELD_QUICK = actions.FUNCTIONS.Research_CombatShield_quick
-_UNLOAD = actions.FUNCTIONS.unload
+_BUILD_COMMANDCENTER_SCREEN = [actions.FUNCTIONS.Build_CommandCenter_screen]
+_BUILD_SUPPLYDEPOT_SCREEN = [actions.FUNCTIONS.Build_SupplyDepot_screen]
+_BUILD_BARRACKS_SCREEN = [actions.FUNCTIONS.Build_Barracks_screen]
+_BUILD_REFINERY_SCREEN = [actions.FUNCTIONS.Build_Refinery_screen]
+_BUILD_TECHLAB_SCREEN = [actions.FUNCTIONS.Build_TechLab_screen]
+_BUILD_TECHLAB_QUICK = [actions.FUNCTIONS.Build_TechLab_quick]
+_BUILD_REACTOR_QUICK = [actions.FUNCTIONS.Build_Reactor_quick]
+_BUILD_REACTOR_SCREEN = [actions.FUNCTIONS.Build_Reactor_screen]
+_BUILD_BUNKER_SCREEN = [actions.FUNCTIONS.Build_Bunker_screen]
+_BUILD_STARPORT_SCREEN = [actions.FUNCTIONS.Build_Starport_screen]
+_BUILD_FACTORY_SCREEN = [actions.FUNCTIONS.Build_Factory_screen]
+_BUILD_ARMORY_SCREEN = [actions.FUNCTIONS.Build_Armory_screen]
+_BUILD_ENGINNERINGBAY_SCREEN = [actions.FUNCTIONS.Build_EngineeringBay_screen]
+
+_TRAIN_MARINE_QUICK = [actions.FUNCTIONS.Train_Marine_quick]
+_TRAIN_MARAUDER_QUICK = [actions.FUNCTIONS.Train_Marauder_quick]
+_TRAIN_SCV_QUICK = [actions.FUNCTIONS.Train_SCV_quick]
+_TRAIN_SIEGETANK_QUICK = [actions.FUNCTIONS.Train_SiegeTank_quick]
+_TRAIN_MEDIVAC_QUICK = [actions.FUNCTIONS.Train_Medivac_quick]
+_TRAIN_REAPER_QUICK = [actions.FUNCTIONS.Train_Reaper_quick]
+_TRAIN_HELLION_QUICK = [actions.FUNCTIONS.Train_Hellion_quick]
+_TRAIN_VIKINGFIGHTER_QUICK = [actions.FUNCTIONS.Train_VikingFighter_quick]
+
+_RETURN_SCV_QUICK = [actions.FUNCTIONS.Harvest_Return_SCV_quick]
+_HARVEST_GATHER_SCREEN = [actions.FUNCTIONS.Harvest_Gather_screen]
+_HARVEST_GATHER_SCV_SCREEN = [actions.FUNCTIONS.Harvest_Gather_SCV_screen]
+
+_LIFT_QUICK = [actions.FUNCTIONS.Lift_quick]
+_MORPH_SUPPLYDEPOT_LOWER_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick]
+_MORPH_SUPPLYDEPOT_RAISE_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick]
+_MORPH_ORBITALCOMMAND_QUICK = [actions.FUNCTIONS.Morph_OrbitalCommand_quick]
+_LAND_SCREEN = [actions.FUNCTIONS.Land_screen]
+_CANCEL_LAST_QUICK = [actions.FUNCTIONS.Cancel_Last_quick]
+_RALLY_WORKERS_SCREEN = [actions.FUNCTIONS.Rally_Workers_screen]
+_HARVEST_RETURN_QUICK = [actions.FUNCTIONS.Harvest_Return_quick]
+_PATROL_SCREEN = [actions.FUNCTIONS.Patrol_screen]
+_EFFECT_COOLDOWNMULE_SCREEN = [actions.FUNCTIONS.Effect_CalldownMULE_screen]
+_BUILD_QUEUE = [actions.FUNCTIONS.build_queue]
+_EFFECT_KD8CHARGE_SCREEN = [actions.FUNCTIONS.Effect_KD8Charge_screen]
+_EFFECT_SPRAY_SCREEN = [actions.FUNCTIONS.Effect_Spray_screen]
+_HALT_QUICK = [actions.FUNCTIONS.Halt_quick]
+
+_RESEARCH_STIMPACK_QUICK = [actions.FUNCTIONS.Research_Stimpack_quick]
+_RESEARCH_COMBATSHIELD_QUICK = [actions.FUNCTIONS.Research_CombatShield_quick]
+_UNLOAD = [actions.FUNCTIONS.unload]
 
 action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
                         _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
-                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _TRAIN_REAPER_QUICK,
-                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT, _HOLDPOSITION_QUICK,
-                        _SELECT_CONTROL_GROUP, _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, _RESEARCH_STIMPACK_QUICK,
+                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _SELECT_UNIT_DESELECT, 
+                        _SELECT_UNIT_SELECT_ALL_TYPE, _SELECT_UNIT_DESELECT_ALL_TYPE, _TRAIN_REAPER_QUICK,
+                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT_SELECT, _HOLDPOSITION_QUICK,
+                        _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, 
+                        _RESEARCH_STIMPACK_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE,
                         _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
-                        _SELECT_POINT, _SELECT_RECT, _SELECT_IDLE_WORKER, _SELECT_CONTROL_GROUP, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
+                        _SELECT_RECT_SELECT, _SELECT_RECT_ADD, _SELECT_IDLE_WORKER_SELECT, _SELECT_IDLE_WORKER_SELECT_ALL, _SELECT_IDLE_WORKER_ADD_ALL, 
+                        _SELECT_IDLE_WORKER_ADD, _SELECT_CONTROL_GROUP_RECALL, _SELECT_CONTROL_GROUP_SET, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
                         _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
                         _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD, _EFFECT_SPRAY_SCREEN,
-                        _TRAIN_VIKINGFIGHTER_QUICK]
-
-action_id_list = []
+                        _TRAIN_VIKINGFIGHTER_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE]
+'''
 for action_type in action_type_list:
   action_id_list.append(action_type.id)
-
+'''
 action_len = len(action_type_list)
 
 
@@ -246,18 +262,26 @@ FunctionCall(function=<_Functions.Cancel_Last_quick: 168>, arguments=[[<Queued.n
 FunctionCall(function=<_Functions.Research_CombatShield_quick: 361>, arguments=[[<Queued.now: 0>]])
 FunctionCall(function=<_Functions.Stop_quick: 453>, arguments=[[<Queued.now: 0>]])
 '''
-def get_action_from_prediction(agent, observation, action_type, selected_units, target_unit, target_location_x, target_location_y):
-  print("action_type: " + str(action_type))
-  print("selected_units: " + str(selected_units))
-  print("target_unit: " + str(target_unit))
-  print("target_location_x: " + str(target_location_x))
-  print("target_location_y: " + str(target_location_y))
+def get_action_from_prediction(agent, observation, action_type_index, selected_units, target_unit, target_location_x, target_location_y):
+  #print("action_type: " + str(action_type))
+  #print("selected_units: " + str(selected_units))
+  #print("target_unit: " + str(target_unit))
+  #print("target_location_x: " + str(target_location_x))
+  #print("target_location_y: " + str(target_location_y))
 
   feature_units = observation['feature_units']
   available_actions = observation['available_actions']
   
-  action_type = action_type_list[action_type[0]]
-  
+  action_types = action_type_list[action_type_index[0]]
+
+  action_type_name = None
+  action_type_argu = None
+  if len(action_types) != 1:
+    action_type_name = action_types[0]
+    action_type_argu = action_types[1]
+  else:
+    action_type_name = action_types[0]
+
   #print("action_type: " + str(action_type))
   #print("action_type.id: " + str(action_type.id))
   #print("action_type.name: " + str(action_type.name))
@@ -269,7 +293,7 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
 
   argument = []
   #print("action_type.args: " + str(action_type.args))
-  for action_type_arg in action_type.args:
+  for action_type_arg in action_type_name.args:
     #print("action_type_arg: " + str(action_type_arg))
     #print("action_type_arg.id: " + str(action_type_arg.id))
     #print("action_type_arg.name: " + str(action_type_arg.name))
@@ -280,7 +304,7 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
     if action_type_arg.id == 0:
       # action_type_arg.name: screen
       # action_type_arg.sizes: (0, 0)
-      argument.append([target_location_x, target_location_y])
+      argument.append([target_location_x[0], target_location_y[0]])
     elif action_type_arg.id == 1:
       # action_type_arg.name: minimap
       # action_type_arg.sizes: (0, 0)
@@ -298,11 +322,8 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
     elif action_type_arg.id == 4:
       # action_type_arg.name: control_group_act
       # action_type_arg.sizes: (5,)
-      act_name = 'recall'
-      if act_name == 'recall':
-        argument.append([0])
-      elif act_name == 'set':
-        argument.append([1])
+      if action_type_argu is not None:
+        argument.append(action_type_argu)
     elif action_type_arg.id == 5:
       # action_type_arg.name: control_group_id
       # action_type_arg.sizes: (10,)
@@ -310,35 +331,18 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
     elif action_type_arg.id == 6:
       # action_type_arg.name: select_point_act
       # action_type_arg.sizes: (4,)
-      act_name = 'select'
-      if act_name == 'select':
-        argument.append([0])
-      elif act_name == 'toggle':
-        argument.append([1])
-      elif act_name == 'select_all_type':
-        argument.append([2])
-      elif act_name == 'add_all_type':
-        argument.append([3])
+      if action_type_argu is not None:
+        argument.append(action_type_argu)
     elif action_type_arg.id == 7:
       # action_type_arg.name: select_add
       # action_type_arg.sizes: (2,)
-      act_name = 'add'
-      if act_name == 'add':
-        argument.append([1])
-      elif act_name == 'select':
-        argument.append([0])
+      if action_type_argu is not None:
+        argument.append(action_type_argu)
     elif action_type_arg.id == 8:
       # action_type_arg.name: select_unit_act
       # action_type_arg.sizes: (4,)
-      act_name = 'select'
-      if act_name == 'select':
-        argument.append([0])
-      elif act_name == 'deselect':
-        argument.append([1])
-      elif act_name == 'select_all_type':
-        argument.append([2])
-      elif act_name == 'deselect_all_type':
-        argument.append([3])
+      if action_type_argu is not None:
+        argument.append(action_type_argu)
     elif action_type_arg.id == 9:
       # action_type_arg.name: select_unit_id
       # action_type_arg.sizes: (500,)
@@ -346,28 +350,32 @@ def get_action_from_prediction(agent, observation, action_type, selected_units, 
     elif action_type_arg.id == 10:
       # action_type_arg.name: select_worker
       # action_type_arg.sizes: (4,)
-      act_name = 'select'
-      if act_name == 'select':
-        argument.append([0])
-      elif act_name == 'add':
-        argument.append([1])
-      elif act_name == 'select_all':
-        argument.append([2])
-      elif act_name == 'add_all':
-        argument.append([3])
+      if action_type_argu is not None:
+        argument.append(action_type_argu)
     elif action_type_arg.id == 11:
       # action_type_arg.name: build_queue_id
       # action_type_arg.sizes: (10,)
-      argument.append(0)
+      argument.append(selected_units)
     elif action_type_arg.id == 12:
       # action_type_arg.name: unload_id
       # action_type_arg.sizes: (500,)
-      argument.append(0)
+      argument.append(selected_units)
   
-    print("")
-    print("")
-    
-  action = [actions.FUNCTIONS.no_op()]
+    #print("")
+    #print("")
+  
+  #action = [actions.FUNCTIONS.no_op()]
+  #print("action_type[0]: " + str(action_type[0]))
+  #print("len(action_type_list): " + str(len(action_type_list)))
+  #print("action_type_list[action_type[0]]: " + str(action_type_list[action_type[0]]))
+  if action_type_name.id in available_actions:
+    action = [actions.FunctionCall(action_type_name.id, argument)]
+    agent.previous_action = action 
+  else:
+    action = [actions.FUNCTIONS.no_op()]
+
+  print("action: " + str(action))
+  print("")
   '''
   if action_type[0] == 0:
       action = action
