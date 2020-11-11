@@ -100,9 +100,7 @@ class EntityEncoder(tf.keras.layers.Layer):
 
     def call(self, embedded_feature_units):
         out, attn = self.mha(v=embedded_feature_units, k=embedded_feature_units, q=embedded_feature_units, mask=None)
-        #print("out: " + str(out))
         entity_embeddings = tf.keras.layers.Conv1D(256, 1, activation='relu')(out)
-        #print("entity_embeddings: " + str(entity_embeddings))
 
         embedded_entity = tf.reduce_mean(out, 1)
         embedded_entity = tf.cast(embedded_entity, tf.float32) 
@@ -119,15 +117,14 @@ class SpatialEncoder(tf.keras.layers.Layer):
        tf.keras.layers.experimental.preprocessing.Rescaling(1./255, input_shape=(img_height, img_width, channel)),
        tf.keras.layers.Conv2D(4, 3, padding='same', activation='relu'),
        tf.keras.layers.MaxPooling2D(),
-       tf.keras.layers.Conv2D(8, 3, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(28, 3, padding='same', activation='relu'),
        tf.keras.layers.MaxPooling2D(),
-       tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
-       tf.keras.layers.MaxPooling2D()
     ])
 
   def call(self, feature_screen):
     map_ = tf.transpose(feature_screen, perm=[0, 2, 3, 1])
     map_ = self.map_model(map_)
+    map_ = tf.transpose(map_, perm=[0, 3, 1, 2])
 
     map_flatten = tf.keras.layers.Flatten()(map_)
     map_flatten = tf.cast(map_flatten, tf.float32) 
@@ -149,7 +146,6 @@ class Core(tf.keras.layers.Layer):
     core_input = tf.keras.layers.Dense(128*4, activation='relu')(core_input)
     core_input = tf.reshape(core_input, (batch_size, -1, 128*4))
     lstm_output, final_memory_state, final_carry_state = self.model(core_input, initial_state=(prev_state[0], prev_state[1]), training=True)
-    #print("lstm_output.shape: " + str(lstm_output.shape))
 
     return lstm_output, final_memory_state, final_carry_state
 
@@ -171,14 +167,8 @@ class ResBlock_MLP(tf.keras.layers.Layer):
         super(ResBlock_MLP, self).__init__(**kwargs)
 
     def call(self, inputs, training):
-        #print("inputs: " + str(inputs))
-
         net = self.bn_0(inputs, training=training)
-        #print("net: " + str(net))
-
         net = tf.keras.layers.ReLU()(net)
-        #print("net: " + str(net))
-
         shortcut = self.shortcut(net)
 
         net = tf.cast(net, tf.float32) 
@@ -199,21 +189,15 @@ class ActionTypeHead(tf.keras.layers.Layer):
     self.model = ResBlock_MLP(action_num)
   
   def call(self, lstm_output, scalar_context):
-    #print("lstm_output.shape: " + str(lstm_output.shape))
-    #print("lstm_output: " + str(lstm_output))
-
     batch_size = tf.shape(scalar_context)[0]
 
     out = self.model(lstm_output, False)
-    #print("out: " + str(out))
 
     scalar_context = tf.cast(scalar_context, tf.float32) 
     out_gate = tf.keras.layers.Dense(self.action_num)(scalar_context)
-    #print("out_gate: " + str(out_gate))
 
     out_gated = out * out_gate
     action_type_logits = tf.keras.layers.Dense(self.action_num)(out_gated)
-    #print("action_type_logits[0]: " + str(action_type_logits[0]))
     action_type = sample(action_type_logits[0])
 
     action_type_onehot = tf.one_hot(action_type, self.action_num)
@@ -240,10 +224,8 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
 
   def call(self, autoregressive_embedding, action_type, entity_embeddings):
     key = tf.keras.layers.Conv1D(512, 1, activation='relu')(entity_embeddings)
-    #print("key: " + str(key))
 
     autoregressive_embedding = tf.cast(autoregressive_embedding, tf.float32) 
-    #print("autoregressive_embedding.shape: " + str(autoregressive_embedding.shape))
 
     query = tf.keras.layers.Dense(512, activation='relu')(autoregressive_embedding)
 
@@ -259,7 +241,6 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     selected_units_embedding = tf.one_hot(selected_units, 512)
     selected_units_embedding = tf.matmul(selected_units_embedding, key, transpose_b=True)
     selected_units_embedding = tf.cast(selected_units_embedding, tf.float32)
-    #print("units_embedding.shape: " + str(units_embedding.shape))
 
     autoregressive_embedding = tf.keras.layers.Dense(512, activation='relu')(autoregressive_embedding)
     autoregressive_embedding += selected_units_embedding
@@ -325,36 +306,29 @@ class LocationHead(tf.keras.layers.Layer):
   def __init__(self):
     super(LocationHead, self).__init__()
 
-    self.model = ResBlock_CNN(16)
+    self.model = ResBlock_CNN(32)
 
   def call(self, autoregressive_embedding, action_type, map_):
     batch_size = tf.shape(autoregressive_embedding)[0]
 
-    #print("map_.shape: " + str(map_.shape))
-    autoregressive_embedding = tf.keras.layers.Dense(2048, activation='relu')(autoregressive_embedding)
-    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 16, 16])
-    #print("autoregressive_embedding_reshaped.shape: " + str(autoregressive_embedding_reshaped.shape))
-    #print("autoregressive_embedding_reshaped.shape: " + str(autoregressive_embedding_reshaped.shape))
+    autoregressive_embedding = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding)
+    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 32, 32])
     map_concated = tf.concat((autoregressive_embedding_reshaped, map_), axis=1)
-    #print("map_concated.shape: " + str(map_concated.shape))
-    map_concated = map_
 
     target_location_logits = self.model(map_concated, True)
-    target_location_logits = tf.keras.layers.Conv2DTranspose(10, 4, strides=2, padding='same', activation='relu', use_bias=False)(target_location_logits)
+
     target_location_logits = tf.keras.layers.Conv2DTranspose(5, 4, strides=2, padding='same', activation='relu', use_bias=False)(target_location_logits)
     target_location_logits = tf.keras.layers.Conv2DTranspose(1, 4, strides=2, padding='same', activation='relu', use_bias=False)(target_location_logits)
-    #print("target_location_logits.shape: " + str(target_location_logits.shape))
-    target_location_logits = tf.reshape(target_location_logits, [batch_size, -1, 128, 128])
-    #print("target_location_logits.shape: " + str(target_location_logits.shape))
+    target_location_logits = tf.keras.layers.Dense(256, activation='relu')(target_location_logits)
+    target_location_logits = tf.reshape(target_location_logits, [batch_size, -1, 256, 256])
     target_location_logits = tf.reduce_mean(target_location_logits, axis=1)
-    #print("target_location_logits.shape: " + str(target_location_logits.shape))
 
     target_location_logits_flatten = tf.keras.layers.Flatten()(target_location_logits)
     target_location = sample(target_location_logits_flatten)
     target_location = tf.cast(target_location, tf.int32) 
 
-    x = tf.map_fn(lambda x: int(x / 128), target_location)
-    y = tf.map_fn(lambda x: int(x % 128), target_location)
+    x = tf.map_fn(lambda x: int(x / 256), target_location)
+    y = tf.map_fn(lambda x: int(x % 256), target_location)
 
     target_location_logits = target_location_logits_flatten
     target_location = (x, y)

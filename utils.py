@@ -140,6 +140,7 @@ def bin_array(num, m):
 def get_model_input(agent, observation):
   feature_screen = observation['feature_screen']
   feature_minimap = observation['feature_minimap']
+  print("feature_minimap.shape: " + str(feature_minimap.shape))
   feature_units = observation['feature_units']
   feature_player = observation['player']
   score_by_category = observation['score_by_category']
@@ -208,7 +209,7 @@ def get_model_input(agent, observation):
 
       unit_name = None
 
-  feature_screen = np.expand_dims(feature_screen, axis=0)
+  feature_minimap = np.expand_dims(feature_minimap, axis=0)
   available_actions_array = np.zeros(573)
   available_actions_list = available_actions.tolist()
   for available_action in available_actions_list:
@@ -220,7 +221,7 @@ def get_model_input(agent, observation):
   embedded_feature_units = get_entity_obs(feature_units)
   embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
 
-  return feature_screen, embedded_feature_units, embedded_scalar, scalar_context
+  return feature_minimap, embedded_feature_units, embedded_scalar, scalar_context
 
 '''
 FunctionCall(function=<_Functions.no_op: 0>, arguments=[])
@@ -266,8 +267,8 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
   #print("action_type: " + str(action_type))
   #print("selected_units: " + str(selected_units))
   #print("target_unit: " + str(target_unit))
-  #print("target_location_x: " + str(target_location_x))
-  #print("target_location_y: " + str(target_location_y))
+  print("target_location_x: " + str(target_location_x))
+  print("target_location_y: " + str(target_location_y))
 
   feature_units = observation['feature_units']
   available_actions = observation['available_actions']

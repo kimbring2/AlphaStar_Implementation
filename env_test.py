@@ -25,8 +25,8 @@ map_name = 'Simple128'
 players = [sc2_env.Agent(sc2_env.Race['terran']), 
             sc2_env.Agent(sc2_env.Race['terran'])]
 
-feature_screen_size = 128
-feature_minimap_size = 64
+feature_screen_size = 256
+feature_minimap_size = 128
 rgb_screen_size = None
 rgb_minimap_size = None
 action_space = None
@@ -97,13 +97,13 @@ class Agent(object):
     self.away_upgrade_array = np.zeros(89)
   
   def make_model(self):
-      feature_screen = tf.keras.Input(shape=[27, 128, 128])
+      feature_minimap = tf.keras.Input(shape=[11, 128, 128])
       embedded_feature_units = tf.keras.Input(shape=[512,464])
       core_prev_state = (tf.keras.Input(shape=[128]), tf.keras.Input(shape=[128]))
       embedded_scalar = tf.keras.Input(shape=[307])
       scalar_context = tf.keras.Input(shape=[842])
 
-      map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=27)(feature_screen)
+      map_, embedded_spatial = SpatialEncoder(img_height=128, img_width=128, channel=11)(feature_minimap)
       embedded_entity, entity_embeddings = EntityEncoder(464, 8)(embedded_feature_units)
       lstm_output, final_memory_state, final_carry_state = Core(128)(core_prev_state, embedded_entity, embedded_spatial, embedded_scalar)
       action_type_logits, action_type, autoregressive_embedding_action = ActionTypeHead(action_len)(lstm_output, scalar_context)
@@ -114,7 +114,7 @@ class Agent(object):
 
       target_location_logits, target_location = LocationHead()(autoregressive_embedding_select, action_type, map_)
       agent_model = tf.keras.Model(
-          inputs=[feature_screen, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
+          inputs=[feature_minimap, embedded_feature_units, core_prev_state, embedded_scalar, scalar_context],
           outputs=[action_type_logits, action_type, selected_units_logits, selected_units, target_unit_logits, target_unit, target_location_logits, target_location, 
                      final_memory_state, final_carry_state, autoregressive_embedding_action]
       )
@@ -124,15 +124,15 @@ class Agent(object):
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
-    feature_screen, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(self, observation)
+    feature_minimap, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(self, observation)
 
-    feature_screen_array  = np.vstack([feature_screen])
+    feature_minimap_array  = np.vstack([feature_minimap])
     embedded_feature_units_array = np.vstack([embedded_feature_units])
     core_state_array = (np.vstack([core_state[0]]), np.vstack([core_state[1]]))  
     embedded_scalar_array = np.vstack([embedded_scalar])
     scalar_context_array = np.vstack([scalar_context])
 
-    predict_value = self.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
+    predict_value = self.agent_model([feature_minimap_array, embedded_feature_units_array, core_state_array, 
                                              embedded_scalar_array, scalar_context_array])
 
     #print("predict_value: " + str(predict_value))
@@ -163,11 +163,11 @@ class Agent(object):
     #print("")
 
     core_new_state = (final_memory_state, final_carry_state)
-    '''
+    
     action = get_action_from_prediction(self, observation, 
                                                 action_type.numpy(), selected_units.numpy(), target_unit.numpy(), target_location_x.numpy(), 
                                                 target_location_y.numpy())
-    '''
+    
     action = [actions.FUNCTIONS.no_op()]
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
     new_state = core_new_state
@@ -179,7 +179,7 @@ agent1 = Agent(race='Terran', batch_size=4)
 agent1.make_model()
 
 agent2 = Agent()
-'''
+
 obs = env.reset()
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 1000):
@@ -189,7 +189,7 @@ for i in range(0, 1000):
   action_1, policy_logits_1, new_state_1 = agent1.step(obs[0][3], core_prev_state)
   #print("new_state_1[0].shape: " + str(new_state_1[0].shape))
   #print("new_state_1[1].shape: " + str(new_state_1[1].shape))
-  print("action_1: " + str(action_1))
+  #print("action_1: " + str(action_1))
   core_prev_state = new_state_1
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
@@ -200,7 +200,6 @@ for i in range(0, 1000):
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   print("")
-'''
 
 replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
 replay.get_random_trajectory()
@@ -264,7 +263,7 @@ for p in range(0, 1000):
         human_function = str(act_human.function)
         human_arguments = str(act_human.arguments)
         human_action_name = human_function.split('.')[-1]
-        human_action_index = action_type_list.index(actions._Functions[human_action_name])
+        human_action_index = action_id_list.index(actions._Functions[human_action_name])
         #print("human_action_index: " + str(human_action_index))
 
         human_action_list.append(human_action_index)
