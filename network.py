@@ -306,9 +306,9 @@ class ResBlock_CNN(tf.keras.layers.Layer):
         return output
 
 
-class LocationHead(tf.keras.layers.Layer):
+class ScreenLocationHead(tf.keras.layers.Layer):
   def __init__(self):
-    super(LocationHead, self).__init__()
+    super(ScreenLocationHead, self).__init__()
 
     self.model = ResBlock_CNN(32)
 
@@ -333,6 +333,40 @@ class LocationHead(tf.keras.layers.Layer):
 
     x = tf.map_fn(lambda x: int(x / 256), target_location)
     y = tf.map_fn(lambda x: int(x % 256), target_location)
+
+    target_location_logits = target_location_logits_flatten
+    target_location = (x, y)
+
+    return target_location_logits, target_location
+
+
+class MinimapLocationHead(tf.keras.layers.Layer):
+  def __init__(self):
+    super(MinimapLocationHead, self).__init__()
+
+    self.model = ResBlock_CNN(32)
+
+  def call(self, autoregressive_embedding, action_type, map_):
+    batch_size = tf.shape(autoregressive_embedding)[0]
+
+    autoregressive_embedding = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding)
+    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 32, 32])
+    map_concated = tf.concat((autoregressive_embedding_reshaped, map_), axis=1)
+
+    target_location_logits = self.model(map_concated, True)
+
+    target_location_logits = tf.keras.layers.Conv2DTranspose(5, 4, strides=2, padding='same', activation='relu', use_bias=False)(target_location_logits)
+    target_location_logits = tf.keras.layers.Conv2DTranspose(1, 4, strides=2, padding='same', activation='relu', use_bias=False)(target_location_logits)
+    target_location_logits = tf.keras.layers.Dense(128, activation='relu')(target_location_logits)
+    target_location_logits = tf.reshape(target_location_logits, [batch_size, -1, 128, 128])
+    target_location_logits = tf.reduce_mean(target_location_logits, axis=1)
+
+    target_location_logits_flatten = tf.keras.layers.Flatten()(target_location_logits)
+    target_location = sample(target_location_logits_flatten)
+    target_location = tf.cast(target_location, tf.int32) 
+
+    x = tf.map_fn(lambda x: int(x / 128), target_location)
+    y = tf.map_fn(lambda x: int(x % 128), target_location)
 
     target_location_logits = target_location_logits_flatten
     target_location = (x, y)
