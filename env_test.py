@@ -15,6 +15,9 @@ import statistics
 import numpy as np
 import tensorflow as tf
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 from absl import flags
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
@@ -202,7 +205,7 @@ agent1 = Agent(race='Terran')
 agent1.make_model()
 
 agent2 = Agent()
-
+'''
 obs = env.reset()
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 1000):
@@ -224,7 +227,7 @@ for i in range(0, 1000):
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   print("")
-
+'''
 replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
 replay.get_random_trajectory()
 
@@ -251,7 +254,7 @@ for p in range(0, 1000):
     for i in range(replay_index, replay_index + 4):
       trajectory = replay.home_trajectory[i][0]
       acts_human = replay.home_trajectory[i][1]
-      print("acts_human: " + str(acts_human))
+      #print("acts_human: " + str(acts_human))
       action_1, policy_logits_1, new_state_1 = agent1.step(trajectory, core_prev_state)
       acts_agent_list.append(action_1)
       acts_human_list.append(acts_human)
@@ -281,7 +284,8 @@ for p in range(0, 1000):
       for act_human in acts_human:
         #print("act_human: " + str(act_human))
         human_function = str(act_human.function)
-        if int(act_human.function) == 2 or int(act_human.function) == 3 or int(act_human.function) == 4 or int(act_human.function) == 5:
+        if int(act_human.function) == 2 or int(act_human.function) == 3 or int(act_human.function) == 4 or int(act_human.function) == 5 \
+            or int(act_human.function) == 6:
           # _Functions.select_control_group, 
           human_action_with_argument = [int(act_human.function), int(act_human.arguments[0][0])]
           human_action_index = action_id_list.index(human_action_with_argument)
@@ -290,27 +294,126 @@ for p in range(0, 1000):
           human_action_name = human_function.split('.')[-1]
           human_action_index = action_id_list.index([int(actions._Functions[human_action_name])])
 
-        #human_action_list.append(human_action_index)
-        #agent_action_logit_list.append(predict_value[0][i])
-
-        #print("human_action_index: " + str(human_action_index))
-        #print("predict_value[1][i].numpy(): " + str(predict_value[1][i].numpy()))
         if human_action_index != predict_value[1][i].numpy():
           action_true = [human_action_index]
           action_pred = predict_value[0][i]
 
-          #print("action_true: " + str(action_true))
-          #print("action_pred.shape: " + str(action_pred.shape))
           action_loss = scce(action_true, action_pred)
-          #print("action_loss: " + str(action_loss))
-
           all_losses += 0.5 *action_loss
         else:
           print("act_human: " + str(act_human))
           print("act_human.arguments: " + str(act_human.arguments))
+          '''
+          outputs=[action_type_logits, action_type, selected_units_logits, selected_units, target_unit_logits, target_unit, 
+                     screen_target_location_logits, screen_target_location, minimap_target_location_logits, minimap_target_location,
+                     final_memory_state, final_carry_state, autoregressive_embedding_action]
+          '''
+          selected_units_pred = predict_value[2][i]
+          target_unit_pred = predict_value[4][i]
+          screen_target_location_pred = predict_value[6][i]
+          minimap_target_location_pred = predict_value[8][i]
+          
+          print("selected_units_pred.shape: " + str(selected_units_pred.shape))
+          print("target_unit_pred.shape: " + str(target_unit_pred.shape))
+          print("screen_target_location_pred.shape: " + str(screen_target_location_pred.shape))
+          print("minimap_target_location_pred.shape: " + str(minimap_target_location_pred.shape))
 
-          for arg in action_type_list[human_action_index][0].args:
-            print("arg.name: " + str(arg.name))
+          arg_list = action_type_list[human_action_index][0].args
+          print("arg_list: " + str(arg_list))
+          for i, arg in enumerate(arg_list):
+            print("arg.id: " + str(arg.id))
+            #print("arg[i]: " + str(arg[i]))
+            human_arg = act_human.arguments[i]
+            print("human_arg: " + str(human_arg))
+            
+            if arg.id == 0:
+              # action_type_arg.name: screen
+              # action_type_arg.sizes: (0, 0)human_arg[0] * 256 + human_arg[1]
+              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
+              screen_position_agent = [screen_target_location_pred]
+              screen_loss = scce(screen_position_human, screen_position_agent)
+              all_losses += 0.2 * screen_loss
+            elif arg.id == 1:
+              # action_type_arg.name: minimap
+              # action_type_arg.sizes: (0, 0)
+
+              #print("human_arg[0]: " + str(human_arg[0]))
+              #print("human_arg[1]: " + str(human_arg[1]))
+              minimap_position_human = [int(human_arg[0]) * 128 + int(human_arg[1])]
+              minimap_position_agent = [screen_target_location_pred]
+              minimap_loss = scce(minimap_position_human, minimap_position_agent)
+              all_losses += 0.2 * minimap_loss
+            elif arg.id == 2:
+              # action_type_arg.name: screen2
+              # action_type_arg.sizes: (0, 0)
+              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
+              screen_position_agent = [screen_target_location_pred]
+              screen_loss = scce(screen_position_human, screen_position_agent)
+              all_losses += 0.2 * screen_loss
+            elif arg.id == 3:
+              pass
+              # action_type_arg.name: queued
+              # action_type_arg.sizes: (2,)
+              #act_name = 'now'
+              #if act_name == 'now':
+              #  argument.append([0])
+              #elif act_name == 'queued':
+              #  argument.append([1])
+            elif arg.id == 4:
+              # action_type_arg.name: control_group_act
+              # action_type_arg.sizes: (5,)
+              pass
+            elif arg.id == 5:
+              # action_type_arg.name: control_group_id
+              # action_type_arg.sizes: (10,)
+              control_group_id_human = [int(human_arg)]
+              control_group_id_agent = [selected_units_pred]
+
+              control_group_id_loss = scce(control_group_id_human, control_group_id_agent)
+              all_losses += 0.2 * control_group_id_loss
+            elif arg.id == 6:
+              # action_type_arg.name: select_point_act
+              # action_type_arg.sizes: (4,)
+              pass
+            elif arg.id == 7:
+              # action_type_arg.name: select_add
+              # action_type_arg.sizes: (2,)
+              pass
+            elif arg.id == 8:
+              # action_type_arg.name: select_unit_act
+              # action_type_arg.sizes: (4,)
+              pass
+            elif arg.id == 9:
+              # action_type_arg.name: select_unit_id
+              # action_type_arg.sizes: (500,)
+              selected_unit_id_human = [int(human_arg)]
+              selected_unit_id_agent = [selected_units_pred]
+
+              selected_unit_id_loss = scce(selected_unit_id_human, selected_unit_id_agent)
+              all_losses += 0.2 * selected_unit_id_loss
+            elif arg.id == 10:
+              # action_type_arg.name: select_worker
+              # action_type_arg.sizes: (4,)
+              pass
+            elif arg.id == 11:
+              # action_type_arg.name: build_queue_id
+              # action_type_arg.sizes: (10,)
+              build_queue_id_human = [int(human_arg)]
+              build_queue_id_agent = [selected_units_pred]
+
+              build_queue_id_loss = scce(build_queue_id_human, build_queue_id_agent)
+              all_losses += 0.2 * build_queue_id_loss
+              argument.append(selected_units)
+            elif arg.id == 12:
+              # action_type_arg.name: unload_id
+              # action_type_arg.sizes: (500,)
+              unload_id_human = [int(human_arg)]
+              unload_id_agent = [selected_units_pred]
+
+              unload_id_loss = scce(unload_id_human, unload_id_agent)
+              all_losses += 0.2 * unload_id_loss
+          
+
           '''
           policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
           '''
@@ -322,13 +425,9 @@ for p in range(0, 1000):
 
     if all_losses != 0:
       print("all_losses: " + str(all_losses))
-      #tf.summary.scalar('loss_sum', loss_sum, step=replay_index)
+      #tf.summary.scalar('all_losses', all_losses, step=replay_index)
       gradients = tape.gradient(all_losses, online_variables)
       optimizer.apply_gradients(zip(gradients, online_variables))
-      #scce = tf.keras.losses.SparseCategoricalCrossentropy()
-      #action_loss = scce(action_true, action_pred)
-      #position_loss = scce(position_true, position_pred)
-      #all_losses = 0.5 * action_loss + 0.5 * position_loss
 
     print("")
     replay_index += 1
