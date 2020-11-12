@@ -50,6 +50,9 @@ _SELECT_IDLE_WORKER_ADD_ALL = [actions.FUNCTIONS.select_idle_worker, actions.Sel
 
 _SELECT_CONTROL_GROUP_RECALL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.recall]
 _SELECT_CONTROL_GROUP_SET = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set]
+_SELECT_CONTROL_GROUP_APPEND = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append]
+_SELECT_CONTROL_GROUP_SET_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set_and_steal]
+_SELECT_CONTROL_GROUP_APPEND_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append_and_steal]
 
 _SELECT_UNIT_SELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select]
 _SELECT_UNIT_DESELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect]
@@ -117,7 +120,8 @@ action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _
                         _RESEARCH_STIMPACK_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE,
                         _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
                         _SELECT_RECT_SELECT, _SELECT_RECT_ADD, _SELECT_IDLE_WORKER_SELECT, _SELECT_IDLE_WORKER_SELECT_ALL, _SELECT_IDLE_WORKER_ADD_ALL, 
-                        _SELECT_IDLE_WORKER_ADD, _SELECT_CONTROL_GROUP_RECALL, _SELECT_CONTROL_GROUP_SET, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
+                        _SELECT_IDLE_WORKER_ADD, _SELECT_CONTROL_GROUP_RECALL, _SELECT_CONTROL_GROUP_SET, _SELECT_CONTROL_GROUP_APPEND, _SELECT_CONTROL_GROUP_SET_AND_STEAL,
+                        _SELECT_CONTROL_GROUP_APPEND_AND_STEAL, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN,
                         _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
                         _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD, _EFFECT_SPRAY_SCREEN,
                         _TRAIN_VIKINGFIGHTER_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE]
@@ -263,7 +267,8 @@ FunctionCall(function=<_Functions.Cancel_Last_quick: 168>, arguments=[[<Queued.n
 FunctionCall(function=<_Functions.Research_CombatShield_quick: 361>, arguments=[[<Queued.now: 0>]])
 FunctionCall(function=<_Functions.Stop_quick: 453>, arguments=[[<Queued.now: 0>]])
 '''
-def get_action_from_prediction(agent, observation, action_type_index, selected_units, target_unit, target_location_x, target_location_y):
+def get_action_from_prediction(agent, observation, action_type_index, selected_units, target_unit, screen_target_location_x, screen_target_location_y, 
+                                      minimap_target_location_x, minimap_target_location_y):
   #print("action_type: " + str(action_type))
   #print("selected_units: " + str(selected_units))
   #print("target_unit: " + str(target_unit))
@@ -305,13 +310,15 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
     if action_type_arg.id == 0:
       # action_type_arg.name: screen
       # action_type_arg.sizes: (0, 0)
-      argument.append([target_location_x[0], target_location_y[0]])
+      argument.append([screen_target_location_x[0], screen_target_location_y[0]])
     elif action_type_arg.id == 1:
       # action_type_arg.name: minimap
       # action_type_arg.sizes: (0, 0)
-      pass
+      argument.append([minimap_target_location_x[0], minimap_target_location_y[0]])
     elif action_type_arg.id == 2:
-      pass
+      # action_type_arg.name: screen2
+      # action_type_arg.sizes: (0, 0)
+      argument.append([screen_target_location_x[0], screen_target_location_y[0]])
     elif action_type_arg.id == 3:
       # action_type_arg.name: queued
       # action_type_arg.sizes: (2,)
@@ -324,7 +331,7 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
       # action_type_arg.name: control_group_act
       # action_type_arg.sizes: (5,)
       if action_type_argu is not None:
-        argument.append(action_type_argu)
+        argument.append([action_type_argu])
     elif action_type_arg.id == 5:
       # action_type_arg.name: control_group_id
       # action_type_arg.sizes: (10,)
@@ -333,17 +340,17 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
       # action_type_arg.name: select_point_act
       # action_type_arg.sizes: (4,)
       if action_type_argu is not None:
-        argument.append(action_type_argu)
+        argument.append([action_type_argu])
     elif action_type_arg.id == 7:
       # action_type_arg.name: select_add
       # action_type_arg.sizes: (2,)
       if action_type_argu is not None:
-        argument.append(action_type_argu)
+        argument.append([action_type_argu])
     elif action_type_arg.id == 8:
       # action_type_arg.name: select_unit_act
       # action_type_arg.sizes: (4,)
       if action_type_argu is not None:
-        argument.append(action_type_argu)
+        argument.append([action_type_argu])
     elif action_type_arg.id == 9:
       # action_type_arg.name: select_unit_id
       # action_type_arg.sizes: (500,)
@@ -352,7 +359,7 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
       # action_type_arg.name: select_worker
       # action_type_arg.sizes: (4,)
       if action_type_argu is not None:
-        argument.append(action_type_argu)
+        argument.append([action_type_argu])
     elif action_type_arg.id == 11:
       # action_type_arg.name: build_queue_id
       # action_type_arg.sizes: (10,)
@@ -375,8 +382,8 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
   else:
     action = [actions.FUNCTIONS.no_op()]
 
-  print("action: " + str(action))
-  print("")
+  #print("action: " + str(action))
+  #print("")
   '''
   if action_type[0] == 0:
       action = action
