@@ -4,7 +4,7 @@ import sys
 import units_new
 import upgrades_new
 
-from utils import get_model_input, get_action_from_prediction, action_len, action_type_list
+from utils import get_model_input, get_action_from_prediction, action_len, action_type_list, action_id_list
 from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead, LocationHead
 from trajectory import Trajectory
 
@@ -61,7 +61,7 @@ class Agent(object):
   In practice, this needs to be instantiated with the right neural network
   architecture.
   """
-  def __init__(self, race='Terran', batch_size=1):
+  def __init__(self, race='Terran'):
     self.home_race = race
     self.away_race = 'Terran'
 
@@ -91,7 +91,6 @@ class Agent(object):
     self.selected_unit = []
 
     self.agent_model = None
-    self.batch_size = batch_size
 
     self.home_upgrade_array = np.zeros(89)
     self.away_upgrade_array = np.zeros(89)
@@ -126,11 +125,27 @@ class Agent(object):
   def step(self, observation, core_state):
     feature_minimap, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(self, observation)
 
-    feature_minimap_array  = np.vstack([feature_minimap])
-    embedded_feature_units_array = np.vstack([embedded_feature_units])
-    core_state_array = (np.vstack([core_state[0]]), np.vstack([core_state[1]]))  
-    embedded_scalar_array = np.vstack([embedded_scalar])
-    scalar_context_array = np.vstack([scalar_context])
+    feature_minimap_list = []
+    embedded_feature_units_list = []
+    core_state_array_0 = []
+    core_state_array_1 = []
+    embedded_scalar_list=  []
+    scalar_context_list = []
+
+    batch_size = 1
+    for i in range(0, batch_size):
+      feature_minimap_list.append(feature_minimap)
+      embedded_feature_units_list.append(embedded_feature_units)
+      core_state_array_0.append(core_state[0])
+      core_state_array_1.append(core_state[1])
+      embedded_scalar_list.append(embedded_scalar)
+      scalar_context_list.append(scalar_context)
+
+    feature_minimap_array  = np.vstack(feature_minimap_list)
+    embedded_feature_units_array = np.vstack(embedded_feature_units_list)
+    core_state_array = (np.vstack(core_state_array_0), np.vstack(core_state_array_1))  
+    embedded_scalar_array = np.vstack(embedded_scalar_list)
+    scalar_context_array = np.vstack(scalar_context_list)
 
     predict_value = self.agent_model([feature_minimap_array, embedded_feature_units_array, core_state_array, 
                                              embedded_scalar_array, scalar_context_array])
@@ -151,11 +166,11 @@ class Agent(object):
     
     #print("action_type_logits.shape: " + str(action_type_logits.shape))
     #print("action_type: " + str(action_type))
-    #print("selected_units_logits: " + str(selected_units_logits))
+    #print("selected_units_logits.shape: " + str(selected_units_logits.shape))
     #print("selected_units: " + str(selected_units))
-    #print("target_unit_logits: " + str(target_unit_logits))
+    #print("target_unit_logits.shape: " + str(target_unit_logits.shape))
     #print("target_unit: " + str(target_unit))
-    #print("target_location_logits: " + str(target_location_logits))
+    #print("target_location_logits.shape: " + str(target_location_logits.shape))
     #print("target_location_x: " + str(target_location_x))
     #print("target_location_y: " + str(target_location_y))
     #print("final_memory_state.shape: " + str(final_memory_state.shape))
@@ -175,11 +190,11 @@ class Agent(object):
     return action, policy_logits, new_state
 
 
-agent1 = Agent(race='Terran', batch_size=4)
+agent1 = Agent(race='Terran')
 agent1.make_model()
 
 agent2 = Agent()
-
+'''
 obs = env.reset()
 core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
 for i in range(0, 1000):
@@ -190,7 +205,7 @@ for i in range(0, 1000):
   #print("new_state_1[0].shape: " + str(new_state_1[0].shape))
   #print("new_state_1[1].shape: " + str(new_state_1[1].shape))
   #print("action_1: " + str(action_1))
-  core_prev_state = new_state_1
+  core_prev_state = new_state_1[0]
 
   #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
   action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
@@ -200,7 +215,7 @@ for i in range(0, 1000):
   #print("obs[0][0]: " + str(obs[0][0]))
   #print("obs[1][0]: " + str(obs[1][0]))
   print("")
-
+'''
 replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
 replay.get_random_trajectory()
 
@@ -227,7 +242,7 @@ for p in range(0, 1000):
       acts_human = replay.home_trajectory[i][1]
 
       action_1, policy_logits_1, new_state_1 = agent1.step(trajectory, core_prev_state)
-      #print("acts_human: " + str(acts_human))
+      print("acts_human: " + str(acts_human))
       acts_human_list.append(acts_human)
       core_prev_state = new_state_1
 
@@ -261,16 +276,21 @@ for p in range(0, 1000):
       agent_position_logit_list = []
       for act_human in acts_human:
         human_function = str(act_human.function)
-        human_arguments = str(act_human.arguments)
-        human_action_name = human_function.split('.')[-1]
-        human_action_index = action_id_list.index(actions._Functions[human_action_name])
-        #print("human_action_index: " + str(human_action_index))
 
+        if int(act_human.function) == 2 or int(act_human.function) == 3 or int(act_human.function) == 4 or int(act_human.function) == 5:
+          # _Functions.select_control_group, 
+          human_action_with_argument = [int(act_human.function), int(act_human.arguments[0][0])]
+          human_action_index = action_id_list.index(human_action_with_argument)
+        else:
+          human_arguments = str(act_human.arguments)
+          human_action_name = human_function.split('.')[-1]
+          human_action_index = action_id_list.index([int(actions._Functions[human_action_name])])
+
+        #print("human_action_index: " + str(human_action_index))
         human_action_list.append(human_action_index)
         human_position_list.append(1000)
         #print("predict_value[0][0][i].shape: " + str(predict_value[0][0][i].shape))
-        agent_action_logit_list.append(predict_value[0][0][i])
-        #print("predict_value[6]: " + str(predict_value[6]))
+        agent_action_logit_list.append(predict_value[0][i])
         agent_position_logit_list.append(predict_value[6][i])
     
     #print("human_action_list: " + str(human_action_list))

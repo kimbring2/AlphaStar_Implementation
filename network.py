@@ -143,8 +143,8 @@ class Core(tf.keras.layers.Layer):
   def call(self, prev_state, embedded_entity, embedded_spatial, embedded_scalar):
     core_input = tf.concat((embedded_spatial, embedded_scalar, embedded_entity), axis=1)
     batch_size = tf.shape(core_input)[0]
-    core_input = tf.keras.layers.Dense(128*4, activation='relu')(core_input)
-    core_input = tf.reshape(core_input, (batch_size, -1, 128*4))
+    core_input = tf.keras.layers.Dense(128*2, activation='relu')(core_input)
+    core_input = tf.reshape(core_input, (batch_size, -1, 128*2))
     lstm_output, final_memory_state, final_carry_state = self.model(core_input, initial_state=(prev_state[0], prev_state[1]), training=True)
 
     return lstm_output, final_memory_state, final_carry_state
@@ -189,6 +189,8 @@ class ActionTypeHead(tf.keras.layers.Layer):
     self.model = ResBlock_MLP(action_num)
   
   def call(self, lstm_output, scalar_context):
+    #print("lstm_output.shape: " + str(lstm_output.shape))
+
     batch_size = tf.shape(scalar_context)[0]
 
     out = self.model(lstm_output, False)
@@ -197,8 +199,11 @@ class ActionTypeHead(tf.keras.layers.Layer):
     out_gate = tf.keras.layers.Dense(self.action_num)(scalar_context)
 
     out_gated = out * out_gate
+
     action_type_logits = tf.keras.layers.Dense(self.action_num)(out_gated)
-    action_type = sample(action_type_logits[0])
+    action_type_logits = tf.reduce_mean(action_type_logits, axis=1)
+
+    action_type = sample(action_type_logits)
 
     action_type_onehot = tf.one_hot(action_type, self.action_num)
     action_type_onehot = tf.cast(action_type_onehot, tf.float32) 
@@ -226,7 +231,6 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     key = tf.keras.layers.Conv1D(512, 1, activation='relu')(entity_embeddings)
 
     autoregressive_embedding = tf.cast(autoregressive_embedding, tf.float32) 
-
     query = tf.keras.layers.Dense(512, activation='relu')(autoregressive_embedding)
 
     batch_size = tf.shape(entity_embeddings)[0]
@@ -234,9 +238,9 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
     query, state_h, state_c = tf.keras.layers.LSTM(units=512, activation='relu', return_state=True, return_sequences=True)(query, 
                                                                                                                                                    initial_state=[dim, dim], 
                                                                                                                                                    training=True)
-    entity_selection_result = tf.matmul(query, key, transpose_b=True)
-    selected_units_logits = entity_selection_result 
-    selected_units = sample(entity_selection_result[0])
+    selected_units_logits = tf.matmul(query, key, transpose_b=True)
+    selected_units_logits = tf.reduce_mean(selected_units_logits, axis=1)
+    selected_units = sample(selected_units_logits)
 
     selected_units_embedding = tf.one_hot(selected_units, 512)
     selected_units_embedding = tf.matmul(selected_units_embedding, key, transpose_b=True)

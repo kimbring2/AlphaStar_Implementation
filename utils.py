@@ -24,7 +24,7 @@ terran_ground_unit_list = ['Ghost', 'GhostAlternate', 'GhostNova', 'Hellion', 'H
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
 _PLAYER_SELF = features.PlayerRelative.SELF
-_PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL  # beacon/minerals
+_PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL
 _PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
 # Action part
@@ -33,11 +33,7 @@ _NO_OP = [actions.FUNCTIONS.no_op]
 _MOVE_SCREEN = [actions.FUNCTIONS.Move_screen]
 _MOVE_CAMERA = [actions.FUNCTIONS.move_camera]
 _HOLDPOSITION_QUICK = [actions.FUNCTIONS.HoldPosition_quick]
-_NOT_QUEUED = [0]
-_QUEUED = [1]
-
 _SELECT_ARMY = [actions.FUNCTIONS.select_army]
-_SELECT_ALL = [0]
 
 _SELECT_POINT_SELECT = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select]
 _SELECT_POINT_TOGGLE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.toggle]
@@ -125,10 +121,15 @@ action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _
                         _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, 
                         _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD, _EFFECT_SPRAY_SCREEN,
                         _TRAIN_VIKINGFIGHTER_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE]
-'''
+
+action_id_list = []
 for action_type in action_type_list:
-  action_id_list.append(action_type.id)
-'''
+
+  if len(action_type) != 1:
+    action_id_list.append([int(action_type[0].id), int(action_type[1])])
+  else:
+    action_id_list.append([int(action_type[0].id)])
+
 action_len = len(action_type_list)
 
 
@@ -140,7 +141,6 @@ def bin_array(num, m):
 def get_model_input(agent, observation):
   feature_screen = observation['feature_screen']
   feature_minimap = observation['feature_minimap']
-  print("feature_minimap.shape: " + str(feature_minimap.shape))
   feature_units = observation['feature_units']
   feature_player = observation['player']
   score_by_category = observation['score_by_category']
@@ -267,8 +267,8 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
   #print("action_type: " + str(action_type))
   #print("selected_units: " + str(selected_units))
   #print("target_unit: " + str(target_unit))
-  print("target_location_x: " + str(target_location_x))
-  print("target_location_y: " + str(target_location_y))
+  #print("target_location_x: " + str(target_location_x))
+  #print("target_location_y: " + str(target_location_y))
 
   feature_units = observation['feature_units']
   available_actions = observation['available_actions']
