@@ -4,9 +4,13 @@ import sys
 import units_new
 import upgrades_new
 
-from utils import get_model_input, get_action_from_prediction, action_len, action_type_list, action_id_list
+from utils import get_model_input, get_action_from_prediction, action_len, action_type_list, action_id_list, get_supervised_loss
 from network import EntityEncoder, SpatialEncoder, Core, ActionTypeHead, SelectedUnitsHead, TargetUnitHead, ScreenLocationHead, MinimapLocationHead
 from trajectory import Trajectory
+
+# replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+# replay.get_random_trajectory()
+#
 
 import random
 import time
@@ -16,13 +20,16 @@ import numpy as np
 import tensorflow as tf
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 from absl import flags
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
 
 map_name = 'Simple128'
+#players = [sc2_env.Agent(sc2_env.Race['terran']), 
+#           sc2_env.Bot(sc2_env.Race['protoss'], sc2_env.Difficulty.very_easy)]
 players = [sc2_env.Agent(sc2_env.Race['terran']), 
             sc2_env.Agent(sc2_env.Race['terran'])]
 
@@ -53,6 +60,8 @@ env = sc2_env.SC2Env(
       visualize=visualize)
 
 env.reset()
+
+#env.save_replay("rulebase_replay")
 
 class Agent(object):
   """Demonstrates agent interface.
@@ -119,6 +128,8 @@ class Agent(object):
                      final_memory_state, final_carry_state, autoregressive_embedding_action]
       )
       
+      #agent_model.summary()
+
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
@@ -148,8 +159,6 @@ class Agent(object):
 
     predict_value = self.agent_model([feature_minimap_array, embedded_feature_units_array, core_state_array, 
                                              embedded_scalar_array, scalar_context_array])
-
-    #print("predict_value: " + str(predict_value))
     action_type_logits = predict_value[0]
     action_type = predict_value[1]
     selected_units_logits = predict_value[2]
@@ -165,21 +174,6 @@ class Agent(object):
     final_memory_state = predict_value[10]
     final_carry_state = predict_value[11]
     
-    #print("action_type_logits.shape: " + str(action_type_logits.shape))
-    #print("action_type: " + str(action_type))
-    #print("selected_units_logits.shape: " + str(selected_units_logits.shape))
-    #print("selected_units: " + str(selected_units))
-    #print("target_unit_logits.shape: " + str(target_unit_logits.shape))
-    #print("target_unit: " + str(target_unit))
-    #print("target_location_logits.shape: " + str(target_location_logits.shape))
-    #print("screen_target_location_x: " + str(screen_target_location_x))
-    #print("screen_target_location_y: " + str(screen_target_location_y))
-    #print("minimap_target_location_x: " + str(minimap_target_location_x))
-    #print("minimap_target_location_y: " + str(minimap_target_location_y))
-    #print("final_memory_state.shape: " + str(final_memory_state.shape))
-    #print("final_carry_state.shape: " + str(final_carry_state.shape))
-    #print("")
-
     core_new_state = (final_memory_state, final_carry_state)
     
     action_ = get_action_from_prediction(self, observation, 
@@ -189,54 +183,14 @@ class Agent(object):
     
     action = [action_, action_type, selected_units, target_unit, 
                 screen_target_location_x, screen_target_location_y, minimap_target_location_x, minimap_target_location_y]
+    
+    action = [actions.FUNCTIONS.no_op()]
     policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, screen_target_location_logits, minimap_target_location_logits]
     new_state = core_new_state
     
     return action, policy_logits, new_state
 
-
-agent1 = Agent(race='Terran')
-agent1.make_model()
-
-agent2 = Agent()
-'''
-obs = env.reset()
-core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
-for i in range(0, 1000):
-  print("i: " + str(i))
-  # action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
-
-  action_1, policy_logits_1, new_state_1 = agent1.step(obs[0][3], core_prev_state)
-  #print("new_state_1[0].shape: " + str(new_state_1[0].shape))
-  #print("new_state_1[1].shape: " + str(new_state_1[1].shape))
-  #print("action_1: " + str(action_1))
-  core_prev_state = new_state_1
-
-  #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
-  action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
-  print("action_1[0][0]: " + str(action_1[0][0]))
-  obs = env.step([action_1[0][0], action_2])
-  #print("env.action_space: " + str(env.action_space))
-  #print("obs[0][1]: " + str(obs[0][1]))
-  #print("obs[0][0]: " + str(obs[0][0]))
-  #print("obs[1][0]: " + str(obs[1][0]))
-  print("")
-'''
-replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
-replay.get_random_trajectory()
-
-replay_index = 0
-core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
-scce = tf.keras.losses.SparseCategoricalCrossentropy()
-optimizer = tf.keras.optimizers.Adam(0.001)
-writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Implementation/tfboard")
-for p in range(0, 1000):
-  print("replay_index: " + str(replay_index))
-
-  online_variables = agent1.agent_model.trainable_variables
-  with tf.GradientTape() as tape:
-    tape.watch(online_variables)
-
+  def unroll(self, trajectory):
     feature_screen_list = []
     embedded_feature_units_list = []
     core_state0_list = []
@@ -245,16 +199,13 @@ for p in range(0, 1000):
     scalar_context_list = []
     acts_human_list = []
     acts_agent_list = []
-    for i in range(replay_index, replay_index + 4):
-      trajectory = replay.home_trajectory[i][0]
-      acts_human = replay.home_trajectory[i][1]
-      #print("acts_human: " + str(acts_human))
-      action_1, policy_logits_1, new_state_1 = agent1.step(trajectory, core_prev_state)
-      acts_agent_list.append(action_1)
-      acts_human_list.append(acts_human)
-      core_prev_state = new_state_1
 
-      feature_screen, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(agent1, trajectory)
+    core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
+    for replay_index in range(0, len(trajectory)):
+      obs_human = trajectory[replay_index][0]
+      act_human = trajectory[replay_index][1]
+      action, policy_logits, new_state = self.step(obs_human, core_prev_state)        
+      feature_screen, embedded_feature_units, embedded_scalar, scalar_context = get_model_input(self, obs_human)
       feature_screen_list.append(feature_screen)
       embedded_feature_units_list.append(embedded_feature_units)
       core_state0_list.append(core_prev_state[0])
@@ -267,164 +218,76 @@ for p in range(0, 1000):
     core_state_array = (np.vstack(core_state0_list), np.vstack(core_state1_list))  
     embedded_scalar_array = np.vstack(embedded_scalar_list)
     scalar_context_array = np.vstack(scalar_context_list)
+      
+    predict_value = self.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
+                                              embedded_scalar_array, scalar_context_array])
 
-    predict_value = agent1.agent_model([feature_screen_array, embedded_feature_units_array, core_state_array, 
-                                                embedded_scalar_array, scalar_context_array])
-    all_losses = 0 
-    for i in range(0, 4):
-      acts_human = acts_human_list[i]
-      #print("acts_human: " + str(acts_human))
+    policy_logits = predict_value
+    baselines = None
 
-      for act_human in acts_human:
-        #print("act_human: " + str(act_human))
-        human_function = str(act_human.function)
-        if int(act_human.function) == 2 or int(act_human.function) == 3 or int(act_human.function) == 4 or int(act_human.function) == 5 \
-            or int(act_human.function) == 6:
-          # _Functions.select_control_group, 
-          human_action_with_argument = [int(act_human.function), int(act_human.arguments[0][0])]
-          human_action_index = action_id_list.index(human_action_with_argument)
-        else:
-          human_arguments = str(act_human.arguments)
-          human_action_name = human_function.split('.')[-1]
-          human_action_index = action_id_list.index([int(actions._Functions[human_action_name])])
+    return policy_logits, baselines
 
-        if human_action_index != predict_value[1][i].numpy():
-          action_true = [human_action_index]
-          action_pred = predict_value[0][i]
 
-          action_loss = scce(action_true, action_pred)
-          all_losses += 0.5 *action_loss
-        else:
-          print("act_human: " + str(act_human))
-          print("act_human.arguments: " + str(act_human.arguments))
-          '''
-          outputs=[action_type_logits, action_type, selected_units_logits, selected_units, target_unit_logits, target_unit, 
-                     screen_target_location_logits, screen_target_location, minimap_target_location_logits, minimap_target_location,
-                     final_memory_state, final_carry_state, autoregressive_embedding_action]
-          '''
-          selected_units_pred = predict_value[2][i]
-          target_unit_pred = predict_value[4][i]
-          screen_target_location_pred = predict_value[6][i]
-          minimap_target_location_pred = predict_value[8][i]
-          
-          print("selected_units_pred.shape: " + str(selected_units_pred.shape))
-          print("target_unit_pred.shape: " + str(target_unit_pred.shape))
-          print("screen_target_location_pred.shape: " + str(screen_target_location_pred.shape))
-          print("minimap_target_location_pred.shape: " + str(minimap_target_location_pred.shape))
+agent1 = Agent(race='Terran')
+agent1.make_model()
 
-          arg_list = action_type_list[human_action_index][0].args
-          print("arg_list: " + str(arg_list))
-          for i, arg in enumerate(arg_list):
-            print("arg.id: " + str(arg.id))
-            #print("arg[i]: " + str(arg[i]))
-            human_arg = act_human.arguments[i]
-            print("human_arg: " + str(human_arg))
-            
-            if arg.id == 0:
-              # action_type_arg.name: screen
-              # action_type_arg.sizes: (0, 0)human_arg[0] * 256 + human_arg[1]
-              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
-              screen_position_agent = [screen_target_location_pred]
-              screen_loss = scce(screen_position_human, screen_position_agent)
-              all_losses += 0.2 * screen_loss
-            elif arg.id == 1:
-              # action_type_arg.name: minimap
-              # action_type_arg.sizes: (0, 0)
+agent2 = Agent()
+'''
+obs = env.reset()
+core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
+for i in range(0, 100000):
+  print("i: " + str(i))
+  # action_1 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
 
-              #print("human_arg[0]: " + str(human_arg[0]))
-              #print("human_arg[1]: " + str(human_arg[1]))
-              minimap_position_human = [int(human_arg[0]) * 128 + int(human_arg[1])]
-              minimap_position_agent = [screen_target_location_pred]
-              minimap_loss = scce(minimap_position_human, minimap_position_agent)
-              all_losses += 0.2 * minimap_loss
-            elif arg.id == 2:
-              # action_type_arg.name: screen2
-              # action_type_arg.sizes: (0, 0)
-              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
-              screen_position_agent = [screen_target_location_pred]
-              screen_loss = scce(screen_position_human, screen_position_agent)
-              all_losses += 0.2 * screen_loss
-            elif arg.id == 3:
-              pass
-              # action_type_arg.name: queued
-              # action_type_arg.sizes: (2,)
-              #act_name = 'now'
-              #if act_name == 'now':
-              #  argument.append([0])
-              #elif act_name == 'queued':
-              #  argument.append([1])
-            elif arg.id == 4:
-              # action_type_arg.name: control_group_act
-              # action_type_arg.sizes: (5,)
-              pass
-            elif arg.id == 5:
-              # action_type_arg.name: control_group_id
-              # action_type_arg.sizes: (10,)
-              control_group_id_human = [int(human_arg)]
-              control_group_id_agent = [selected_units_pred]
+  action_1, policy_logits_1, new_state_1 = agent1.step(obs[0][3], core_prev_state)
+  #print("new_state_1[0].shape: " + str(new_state_1[0].shape))
+  #print("new_state_1[1].shape: " + str(new_state_1[1].shape))
+  #print("action_1: " + str(action_1))
+  core_prev_state = new_state_1
 
-              control_group_id_loss = scce(control_group_id_human, control_group_id_agent)
-              all_losses += 0.2 * control_group_id_loss
-            elif arg.id == 6:
-              # action_type_arg.name: select_point_act
-              # action_type_arg.sizes: (4,)
-              pass
-            elif arg.id == 7:
-              # action_type_arg.name: select_add
-              # action_type_arg.sizes: (2,)
-              pass
-            elif arg.id == 8:
-              # action_type_arg.name: select_unit_act
-              # action_type_arg.sizes: (4,)
-              pass
-            elif arg.id == 9:
-              # action_type_arg.name: select_unit_id
-              # action_type_arg.sizes: (500,)
-              selected_unit_id_human = [int(human_arg)]
-              selected_unit_id_agent = [selected_units_pred]
+  #action_2, policy_logits_2, new_state_2 = agent2.step(obs[1])
+  action_2 = [actions.FUNCTIONS.no_op(), actions.FUNCTIONS.no_op()]
+  print("action_1: " + str(action_1))
+  obs = env.step([action_1, action_2])
+  #print("env.action_space: " + str(env.action_space))
+  #print("obs[0][1]: " + str(obs[0][1]))
+  #print("obs[0][0]: " + str(obs[0][0]))
+  #print("obs[1][0]: " + str(obs[1][0]))
+  print("")
+'''
+replay = Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+replay.get_random_trajectory()
 
-              selected_unit_id_loss = scce(selected_unit_id_human, selected_unit_id_agent)
-              all_losses += 0.2 * selected_unit_id_loss
-            elif arg.id == 10:
-              # action_type_arg.name: select_worker
-              # action_type_arg.sizes: (4,)
-              pass
-            elif arg.id == 11:
-              # action_type_arg.name: build_queue_id
-              # action_type_arg.sizes: (10,)
-              build_queue_id_human = [int(human_arg)]
-              build_queue_id_agent = [selected_units_pred]
+replay_index = 0
+core_prev_state = (np.zeros([1,128]), np.zeros([1,128]))
+#scce = tf.keras.losses.kullback_leibler_divergence()
+scce = tf.keras.losses.SparseCategoricalCrossentropy()
+optimizer = tf.keras.optimizers.Adam(0.001)
+writer = tf.summary.create_file_writer("/media/kimbring2/Steam/AlphaStar_Implementation/tfboard")
+#test_result = agent1.unroll(replay)
+#print("test_result.shape: " + str(test_result.shape))
 
-              build_queue_id_loss = scce(build_queue_id_human, build_queue_id_agent)
-              all_losses += 0.2 * build_queue_id_loss
-              argument.append(selected_units)
-            elif arg.id == 12:
-              # action_type_arg.name: unload_id
-              # action_type_arg.sizes: (500,)
-              unload_id_human = [int(human_arg)]
-              unload_id_agent = [selected_units_pred]
+batch_size = 8
+while True:
+  print("replay_index: " + str(replay_index))
 
-              unload_id_loss = scce(unload_id_human, unload_id_agent)
-              all_losses += 0.2 * unload_id_loss
-          
+  trajectorys = replay.home_trajectory[replay_index:replay_index+batch_size]
+  online_variables = agent1.agent_model.trainable_variables
+  with tf.GradientTape() as tape:
+    tape.watch(online_variables)
+    predict_value, _ = agent1.unroll(trajectorys)
 
-          '''
-          policy_logits = [action_type_logits, selected_units_logits, target_unit_logits, target_location_logits]
-          '''
-          #print("acts_agent_list[i][1]: " + str(acts_agent_list[i][1]))
-          #print("acts_agent_list[i][2]: " + str(acts_agent_list[i][2]))
-          #print("acts_agent_list[i][3]: " + str(acts_agent_list[i][3]))
-          #print("acts_agent_list[i][4]: " + str(acts_agent_list[i][4]))
-          #print("acts_agent_list[i][5]: " + str(acts_agent_list[i][5]))
-
-    if all_losses != 0:
-      print("all_losses: " + str(all_losses))
-      #tf.summary.scalar('all_losses', all_losses, step=replay_index)
-      gradients = tape.gradient(all_losses, online_variables)
-      optimizer.apply_gradients(zip(gradients, online_variables))
-
-    print("")
-    replay_index += 1
-    if replay_index == len(replay.home_trajectory):
+    replay_index += batch_size
+    if replay_index >= len(replay.home_trajectory):
         print("Replay end")
         break
+
+    all_losses = get_supervised_loss(batch_size, scce, predict_value, trajectorys)
+    print("all_losses: " + str(all_losses))
+
+    if all_losses != 0:
+      with writer.as_default():
+        tf.summary.scalar('all_losses', all_losses, step=replay_index)
+
+      gradients = tape.gradient(all_losses, online_variables)
+      optimizer.apply_gradients(zip(gradients, online_variables))
