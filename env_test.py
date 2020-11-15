@@ -23,8 +23,6 @@ FLAGS = flags.FLAGS
 FLAGS(sys.argv)
 
 map_name = 'Simple128'
-#players = [sc2_env.Agent(sc2_env.Race['terran']), 
-#           sc2_env.Bot(sc2_env.Race['protoss'], sc2_env.Difficulty.very_easy)]
 players = [sc2_env.Agent(sc2_env.Race['terran']), 
             sc2_env.Agent(sc2_env.Race['terran'])]
 
@@ -55,8 +53,6 @@ env = sc2_env.SC2Env(
       visualize=visualize)
 
 env.reset()
-
-#env.save_replay("rulebase_replay")
 
 class Agent(object):
   """Demonstrates agent interface.
@@ -123,8 +119,6 @@ class Agent(object):
                      final_memory_state, final_carry_state, autoregressive_embedding_action]
       )
       
-      #agent_model.summary()
-
       self.agent_model = agent_model
   
   def step(self, observation, core_state):
