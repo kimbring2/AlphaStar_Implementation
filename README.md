@@ -24,6 +24,7 @@ I am writing explanation for code at Medium as series.
 2. Tutorial about agent class: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
 3. Tutorial about encoder network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
 4. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
+5. Tutorial about training network: https://dohyeongkim.medium.com/alphastar-implementation-series-part5-fd275bea68b5
 
 # Preprocess observation of PySC2
 I am adding the necessary code for running AlphaStar based on psuedocode of DeepMind paper
