@@ -27,35 +27,38 @@ _PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
 # Action part
 _NO_OP = [actions.FUNCTIONS.no_op]
-
 _MOVE_SCREEN = [actions.FUNCTIONS.Move_screen]
 _MOVE_CAMERA = [actions.FUNCTIONS.move_camera]
-_HOLDPOSITION_QUICK = [actions.FUNCTIONS.HoldPosition_quick]
 _SELECT_ARMY = [actions.FUNCTIONS.select_army]
 
+# action: 2
 _SELECT_POINT_SELECT = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select]
 _SELECT_POINT_TOGGLE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.toggle]
 _SELECT_POINT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select_all_type]
 _SELECT_POINT_ADD_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.add_all_type]
 
+# action: 3
 _SELECT_RECT_SELECT = [actions.FUNCTIONS.select_rect, actions.SelectAdd.select]
 _SELECT_RECT_ADD = [actions.FUNCTIONS.select_rect, actions.SelectAdd.add]
 
-_SELECT_IDLE_WORKER_SELECT = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select]
-_SELECT_IDLE_WORKER_ADD = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add]
-_SELECT_IDLE_WORKER_SELECT_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select_all]
-_SELECT_IDLE_WORKER_ADD_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add_all]
-
+# action: 4
 _SELECT_CONTROL_GROUP_RECALL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.recall]
 _SELECT_CONTROL_GROUP_SET = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set]
 _SELECT_CONTROL_GROUP_APPEND = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append]
 _SELECT_CONTROL_GROUP_SET_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set_and_steal]
 _SELECT_CONTROL_GROUP_APPEND_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append_and_steal]
 
+# action: 5
 _SELECT_UNIT_SELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select]
 _SELECT_UNIT_DESELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect]
 _SELECT_UNIT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select_all_type]
 _SELECT_UNIT_DESELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect_all_type]
+
+# action: 6
+_SELECT_IDLE_WORKER_SELECT = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select]
+_SELECT_IDLE_WORKER_ADD = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add]
+_SELECT_IDLE_WORKER_SELECT_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select_all]
+_SELECT_IDLE_WORKER_ADD_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add_all]
 
 _SMART_SCREEN = [actions.FUNCTIONS.Smart_screen]
 _SMART_MINIMAP = [actions.FUNCTIONS.Smart_minimap]
@@ -77,6 +80,7 @@ _BUILD_FACTORY_SCREEN = [actions.FUNCTIONS.Build_Factory_screen]
 _BUILD_ARMORY_SCREEN = [actions.FUNCTIONS.Build_Armory_screen]
 _BUILD_ENGINNERINGBAY_SCREEN = [actions.FUNCTIONS.Build_EngineeringBay_screen]
 _BUILD_GHOSTACADEMY_SCREEN = [actions.FUNCTIONS.Build_GhostAcademy_screen]
+_BUILD_MISSILETURRET_SCREEN = [actions.FUNCTIONS.Build_MissileTurret_screen]
 
 _TRAIN_MARINE_QUICK = [actions.FUNCTIONS.Train_Marine_quick]
 _TRAIN_MARAUDER_QUICK = [actions.FUNCTIONS.Train_Marauder_quick]
@@ -89,6 +93,7 @@ _TRAIN_VIKINGFIGHTER_QUICK = [actions.FUNCTIONS.Train_VikingFighter_quick]
 _TRAIN_RIBERATOR_QUICK = [actions.FUNCTIONS.Train_Liberator_quick]
 _TRAIN_WIDOWMINE_QUICK = [actions.FUNCTIONS.Train_WidowMine_quick]
 _TRAIN_RAVEN_QUICK = [actions.FUNCTIONS.Train_Raven_quick]
+_TRAIN_BANSHEE_QUICK = [actions.FUNCTIONS.Train_Banshee_quick]
 
 _HARVEST_GATHER_SCREEN = [actions.FUNCTIONS.Harvest_Gather_screen]
 _HARVEST_GATHER_SCV_SCREEN = [actions.FUNCTIONS.Harvest_Gather_SCV_screen]
@@ -99,6 +104,7 @@ _MORPH_SUPPLYDEPOT_LOWER_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Lower_quic
 _MORPH_SUPPLYDEPOT_RAISE_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick]
 _MORPH_ORBITALCOMMAND_QUICK = [actions.FUNCTIONS.Morph_OrbitalCommand_quick]
 
+_STOP_QUICK = [actions.FUNCTIONS.Stop_quick]
 _CANCEL_QUICK = [actions.FUNCTIONS.Cancel_quick]
 _LIFT_QUICK = [actions.FUNCTIONS.Lift_quick]
 _LAND_SCREEN = [actions.FUNCTIONS.Land_screen]
@@ -108,6 +114,7 @@ _PATROL_SCREEN = [actions.FUNCTIONS.Patrol_screen]
 _BUILD_QUEUE = [actions.FUNCTIONS.build_queue]
 _HALT_QUICK = [actions.FUNCTIONS.Halt_quick]
 _RETURN_SCV_QUICK = [actions.FUNCTIONS.Harvest_Return_SCV_quick]
+_HOLDPOSITION_QUICK = [actions.FUNCTIONS.HoldPosition_quick]
 
 _EFFECT_COOLDOWNMULE_SCREEN = [actions.FUNCTIONS.Effect_CalldownMULE_screen]
 _EFFECT_KD8CHARGE_SCREEN = [actions.FUNCTIONS.Effect_KD8Charge_screen]
@@ -142,11 +149,27 @@ _RESEARCH_TERRANSTRUCTUREARMORUPGRADE_QUICK = [actions.FUNCTIONS.Research_Terran
 _RESEARCH_TERRANVEHICLEANDSHIPPLATING_QUICK = [actions.FUNCTIONS.Research_TerranVehicleAndShipPlating_quick]
 _RESEARCH_TERRANVEHICLEWEAPONS_QUICK = [actions.FUNCTIONS.Research_TerranVehicleWeapons_quick]
 
+_RALLY_UNITS_SCREEN = [actions.FUNCTIONS.Rally_Units_screen]
+_RALLY_UNITS_MINIMAP = [actions.FUNCTIONS.Rally_Units_minimap]
+_RALLY_BUILDING_SCREEN = [actions.FUNCTIONS.Rally_Building_screen]
+_RALLY_BUILDING_MINIMAP = [actions.FUNCTIONS.Rally_Building_minimap]
+_RALLY_WORKERS_SCREEN = [actions.FUNCTIONS.Rally_Workers_screen]
+_RALLY_WORKERS_MINIMAP = [actions.FUNCTIONS.Rally_Workers_minimap]
+_RALLY_COMMANDCENTER_SCREEN = [actions.FUNCTIONS.Rally_CommandCenter_screen]
+_RALLY_COMMANDCENTER_MINIMAP = [actions.FUNCTIONS.Rally_CommandCenter_minimap]
+
 _UNLOAD = [actions.FUNCTIONS.unload]
-_STOP_QUICK = [actions.FUNCTIONS.Stop_quick]
 _LOADALL_QUICK = [actions.FUNCTIONS.LoadAll_quick]
 _UNLOADALL_QUICK = [actions.FUNCTIONS.UnloadAll_quick]
 
+_UNLOADALL_BUNKER_QUICK = [actions.FUNCTIONS.UnloadAll_Bunker_quick]
+_UNLOADALL_COMMANDCENTER_QUICK = [actions.FUNCTIONS.UnloadAll_CommandCenter_quick]
+_UNLOADALLAT_SCREEN = [actions.FUNCTIONS.UnloadAllAt_screen]
+_UNLOADALLAT_MINIMAP = [actions.FUNCTIONS.UnloadAllAt_minimap]
+_UNLOADALLAT_MEDIVAC_SCREEN = [actions.FUNCTIONS.UnloadAllAt_Medivac_screen]
+_UNLOADALLAT_MEDIVAC_MINIMAP = [actions.FUNCTIONS.UnloadAllAt_Medivac_minimap]
+
+'''
 action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
                         _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
                         _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _SELECT_UNIT_DESELECT, 
@@ -167,7 +190,41 @@ action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _
                         _TRAIN_RAVEN_QUICK, _BUILD_GHOSTACADEMY_SCREEN, _EFFECT_SUPPLYDROP_SCREEN, _EFFECT_TACTICALJUMP_SCREEN, _EFFECT_TACTICALJUMP_MINIMAP,
                         _EFFECT_WIDOWMINEATTACK_SCREEN, _EFFECT_WIDOWMINEATTACK_AUTOCAST, _EFFECT_YAMATOGUN_SCREEN, _EFFECT_REPAIR_SCREEN, _EFFECT_REPAIR_AUTOCAST,
                         _EFFECT_REPAIR_MULE_SCREEN, _EFFECT_REPAIR_MULE_AUTOCAST, _EFFECT_REPAIR_REPAIRDRONE_SCREEN, _EFFECT_REPAIR_REPAIRDRONE_AUTOCAST, 
-                        _EFFECT_REPAIR_SCV_SCREEN, _EFFECT_REPAIR_SCV_AUTOCAST]
+                        _EFFECT_REPAIR_SCV_SCREEN, _EFFECT_REPAIR_SCV_AUTOCAST, _TRAIN_BANSHEE_QUICK, _BUILD_MISSILETURRET_SCREEN, _UNLOADALL_BUNKER_QUICK,
+                        _UNLOADALL_COMMANDCENTER_QUICK, _UNLOADALLAT_SCREEN, _UNLOADALLAT_MINIMAP, _UNLOADALLAT_MEDIVAC_SCREEN, _UNLOADALLAT_MEDIVAC_MINIMAP,
+                        _RALLY_UNITS_SCREEN, _RALLY_UNITS_MINIMAP, _RALLY_BUILDING_SCREEN, _RALLY_BUILDING_MINIMAP, _RALLY_WORKERS_SCREEN, _RALLY_WORKERS_MINIMAP,
+                        _RALLY_COMMANDCENTER_SCREEN, _RALLY_COMMANDCENTER_MINIMAP]
+'''
+action_type_list = []
+for action in actions.FUNCTIONS:
+  #print("action.id: " + str(action.id))
+  #print("int(action.id): " + str(int(action.id)))
+  if int(action.id) == 2:
+    action_type_list.append([action, actions.SelectPointAct.select])
+    action_type_list.append([action, actions.SelectPointAct.toggle])
+    action_type_list.append([action, actions.SelectPointAct.select_all_type])
+    action_type_list.append([action, actions.SelectPointAct.add_all_type])
+  elif int(action.id) == 3:
+    action_type_list.append([action, actions.SelectAdd.select])
+    action_type_list.append([action, actions.SelectAdd.add])
+  elif int(action.id) == 4:
+    action_type_list.append([action, actions.ControlGroupAct.recall])
+    action_type_list.append([action, actions.ControlGroupAct.set])
+    action_type_list.append([action, actions.ControlGroupAct.append])
+    action_type_list.append([action, actions.ControlGroupAct.set_and_steal])
+    action_type_list.append([action, actions.ControlGroupAct.append_and_steal])
+  elif int(action.id) == 5:
+    action_type_list.append([action, actions.SelectUnitAct.select])
+    action_type_list.append([action, actions.SelectUnitAct.deselect])
+    action_type_list.append([action, actions.SelectUnitAct.select_all_type])
+    action_type_list.append([action, actions.SelectUnitAct.deselect_all_type])
+  elif int(action.id) == 6:   
+    action_type_list.append([action, actions.SelectWorker.select])
+    action_type_list.append([action, actions.SelectWorker.add])
+    action_type_list.append([action, actions.SelectWorker.select_all])
+    action_type_list.append([action, actions.SelectWorker.add_all])
+  else:
+    action_type_list.append([action])
 
 action_id_list = []
 for action_type in action_type_list:
@@ -657,7 +714,7 @@ def get_entity_obs(feature_units):
     #print("len(feature_units): " + str(len(feature_units)))
     skip_num = 0
     for unit in feature_units:
-      print("unit: " + str(unit))
+      #print("unit: " + str(unit))
       unit_info = str(units.get_unit_type(unit.unit_type))
       unit_info = unit_info.split(".")
       unit_race = unit_info[0]
@@ -672,6 +729,7 @@ def get_entity_obs(feature_units):
 
       #print("units_new.get_unit_type(unit_race, unit_name): " + str(units_new.get_unit_type(unit_race, unit_name)))
       unit_info = int(units_new.get_unit_type(unit_race, unit_name)[0])
+      print("unit_info: " + str(unit_info))
       unit_info_onehot = np.identity(256)[unit_info:unit_info+1]
       #print("unit_info_onehot: " + str(unit_info_onehot))
       unit_type.append(unit_info_onehot[0])
@@ -727,7 +785,8 @@ def get_entity_obs(feature_units):
       assigned_harvesters.append(assigned_harvesters_onehot[0])
       ideal_harvesters.append(ideal_harvesters_onehot[0])
 
-      weapon_cooldown_onehot = np.identity(32)[unit.weapon_cooldown:unit.weapon_cooldown+1]
+      #print("unit.weapon_cooldown//8 + 1: " + str(unit.weapon_cooldown//8 + 1))
+      weapon_cooldown_onehot = np.identity(32)[unit.weapon_cooldown//8:unit.weapon_cooldown//8 + 1]
       #print("weapon_cooldown_onehot: " + str(weapon_cooldown_onehot))
       weapon_cooldown.append(weapon_cooldown_onehot[0])
 
