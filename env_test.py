@@ -158,7 +158,7 @@ class Agent(object):
     scalar_context_array = np.vstack(scalar_context_list)
 
     predict_value = self.agent_model([feature_minimap_array, embedded_feature_units_array, core_state_array, 
-                                             embedded_scalar_array, scalar_context_array])
+                                              embedded_scalar_array, scalar_context_array])
     action_type_logits = predict_value[0]
     action_type = predict_value[1]
     selected_units_logits = predict_value[2]
@@ -177,9 +177,9 @@ class Agent(object):
     core_new_state = (final_memory_state, final_carry_state)
     
     action_ = get_action_from_prediction(self, observation, 
-                                                action_type.numpy(), selected_units.numpy(), target_unit.numpy(), 
-                                                screen_target_location_x.numpy(), screen_target_location_y.numpy(),
-                                                minimap_target_location_x.numpy(), minimap_target_location_y.numpy())
+                                                 action_type.numpy(), selected_units.numpy(), target_unit.numpy(), 
+                                                 screen_target_location_x.numpy(), screen_target_location_y.numpy(),
+                                                 minimap_target_location_x.numpy(), minimap_target_location_y.numpy())
     
     action = [action_, action_type, selected_units, target_unit, 
                 screen_target_location_x, screen_target_location_y, minimap_target_location_x, minimap_target_location_y]
@@ -279,8 +279,9 @@ while True:
 
     replay_index += batch_size
     if replay_index >= len(replay.home_trajectory):
-        print("Replay end")
-        break
+        replay_index = 0
+        print("Replay restart")
+        continue
 
     all_losses = get_supervised_loss(batch_size, scce, predict_value, trajectorys)
     print("all_losses: " + str(all_losses))
