@@ -8,63 +8,21 @@ import os
 import tensorflow as tf
 
 terran_building_list = ['Armory', 'AutoTurret', 'Barracks', 'BarracksFlying', 'BarracksReactor', 'BarracksTechLab', 
-                             'Bunker', 'CommandCenter', 'CommandCenterFlying', 'EngineeringBay', 'Factory', 'FactoryFlying',
-                             'FactoryReactor', 'FactoryTechLab', 'FusionCore', 'GhostAcademy', 'MissileTurret', 'OrbitalCommand',
-                             'OrbitalCommandFlying', 'PlanetaryFortress', 'Reactor', 'Refinery', 'RefineryRich', 'SensorTower', 
-                             'Starport', 'StarportFlying', 'StarportReactor', 'StarportTechLab', 'SupplyDepot', 'SupplyDepotLowered',
-                             'TechLab'] 
+                           'Bunker', 'CommandCenter', 'CommandCenterFlying', 'EngineeringBay', 'Factory', 'FactoryFlying',
+                           'FactoryReactor', 'FactoryTechLab', 'FusionCore', 'GhostAcademy', 'MissileTurret', 'OrbitalCommand',
+                           'OrbitalCommandFlying', 'PlanetaryFortress', 'Reactor', 'Refinery', 'RefineryRich', 'SensorTower', 
+                           'Starport', 'StarportFlying', 'StarportReactor', 'StarportTechLab', 'SupplyDepot', 'SupplyDepotLowered',
+                           'TechLab'] 
 terran_air_unit_list = ['Banshee', 'Battlecruiser', 'Cyclone', 'Liberator', 'LiberatorAG', 'Medivac', 'PointDefenseDrone', 'Raven',
-                             'VikingAssault']
+                          'VikingAssault']
 terran_ground_unit_list = ['Ghost', 'GhostAlternate', 'GhostNova', 'Hellion', 'Hellbat', 'KD8Charge', 'MULE', 'Marauder', 'Marine',
-                                 'Nuke', 'PointDefenseDrone']
-
+                              'Nuke', 'PointDefenseDrone']
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
 _PLAYER_SELF = features.PlayerRelative.SELF
 _PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL
 _PLAYER_ENEMY = features.PlayerRelative.ENEMY
-
-# Action part
-_NO_OP = [actions.FUNCTIONS.no_op]
-_MOVE_SCREEN = [actions.FUNCTIONS.Move_screen]
-_MOVE_CAMERA = [actions.FUNCTIONS.move_camera]
-_SELECT_ARMY = [actions.FUNCTIONS.select_army]
-
-# action: 2
-_SELECT_POINT_SELECT = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select]
-_SELECT_POINT_TOGGLE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.toggle]
-_SELECT_POINT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.select_all_type]
-_SELECT_POINT_ADD_ALL_TYPE = [actions.FUNCTIONS.select_point, actions.SelectPointAct.add_all_type]
-
-# action: 3
-_SELECT_RECT_SELECT = [actions.FUNCTIONS.select_rect, actions.SelectAdd.select]
-_SELECT_RECT_ADD = [actions.FUNCTIONS.select_rect, actions.SelectAdd.add]
-
-# action: 4
-_SELECT_CONTROL_GROUP_RECALL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.recall]
-_SELECT_CONTROL_GROUP_SET = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set]
-_SELECT_CONTROL_GROUP_APPEND = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append]
-_SELECT_CONTROL_GROUP_SET_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.set_and_steal]
-_SELECT_CONTROL_GROUP_APPEND_AND_STEAL = [actions.FUNCTIONS.select_control_group, actions.ControlGroupAct.append_and_steal]
-
-# action: 5
-_SELECT_UNIT_SELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select]
-_SELECT_UNIT_DESELECT = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect]
-_SELECT_UNIT_SELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.select_all_type]
-_SELECT_UNIT_DESELECT_ALL_TYPE = [actions.FUNCTIONS.select_unit, actions.SelectUnitAct.deselect_all_type]
-
-# action: 6
-_SELECT_IDLE_WORKER_SELECT = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select]
-_SELECT_IDLE_WORKER_ADD = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add]
-_SELECT_IDLE_WORKER_SELECT_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.select_all]
-_SELECT_IDLE_WORKER_ADD_ALL = [actions.FUNCTIONS.select_idle_worker, actions.SelectWorker.add_all]
-
-_SMART_SCREEN = [actions.FUNCTIONS.Smart_screen]
-_SMART_MINIMAP = [actions.FUNCTIONS.Smart_minimap]
-
-_ATTACK_SCREEN = [actions.FUNCTIONS.Attack_screen]
-_ATTACK_MINIMAP = [actions.FUNCTIONS.Attack_minimap]
 
 _BUILD_COMMANDCENTER_SCREEN = [actions.FUNCTIONS.Build_CommandCenter_screen]
 _BUILD_SUPPLYDEPOT_SCREEN = [actions.FUNCTIONS.Build_SupplyDepot_screen]
@@ -95,106 +53,6 @@ _TRAIN_WIDOWMINE_QUICK = [actions.FUNCTIONS.Train_WidowMine_quick]
 _TRAIN_RAVEN_QUICK = [actions.FUNCTIONS.Train_Raven_quick]
 _TRAIN_BANSHEE_QUICK = [actions.FUNCTIONS.Train_Banshee_quick]
 
-_HARVEST_GATHER_SCREEN = [actions.FUNCTIONS.Harvest_Gather_screen]
-_HARVEST_GATHER_SCV_SCREEN = [actions.FUNCTIONS.Harvest_Gather_SCV_screen]
-_HARVEST_RETURN_QUICK = [actions.FUNCTIONS.Harvest_Return_quick]
-
-_MORPH_SIEGEMODE_QUICK  = [actions.FUNCTIONS.Morph_SiegeMode_quick]
-_MORPH_SUPPLYDEPOT_LOWER_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick]
-_MORPH_SUPPLYDEPOT_RAISE_QUICK = [actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick]
-_MORPH_ORBITALCOMMAND_QUICK = [actions.FUNCTIONS.Morph_OrbitalCommand_quick]
-
-_STOP_QUICK = [actions.FUNCTIONS.Stop_quick]
-_CANCEL_QUICK = [actions.FUNCTIONS.Cancel_quick]
-_LIFT_QUICK = [actions.FUNCTIONS.Lift_quick]
-_LAND_SCREEN = [actions.FUNCTIONS.Land_screen]
-_CANCEL_LAST_QUICK = [actions.FUNCTIONS.Cancel_Last_quick]
-_RALLY_WORKERS_SCREEN = [actions.FUNCTIONS.Rally_Workers_screen]
-_PATROL_SCREEN = [actions.FUNCTIONS.Patrol_screen]
-_BUILD_QUEUE = [actions.FUNCTIONS.build_queue]
-_HALT_QUICK = [actions.FUNCTIONS.Halt_quick]
-_RETURN_SCV_QUICK = [actions.FUNCTIONS.Harvest_Return_SCV_quick]
-_HOLDPOSITION_QUICK = [actions.FUNCTIONS.HoldPosition_quick]
-
-_EFFECT_COOLDOWNMULE_SCREEN = [actions.FUNCTIONS.Effect_CalldownMULE_screen]
-_EFFECT_KD8CHARGE_SCREEN = [actions.FUNCTIONS.Effect_KD8Charge_screen]
-_EFFECT_SPRAY_SCREEN = [actions.FUNCTIONS.Effect_Spray_screen]
-_EFFECT_MEDIVACIGNITEAFTERBURNERS_QUICK = [actions.FUNCTIONS.Effect_MedivacIgniteAfterburners_quick]
-_EFFECT_STIM_QUICK = [actions.FUNCTIONS.Effect_Stim_quick]
-_EFFECT_STIM_MARAUDER_QUICK = [actions.FUNCTIONS.Effect_Stim_Marauder_quick]
-_EFFECT_STIM_MARAUDER_REDIRECT_QUICK = [actions.FUNCTIONS.Effect_Stim_Marauder_Redirect_quick]
-_EFFECT_STIM_MARINE_QUICK = [actions.FUNCTIONS.Effect_Stim_Marine_quick]
-_EFFECT_STIM_MARINE_REDIRECT_QUICK = [actions.FUNCTIONS.Effect_Stim_Marine_Redirect_quick]
-_EFFECT_SUPPLYDROP_SCREEN = [actions.FUNCTIONS.Effect_SupplyDrop_screen]
-_EFFECT_TACTICALJUMP_SCREEN = [actions.FUNCTIONS.Effect_TacticalJump_screen]
-_EFFECT_TACTICALJUMP_MINIMAP = [actions.FUNCTIONS.Effect_TacticalJump_minimap]
-_EFFECT_WIDOWMINEATTACK_SCREEN = [actions.FUNCTIONS.Effect_WidowMineAttack_screen]
-_EFFECT_WIDOWMINEATTACK_AUTOCAST = [actions.FUNCTIONS.Effect_WidowMineAttack_autocast]
-_EFFECT_YAMATOGUN_SCREEN = [actions.FUNCTIONS.Effect_YamatoGun_screen]
-_EFFECT_REPAIR_SCREEN = [actions.FUNCTIONS.Effect_Repair_screen]
-_EFFECT_REPAIR_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_autocast]
-_EFFECT_REPAIR_MULE_SCREEN = [actions.FUNCTIONS.Effect_Repair_Mule_screen]
-_EFFECT_REPAIR_MULE_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_Mule_autocast]
-_EFFECT_REPAIR_REPAIRDRONE_SCREEN = [actions.FUNCTIONS.Effect_Repair_RepairDrone_screen]
-_EFFECT_REPAIR_REPAIRDRONE_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_RepairDrone_autocast]
-_EFFECT_REPAIR_SCV_SCREEN = [actions.FUNCTIONS.Effect_Repair_SCV_screen]
-_EFFECT_REPAIR_SCV_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_SCV_autocast]
-
-_RESEARCH_STIMPACK_QUICK = [actions.FUNCTIONS.Research_Stimpack_quick]
-_RESEARCH_COMBATSHIELD_QUICK = [actions.FUNCTIONS.Research_CombatShield_quick]
-_RESEARCH_TERRANINFANTRYARMOR_QUICK = [actions.FUNCTIONS.Research_TerranInfantryArmor_quick]
-_RESEARCH_TERRANINFANTRYWEAPONS_QUICK = [actions.FUNCTIONS.Research_TerranInfantryWeapons_quick]
-_RESEARCH_TERRANSHIPWEAPONS_QUICK = [actions.FUNCTIONS.Research_TerranShipWeapons_quick]
-_RESEARCH_TERRANSTRUCTUREARMORUPGRADE_QUICK = [actions.FUNCTIONS.Research_TerranStructureArmorUpgrade_quick]
-_RESEARCH_TERRANVEHICLEANDSHIPPLATING_QUICK = [actions.FUNCTIONS.Research_TerranVehicleAndShipPlating_quick]
-_RESEARCH_TERRANVEHICLEWEAPONS_QUICK = [actions.FUNCTIONS.Research_TerranVehicleWeapons_quick]
-
-_RALLY_UNITS_SCREEN = [actions.FUNCTIONS.Rally_Units_screen]
-_RALLY_UNITS_MINIMAP = [actions.FUNCTIONS.Rally_Units_minimap]
-_RALLY_BUILDING_SCREEN = [actions.FUNCTIONS.Rally_Building_screen]
-_RALLY_BUILDING_MINIMAP = [actions.FUNCTIONS.Rally_Building_minimap]
-_RALLY_WORKERS_SCREEN = [actions.FUNCTIONS.Rally_Workers_screen]
-_RALLY_WORKERS_MINIMAP = [actions.FUNCTIONS.Rally_Workers_minimap]
-_RALLY_COMMANDCENTER_SCREEN = [actions.FUNCTIONS.Rally_CommandCenter_screen]
-_RALLY_COMMANDCENTER_MINIMAP = [actions.FUNCTIONS.Rally_CommandCenter_minimap]
-
-_UNLOAD = [actions.FUNCTIONS.unload]
-_LOADALL_QUICK = [actions.FUNCTIONS.LoadAll_quick]
-_UNLOADALL_QUICK = [actions.FUNCTIONS.UnloadAll_quick]
-
-_UNLOADALL_BUNKER_QUICK = [actions.FUNCTIONS.UnloadAll_Bunker_quick]
-_UNLOADALL_COMMANDCENTER_QUICK = [actions.FUNCTIONS.UnloadAll_CommandCenter_quick]
-_UNLOADALLAT_SCREEN = [actions.FUNCTIONS.UnloadAllAt_screen]
-_UNLOADALLAT_MINIMAP = [actions.FUNCTIONS.UnloadAllAt_minimap]
-_UNLOADALLAT_MEDIVAC_SCREEN = [actions.FUNCTIONS.UnloadAllAt_Medivac_screen]
-_UNLOADALLAT_MEDIVAC_MINIMAP = [actions.FUNCTIONS.UnloadAllAt_Medivac_minimap]
-
-'''
-action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _BUILD_REFINERY_SCREEN, _BUILD_TECHLAB_SCREEN, _BUILD_COMMANDCENTER_SCREEN, 
-                        _BUILD_REACTOR_QUICK, _BUILD_BUNKER_SCREEN, _BUILD_STARPORT_SCREEN, _BUILD_FACTORY_SCREEN, _HALT_QUICK, _RESEARCH_COMBATSHIELD_QUICK,
-                        _TRAIN_MARINE_QUICK, _TRAIN_MARAUDER_QUICK, _TRAIN_SCV_QUICK, _TRAIN_SIEGETANK_QUICK, _TRAIN_MEDIVAC_QUICK, _SELECT_UNIT_DESELECT, 
-                        _SELECT_UNIT_SELECT_ALL_TYPE, _SELECT_UNIT_DESELECT_ALL_TYPE, _TRAIN_REAPER_QUICK, _TRAIN_RIBERATOR_QUICK, _TRAIN_WIDOWMINE_QUICK,
-                        _RETURN_SCV_QUICK, _HARVEST_GATHER_SCREEN, _HARVEST_GATHER_SCV_SCREEN, _PATROL_SCREEN, _SELECT_UNIT_SELECT, _HOLDPOSITION_QUICK,
-                        _LIFT_QUICK, _MORPH_SUPPLYDEPOT_LOWER_QUICK, _LAND_SCREEN, _BUILD_TECHLAB_QUICK, _EFFECT_MEDIVACIGNITEAFTERBURNERS_QUICK,
-                        _RESEARCH_STIMPACK_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE,
-                        _ATTACK_SCREEN, _ATTACK_MINIMAP, _SMART_SCREEN, _SMART_MINIMAP, _MORPH_ORBITALCOMMAND_QUICK, _BUILD_ENGINNERINGBAY_SCREEN,
-                        _SELECT_RECT_SELECT, _SELECT_RECT_ADD, _SELECT_IDLE_WORKER_SELECT, _SELECT_IDLE_WORKER_SELECT_ALL, _SELECT_IDLE_WORKER_ADD_ALL, 
-                        _SELECT_IDLE_WORKER_ADD, _SELECT_CONTROL_GROUP_RECALL, _SELECT_CONTROL_GROUP_SET, _SELECT_CONTROL_GROUP_APPEND, _SELECT_CONTROL_GROUP_SET_AND_STEAL,
-                        _SELECT_CONTROL_GROUP_APPEND_AND_STEAL, _SELECT_ARMY, _BUILD_ARMORY_SCREEN, _BUILD_REACTOR_SCREEN, _STOP_QUICK, _UNLOADALL_QUICK,
-                        _MOVE_SCREEN, _MOVE_CAMERA, _CANCEL_LAST_QUICK, _RALLY_WORKERS_SCREEN, _HARVEST_RETURN_QUICK, _TRAIN_HELLION_QUICK, _CANCEL_QUICK,
-                        _EFFECT_COOLDOWNMULE_SCREEN, _MORPH_SUPPLYDEPOT_RAISE_QUICK, _BUILD_QUEUE, _EFFECT_KD8CHARGE_SCREEN, _UNLOAD, _EFFECT_SPRAY_SCREEN,
-                        _TRAIN_VIKINGFIGHTER_QUICK, _SELECT_POINT_SELECT, _SELECT_POINT_TOGGLE, _SELECT_POINT_SELECT_ALL_TYPE, _SELECT_POINT_ADD_ALL_TYPE,
-                        _MORPH_SIEGEMODE_QUICK, _RESEARCH_TERRANINFANTRYARMOR_QUICK, _RESEARCH_TERRANINFANTRYWEAPONS_QUICK, _RESEARCH_TERRANSHIPWEAPONS_QUICK,
-                        _RESEARCH_TERRANSTRUCTUREARMORUPGRADE_QUICK, _RESEARCH_TERRANVEHICLEANDSHIPPLATING_QUICK, _RESEARCH_TERRANVEHICLEWEAPONS_QUICK,
-                        _EFFECT_STIM_QUICK, _EFFECT_STIM_MARAUDER_QUICK, _EFFECT_STIM_MARAUDER_REDIRECT_QUICK, _EFFECT_STIM_MARINE_QUICK, _EFFECT_STIM_MARINE_REDIRECT_QUICK,
-                        _TRAIN_RAVEN_QUICK, _BUILD_GHOSTACADEMY_SCREEN, _EFFECT_SUPPLYDROP_SCREEN, _EFFECT_TACTICALJUMP_SCREEN, _EFFECT_TACTICALJUMP_MINIMAP,
-                        _EFFECT_WIDOWMINEATTACK_SCREEN, _EFFECT_WIDOWMINEATTACK_AUTOCAST, _EFFECT_YAMATOGUN_SCREEN, _EFFECT_REPAIR_SCREEN, _EFFECT_REPAIR_AUTOCAST,
-                        _EFFECT_REPAIR_MULE_SCREEN, _EFFECT_REPAIR_MULE_AUTOCAST, _EFFECT_REPAIR_REPAIRDRONE_SCREEN, _EFFECT_REPAIR_REPAIRDRONE_AUTOCAST, 
-                        _EFFECT_REPAIR_SCV_SCREEN, _EFFECT_REPAIR_SCV_AUTOCAST, _TRAIN_BANSHEE_QUICK, _BUILD_MISSILETURRET_SCREEN, _UNLOADALL_BUNKER_QUICK,
-                        _UNLOADALL_COMMANDCENTER_QUICK, _UNLOADALLAT_SCREEN, _UNLOADALLAT_MINIMAP, _UNLOADALLAT_MEDIVAC_SCREEN, _UNLOADALLAT_MEDIVAC_MINIMAP,
-                        _RALLY_UNITS_SCREEN, _RALLY_UNITS_MINIMAP, _RALLY_BUILDING_SCREEN, _RALLY_BUILDING_MINIMAP, _RALLY_WORKERS_SCREEN, _RALLY_WORKERS_MINIMAP,
-                        _RALLY_COMMANDCENTER_SCREEN, _RALLY_COMMANDCENTER_MINIMAP]
-'''
 action_type_list = []
 for action in actions.FUNCTIONS:
   #print("action.id: " + str(action.id))
@@ -327,54 +185,10 @@ def get_model_input(agent, observation):
 
   return feature_minimap, embedded_feature_units, embedded_scalar, scalar_context
 
-'''
-FunctionCall(function=<_Functions.no_op: 0>, arguments=[])
 
-FunctionCall(function=<_Functions.move_camera: 1>, arguments=[[49, 18]])
-
-[FunctionCall(function=<_Functions.build_queue: 11>, arguments=[[0]])
-
-FunctionCall(function=<_Functions.Smart_screen: 451>, arguments=[[<Queued.now: 0>], [94, 56]])
-FunctionCall(function=<_Functions.Smart_minimap: 452>, arguments=[[<Queued.now: 0>], [51, 19]])
-FunctionCall(function=<_Functions.Attack_screen: 12>, arguments=[[<Queued.now: 0>], [85, 54]])
-FunctionCall(function=<_Functions.Attack_minimap: 13>, arguments=[[<Queued.now: 0>], [51, 20]])
-FunctionCall(function=<_Functions.Effect_CalldownMULE_screen: 183>, arguments=[[<Queued.now: 0>], [24, 56]])
-
-FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.recall: 0>], [4]])
-FunctionCall(function=<_Functions.select_control_group: 4>, arguments=[[<ControlGroupAct.set: 1>], [1]]
-
-FunctionCall(function=<_Functions.select_point: 2>, arguments=[[<SelectPointAct.select: 0>], [69, 64]])
-
-FunctionCall(function=<_Functions.select_unit: 5>, arguments=[[<SelectUnitAct.select: 0>], [1]]
-
-FunctionCall(function=<_Functions.select_rect: 3>, arguments=[[<SelectAdd.add: 1>], [79, 11], [124, 49]]
-
-FunctionCall(function=<_Functions.Build_SupplyDepot_screen: 91>, arguments=[[<Queued.now: 0>], [79, 28]])
-FunctionCall(function=<_Functions.Build_CommandCenter_screen: 44>, arguments=[[<Queued.now: 0>], [66, 28]])
-FunctionCall(function=<_Functions.Build_Refinery_screen: 79>, arguments=[[<Queued.now: 0>], [116, 73]])
-FunctionCall(function=<_Functions.Build_Barracks_screen: 42>, arguments=[[<Queued.now: 0>], [66, 41]])
-
-FunctionCall(function=<_Functions.select_army: 7>, arguments=[[<SelectAdd.select: 0>]])
-
-FunctionCall(function=<_Functions.Train_SCV_quick: 490>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Train_Marine_quick: 477>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Train_SiegeTank_quick: 492>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Morph_SupplyDepot_Lower_quick: 318>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Morph_OrbitalCommand_quick: 309>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Morph_SiegeMode_quick: 317>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Morph_Unsiege_quick: 322>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Cancel_Last_quick: 168>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Research_CombatShield_quick: 361>, arguments=[[<Queued.now: 0>]])
-FunctionCall(function=<_Functions.Stop_quick: 453>, arguments=[[<Queued.now: 0>]])
-'''
-def get_action_from_prediction(agent, observation, action_type_index, selected_units, target_unit, screen_target_location_x, screen_target_location_y, 
-                                      minimap_target_location_x, minimap_target_location_y):
-  #print("action_type: " + str(action_type))
-  #print("selected_units: " + str(selected_units))
-  #print("target_unit: " + str(target_unit))
-  #print("target_location_x: " + str(target_location_x))
-  #print("target_location_y: " + str(target_location_y))
-
+def get_action_from_prediction(agent, observation, action_type_index, selected_units, target_unit, 
+                                   screen_target_location1_x, screen_target_location1_y, screen_target_location2_x, screen_target_location2_y,
+                                   minimap_target_location_x, minimap_target_location_y):
   feature_units = observation['feature_units']
   available_actions = observation['available_actions']
   
@@ -388,29 +202,13 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
   else:
     action_type_name = action_types[0]
 
-  #print("action_type: " + str(action_type))
-  #print("action_type.id: " + str(action_type.id))
-  #print("action_type.name: " + str(action_type.name))
-  #print("action_type.ability_id: " + str(action_type.ability_id))
-  #print("action_type.general_id: " + str(action_type.general_id))
-  #print("action_type.function_type: " + str(action_type.function_type))
-  # action_type.function_type: <function cmd_screen at 0x7fee91fa8ae8>
-  # action_type.function_type: <function cmd_quick at 0x7fee91fa8a60>
-
   argument = []
   #print("action_type.args: " + str(action_type.args))
-  for action_type_arg in action_type_name.args:
-    #print("action_type_arg: " + str(action_type_arg))
-    #print("action_type_arg.id: " + str(action_type_arg.id))
-    #print("action_type_arg.name: " + str(action_type_arg.name))
-    #print("action_type_arg.sizes: " + str(action_type_arg.sizes))
-    #print("action_type_arg.fn: " + str(action_type_arg.fn))
-    #print("action_type_arg.count: " + str(action_type_arg.count))
-    
+  for action_type_arg in action_type_name.args:    
     if action_type_arg.id == 0:
       # action_type_arg.name: screen
       # action_type_arg.sizes: (0, 0)
-      argument.append([screen_target_location_x[0], screen_target_location_y[0]])
+      argument.append([screen_target_location1_x[0], screen_target_location1_y[0]])
     elif action_type_arg.id == 1:
       # action_type_arg.name: minimap
       # action_type_arg.sizes: (0, 0)
@@ -418,7 +216,7 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
     elif action_type_arg.id == 2:
       # action_type_arg.name: screen2
       # action_type_arg.sizes: (0, 0)
-      argument.append([screen_target_location_x[0], screen_target_location_y[0]])
+      argument.append([screen_target_location2_x[0], screen_target_location2_y[0]])
     elif action_type_arg.id == 3:
       # action_type_arg.name: queued
       # action_type_arg.sizes: (2,)
@@ -469,9 +267,6 @@ def get_action_from_prediction(agent, observation, action_type_index, selected_u
       # action_type_arg.sizes: (500,)
       argument.append(selected_units)
   
-    #print("")
-    #print("")
-  
   #action = [actions.FUNCTIONS.no_op()]
   #print("action_type[0]: " + str(action_type[0]))
   #print("len(action_type_list): " + str(len(action_type_list)))
@@ -520,58 +315,76 @@ def get_supervised_loss(batch_size, loss_function, predict_value, trajectorys):
   scce = loss_function
   all_losses = 0 
   for i in range(0, batch_size):
+      action_type_pred = predict_value[1][i]
       selected_units_pred = predict_value[2][i]
       target_unit_pred = predict_value[4][i]
-      screen_target_location_pred = predict_value[6][i]
-      minimap_target_location_pred = predict_value[8][i]
+      screen_target_location1_pred = predict_value[6][i]
+      screen_target_location2_pred = predict_value[8][i]
+      minimap_target_location_pred = predict_value[10][i]
 
+      #print("action_type_pred: " + str(action_type_pred))
+      acts_types_agent = action_type_list[action_type_pred]
+      #print("acts_types_agent: " + str(acts_types_agent))
       acts_human = trajectorys[i][1]
 
       all_losses = 0 
       for act_human in acts_human:
-        human_function = str(act_human.function)
-        if int(act_human.function) == 2 or int(act_human.function) == 3 or int(act_human.function) == 4 or int(act_human.function) == 5 \
-            or int(act_human.function) == 6:
-          # _Functions.select_control_group, 
-          human_action_with_argument = [int(act_human.function), int(act_human.arguments[0][0])]
+        human_function = act_human.function
+        #print("human_function: " + str(human_function))
+
+        human_argument = act_human.arguments
+        #print("human_argument: " + str(human_argument))
+
+        #print("int(human_function): " + str(int(human_function)))
+
+        # select_point, select_rect, select_control_group, select_unit, select_idle_worker
+        if int(human_function) == 2 or int(human_function) == 3 or int(human_function) == 4 or int(human_function) == 5 \
+            or int(human_function) == 6:
+          human_action_with_argument = [int(human_function), int(human_argument[0][0])]
           human_action_index = action_id_list.index(human_action_with_argument)
         else:
-          human_arguments = str(act_human.arguments)
-          human_action_name = human_function.split('.')[-1]
+          #human_argument = str(act_human.arguments)
+          #print("str(human_function): " + str(str(human_function)))
+          human_action_name = str(human_function).split('.')[-1]
+          #print("human_action_name: " + str(human_action_name))
+          #print("int(actions._Functions[human_action_name]): " + str(int(actions._Functions[human_action_name])))
           human_action_index = action_id_list.index([int(actions._Functions[human_action_name])])
 
         if human_action_index != predict_value[1][i].numpy():
           action_true = [human_action_index]
           action_pred = predict_value[0][i]
+          #action_types_later = tf.convert_to_tensor(acts_types_agent[1], tf.int32)
+          #select_point_act_agent = [action_types_later]
 
           action_loss = scce(action_true, action_pred)
+          #action_loss = scce(action_true, select_point_act_agent)
           all_losses += 0.5 * action_loss
         else:
           arg_list = action_type_list[human_action_index][0].args
           for j, arg in enumerate(arg_list):
-            human_arg = act_human.arguments[j]
+            human_arg = human_argument[j]
             
             if arg.id == 0:
               # action_type_arg.name: screen
               # action_type_arg.sizes: (0, 0)human_arg[0] * 256 + human_arg[1]
-              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
-              screen_position_agent = [screen_target_location_pred]
-              screen_loss = scce(screen_position_human, screen_position_agent)
-              #all_losses += 0.1 * screen_loss
+              screen_position1_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
+              screen_position1_agent = [screen_target_location1_pred]
+              screen_loss = scce(screen_position1_human, screen_position1_agent)
+              all_losses += 0.1 * screen_loss
             elif arg.id == 1:
               # action_type_arg.name: minimap
               # action_type_arg.sizes: (0, 0)
               minimap_position_human = [int(human_arg[0]) * 128 + int(human_arg[1])]
-              minimap_position_agent = [screen_target_location_pred]
+              minimap_position_agent = [minimap_target_location_pred]
               minimap_loss = scce(minimap_position_human, minimap_position_agent)
-              #all_losses += 0.1 * minimap_loss
+              all_losses += 0.1 * minimap_loss
             elif arg.id == 2:
               # action_type_arg.name: screen2
               # action_type_arg.sizes: (0, 0)
-              screen_position_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
-              screen_position_agent = [screen_target_location_pred]
-              screen2_loss = scce(screen_position_human, screen_position_agent)
-              #all_losses += 0.1 * screen2_loss
+              screen_position2_human = [int(human_arg[0]) * 256 + int(human_arg[1])]
+              screen_position2_agent = [screen_target_location2_pred]
+              screen2_loss = scce(screen_position2_human, screen_position2_agent)
+              all_losses += 0.1 * screen2_loss
             elif arg.id == 3:
               pass
               # action_type_arg.name: queued
@@ -584,87 +397,98 @@ def get_supervised_loss(batch_size, loss_function, predict_value, trajectorys):
             elif arg.id == 4:
               # action_type_arg.name: control_group_act
               # action_type_arg.sizes: (5,)
-              pass
+              control_group_act_human = [int(human_arg[0])]
+              control_group_act_loss = tf.keras.losses.MeanSquaredError(control_group_act_human, [acts_types_agent[1]])
+              all_losses += 0.1 * control_group_act_loss
             elif arg.id == 5:
               # action_type_arg.name: control_group_id
               # action_type_arg.sizes: (10,)
               control_group_id_human = [int(human_arg[0])]
               control_group_id_agent = [selected_units_pred]
               control_group_id_loss = scce(control_group_id_human, control_group_id_agent)
-              #all_losses += 0.1 * control_group_id_loss
+              all_losses += 0.1 * control_group_id_loss
             elif arg.id == 6:
               # action_type_arg.name: select_point_act
               # action_type_arg.sizes: (4,)
-              pass
+              select_point_act_human = [int(human_arg[0])]
+              select_point_act_loss = tf.keras.losses.MeanSquaredError(control_group_act_human, [acts_types_agent[1]])
+              all_losses += 0.1 * select_point_act_loss
             elif arg.id == 7:
               # action_type_arg.name: select_add
               # action_type_arg.sizes: (2,)
-              pass
+              select_add_human = [int(human_arg[0])]
+              select_add_loss = tf.keras.losses.MeanSquaredError(select_add_human, [acts_types_agent[1]])
+              all_losses += 0.1 * select_point_act_loss
             elif arg.id == 8:
               # action_type_arg.name: select_unit_act
               # action_type_arg.sizes: (4,)
-              pass
+              select_unit_act_human = [int(human_arg[0])]
+              select_unit_act_loss = tf.keras.losses.MeanSquaredError(select_unit_act_human, [acts_types_agent[1]])
+              all_losses += 0.1 * select_unit_act_loss
             elif arg.id == 9:
               # action_type_arg.name: select_unit_id
               # action_type_arg.sizes: (500,)
               selected_unit_id_human = [int(human_arg[0])]
               selected_unit_id_agent = [selected_units_pred]
               selected_unit_id_loss = scce(selected_unit_id_human, selected_unit_id_agent)
-              #all_losses += 0.1 * selected_unit_id_loss
+              all_losses += 0.1 * selected_unit_id_loss
             elif arg.id == 10:
               # action_type_arg.name: select_worker
               # action_type_arg.sizes: (4,)
-              pass
+              select_worker_human = [int(human_arg[0])]
+              select_worker_loss = tf.keras.losses.MeanSquaredError(select_worker_human, [acts_types_agent[1]])
+              all_losses += 0.1 * select_worker_loss
             elif arg.id == 11:
               # action_type_arg.name: build_queue_id
               # action_type_arg.sizes: (10,)
               build_queue_id_human = [int(human_arg[0])]
               build_queue_id_agent = [selected_units_pred]
               build_queue_id_loss = scce(build_queue_id_human, build_queue_id_agent)
-              #all_losses += 0.1 * build_queue_id_loss
+              all_losses += 0.1 * build_queue_id_loss
             elif arg.id == 12:
               # action_type_arg.name: unload_id
               # action_type_arg.sizes: (500,)
               unload_id_human = [int(human_arg[0])]
               unload_id_agent = [selected_units_pred]
               unload_id_loss = scce(unload_id_human, unload_id_agent)
-              #all_losses += 0.1 * unload_id_loss
+              all_losses += 0.1 * unload_id_loss
+              
 
       action_true = [0]
       action_pred = predict_value[0][i]
       action_loss = scce(action_true, action_pred)
-      all_losses += 0.1 * action_loss
-
-      control_group_id_human = [0]
-      control_group_id_agent = [selected_units_pred]
-      control_group_id_loss = scce(control_group_id_human, control_group_id_agent)
-      all_losses += 0.1 * control_group_id_loss
+      all_losses += 0.0001 * action_loss
 
       selected_unit_id_human = [0]
       selected_unit_id_agent = [selected_units_pred]
       selected_unit_id_loss = scce(selected_unit_id_human, selected_unit_id_agent)
-      all_losses += 0.1 * selected_unit_id_loss
+      all_losses += 0.0001 * selected_unit_id_loss
 
       build_queue_id_human = [0]
       build_queue_id_agent = [selected_units_pred]
       build_queue_id_loss = scce(build_queue_id_human, build_queue_id_agent)
-      all_losses += 0.1 * build_queue_id_loss
+      all_losses += 0.0001 * build_queue_id_loss
 
       unload_id_human = [0]
       unload_id_agent = [selected_units_pred]
       unload_id_loss = scce(unload_id_human, unload_id_agent)
-      all_losses += 0.1 * unload_id_loss
+      all_losses += 0.0001 * unload_id_loss
 
-      screen_position_human_ = [0]
-      screen_position_agent_ = [screen_target_location_pred]
-      screen_loss = scce(screen_position_human_, screen_position_agent_)
-      all_losses += 0.1 * screen_loss
+      screen_position2_human = [0]
+      screen_position2_agent = [screen_target_location2_pred]
+      screen1_loss = scce(screen_position2_human, screen_position2_agent)
+      all_losses += 0.0001 * screen1_loss
+
+      screen_position1_human = [0]
+      screen_position1_agent = [screen_target_location1_pred]
+      screen2_loss = scce(screen_position1_human, screen_position1_agent)
+      all_losses += 0.0001 * screen2_loss
 
       minimap_position_human = [0]
       minimap_position_agent = [minimap_target_location_pred]
       minimap_loss = scce(minimap_position_human, minimap_position_agent)
-      all_losses += 0.1 * minimap_loss
-              
+      all_losses += 0.0001 * minimap_loss
+
   return all_losses
 
 
@@ -796,7 +620,8 @@ def get_entity_obs(feature_units):
       except:
         unit_info = str(units.get_unit_type(unit.unit_type))
         unit_info = unit_info.split(".")
-        print("unit_info: " + str(unit_info))
+        #print("unit_info: " + str(unit_info))
+        skip_num += 1
         continue
     
     '''
