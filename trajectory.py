@@ -11,9 +11,9 @@ import random
 import sys
 import glob
 
-from absl import app, flags
-FLAGS = flags.FLAGS
-FLAGS(sys.argv)
+#from absl import app, flags
+#FLAGS = flags.FLAGS
+#FLAGS(sys.argv)
 
 
 class Trajectory(object):
@@ -179,15 +179,18 @@ class Trajectory(object):
 					#print("#####################################################")
 					print("replay_step: " + str(replay_step))
 
+					#if replay_step == 500:
+					#	break
+
 					controller.step(step_mul)
 					obs = controller.observe()
 					#print("obs.actions: " + str(obs.actions))
 					#print("len(obs.actions): " + str(len(obs.actions)))
 					#print("")
 					#self.home_trajectory.append(obs)
-
+					'''
 					agent_act = None
-					if (len(obs.actions) != 0):
+					if len(obs.actions) != 0:
 						action = (obs.actions)[0]
 						action_feature_layer = action.action_feature_layer
 						unit_command = action_feature_layer.unit_command
@@ -213,9 +216,7 @@ class Trajectory(object):
 								#print("function_name_parse[1]: " + str(function_name_parse[1]))
 								build_name.append(unit_name)
 								build_info.append(unit_info)
-					else:
-						#print("#####################################################")
-						print("")
+					'''
 
 					if obs.player_result: # Episide over.
 						_state = StepType.LAST
@@ -225,33 +226,23 @@ class Trajectory(object):
 						_episode_steps += step_mul
 
 					agent_obs = _features.transform_obs(obs)
-					exec_actions = []
-					for ac in obs.actions:
-						try:
-							exec_act = _features.reverse_action(ac)
-						except ValueError:
-							exec_act = _features.actions.FunctionCall(0, [])  # no_op
-						exec_actions.append(exec_act)
 
+					exec_actions = []
+					if len(obs.actions) != 0:
+						for ac in obs.actions:
+							exec_act = _features.reverse_action(ac)
+							#print("exec_act: " + str(exec_act))
+							exec_actions.append(exec_act)
+					else:
+						exec_act = actions.FUNCTIONS.no_op()
+						exec_actions.append(exec_act)
+					
+					#print("exec_actions: " + str(exec_actions))
+					#print("")
+					
 					self.home_trajectory.append([agent_obs, exec_actions])
 					step = TimeStep(step_type=_state, reward=0,
-				                    discount=discount, observation=agent_obs)
-
-					score_cumulative = agent_obs['score_cumulative']
-					score_cumulative_dict = {}
-					score_cumulative_dict['score'] = score_cumulative.score
-					score_cumulative_dict['idle_production_time'] = score_cumulative.idle_production_time
-					score_cumulative_dict['idle_worker_time'] = score_cumulative.idle_worker_time
-					score_cumulative_dict['total_value_units'] = score_cumulative.total_value_units
-					score_cumulative_dict['total_value_structures'] = score_cumulative.total_value_structures
-					score_cumulative_dict['killed_value_units'] = score_cumulative.killed_value_units
-					score_cumulative_dict['killed_value_structures'] = score_cumulative.killed_value_structures
-					score_cumulative_dict['collected_minerals'] = score_cumulative.collected_minerals
-					score_cumulative_dict['collected_vespene'] = score_cumulative.collected_vespene
-					score_cumulative_dict['collection_rate_minerals'] = score_cumulative.collection_rate_minerals
-					score_cumulative_dict['collection_rate_vespene'] = score_cumulative.collection_rate_vespene
-					score_cumulative_dict['spent_minerals'] = score_cumulative.spent_minerals
-					score_cumulative_dict['spent_vespene'] = score_cumulative.spent_vespene
+				                       discount=discount, observation=agent_obs)
 
 					#print("obs.player_result: " + str(obs.player_result))
 					if obs.player_result:
@@ -259,8 +250,8 @@ class Trajectory(object):
 
 					_state = StepType.MID
 
-				self.home_BO = build_info
-				self.away_BU = score_cumulative_dict
+				#self.home_BO = build_info
+				#self.away_BU = score_cumulative_dict
 				break
 			except:
 				continue

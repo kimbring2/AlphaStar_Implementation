@@ -235,9 +235,9 @@ class SelectedUnitsHead(tf.keras.layers.Layer):
 
     batch_size = tf.shape(entity_embeddings)[0]
     dim = tf.zeros([batch_size, 512])
-    query, state_h, state_c = tf.keras.layers.LSTM(units=512, activation='relu', return_state=True, return_sequences=True)(query, 
-                                                                                                                                                   initial_state=[dim, dim], 
-                                                                                                                                                   training=True)
+    query, state_h, state_c = tf.keras.layers.LSTM(units=512, return_state=True, return_sequences=True)(query, 
+                                                                                                                  initial_state=[dim, dim], 
+                                                                                                                  training=True)
     selected_units_logits = tf.matmul(query, key, transpose_b=True)
     selected_units_logits = tf.reduce_mean(selected_units_logits, axis=1)
     selected_units = sample(selected_units_logits)
@@ -267,9 +267,9 @@ class TargetUnitHead(tf.keras.layers.Layer):
 
     batch_size = tf.shape(autoregressive_embedding)[0]
     dim = tf.zeros([batch_size, 32])
-    query, state_h, state_c = tf.keras.layers.LSTM(units=32, activation='relu', return_state=True, return_sequences=True)(query, 
-                                                                                                                                                   initial_state=[dim, dim],
-                                                                                                                                                   training=True)
+    query, state_h, state_c = tf.keras.layers.LSTM(units=32, return_state=True, return_sequences=True)(query, 
+                                                        initial_state=[dim, dim],
+                                                        training=True)
     entity_selection_result = tf.matmul(query, key, transpose_b=True)
 
     target_unit_logits = entity_selection_result[0]
@@ -310,13 +310,13 @@ class ScreenLocationHead(tf.keras.layers.Layer):
   def __init__(self):
     super(ScreenLocationHead, self).__init__()
 
-    self.model = ResBlock_CNN(32)
+    self.model = ResBlock_CNN(16)
 
   def call(self, autoregressive_embedding, action_type, map_):
     batch_size = tf.shape(autoregressive_embedding)[0]
 
     autoregressive_embedding = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding)
-    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 32, 32])
+    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 16, 16])
     map_concated = tf.concat((autoregressive_embedding_reshaped, map_), axis=1)
 
     target_location_logits = self.model(map_concated, True)
@@ -344,13 +344,13 @@ class MinimapLocationHead(tf.keras.layers.Layer):
   def __init__(self):
     super(MinimapLocationHead, self).__init__()
 
-    self.model = ResBlock_CNN(32)
+    self.model = ResBlock_CNN(16)
 
   def call(self, autoregressive_embedding, action_type, map_):
     batch_size = tf.shape(autoregressive_embedding)[0]
 
     autoregressive_embedding = tf.keras.layers.Dense(1024, activation='relu')(autoregressive_embedding)
-    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 32, 32])
+    autoregressive_embedding_reshaped = tf.reshape(autoregressive_embedding, [batch_size, -1, 16, 16])
     map_concated = tf.concat((autoregressive_embedding_reshaped, map_), axis=1)
 
     target_location_logits = self.model(map_concated, True)
