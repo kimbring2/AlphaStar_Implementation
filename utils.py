@@ -114,6 +114,7 @@ _TRAIN_RIBERATOR_QUICK = [actions.FUNCTIONS.Train_Liberator_quick]
 _TRAIN_WIDOWMINE_QUICK = [actions.FUNCTIONS.Train_WidowMine_quick]
 _TRAIN_RAVEN_QUICK = [actions.FUNCTIONS.Train_Raven_quick]
 _TRAIN_BANSHEE_QUICK = [actions.FUNCTIONS.Train_Banshee_quick]
+_TRAIN_CYCLONE_QUICK = [actions.FUNCTIONS.Train_Cyclone_quick]
 
 _HARVEST_GATHER_SCREEN = [actions.FUNCTIONS.Harvest_Gather_screen]
 _HARVEST_GATHER_SCV_SCREEN = [actions.FUNCTIONS.Harvest_Gather_SCV_screen]
@@ -147,6 +148,8 @@ _EFFECT_REPAIR_REPAIRDRONE_SCREEN = [actions.FUNCTIONS.Effect_Repair_RepairDrone
 _EFFECT_REPAIR_REPAIRDRONE_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_RepairDrone_autocast]
 _EFFECT_REPAIR_SCV_SCREEN = [actions.FUNCTIONS.Effect_Repair_SCV_screen]
 _EFFECT_REPAIR_SCV_AUTOCAST = [actions.FUNCTIONS.Effect_Repair_SCV_autocast]
+_EFFECT_SCAN_SCREEN = [actions.FUNCTIONS.Effect_Scan_screen]
+_EFFECT_SCAN_MINIMAP = [actions.FUNCTIONS.Effect_Scan_minimap]
 
 _RESEARCH_STIMPACK_QUICK = [actions.FUNCTIONS.Research_Stimpack_quick]
 _RESEARCH_COMBATSHIELD_QUICK = [actions.FUNCTIONS.Research_CombatShield_quick]
@@ -190,7 +193,7 @@ action_type_list = [_NO_OP, _BUILD_SUPPLYDEPOT_SCREEN, _BUILD_BARRACKS_SCREEN, _
                       _EFFECT_REPAIR_SCV_SCREEN, _EFFECT_REPAIR_SCV_AUTOCAST, _TRAIN_BANSHEE_QUICK, _BUILD_MISSILETURRET_SCREEN, _UNLOADALL_BUNKER_QUICK,
                       _UNLOADALL_COMMANDCENTER_QUICK, _UNLOADALLAT_SCREEN, _UNLOADALLAT_MINIMAP, _UNLOADALLAT_MEDIVAC_SCREEN, _UNLOADALLAT_MEDIVAC_MINIMAP,
                       _RALLY_UNITS_SCREEN, _RALLY_UNITS_MINIMAP, _RALLY_BUILDING_SCREEN, _RALLY_BUILDING_MINIMAP, _RALLY_WORKERS_SCREEN, _RALLY_WORKERS_MINIMAP,
-                      _RALLY_COMMANDCENTER_SCREEN, _RALLY_COMMANDCENTER_MINIMAP]
+                      _RALLY_COMMANDCENTER_SCREEN, _RALLY_COMMANDCENTER_MINIMAP, _TRAIN_CYCLONE_QUICK]
 
 '''
 action_type_list = []
@@ -544,8 +547,10 @@ def get_supervised_loss(batch_size, loss_function, predict_value, trajectorys):
               # action_type_arg.sizes: (5,)
               control_group_act_human = [int(human_arg[0])]
               #print("control_group_act_human: " + str(control_group_act_human))
-              #print("acts_types_agent[1]: " + str(acts_types_agent[1]))
-              control_group_act_loss = tf.keras.losses.MeanSquaredError()(control_group_act_human, [acts_types_agent[1]])
+              #print("int(acts_types_agent[1]).numpy(): " + str(int(acts_types_agent[1]).numpy()))
+              control_group_act_loss = tf.keras.losses.MeanSquaredError()(control_group_act_human, [int(acts_types_agent[1])]).numpy()
+              #print("control_group_act_loss: " + str(control_group_act_loss))
+              #print("all_losses: " + str(all_losses))
               all_losses += 0.1 * control_group_act_loss
             elif arg.id == 5:
               # action_type_arg.name: control_group_id
@@ -559,24 +564,30 @@ def get_supervised_loss(batch_size, loss_function, predict_value, trajectorys):
               # action_type_arg.sizes: (4,)
               select_point_act_human = [int(human_arg[0])]
               #print("select_point_act_human: " + str(select_point_act_human))
-              #print("acts_types_agent[1]: " + str(acts_types_agent[1]))
-              select_point_act_loss = tf.keras.losses.MeanSquaredError()(select_point_act_human, [acts_types_agent[1]])
+              #print("int(acts_types_agent[1]): " + str(int(acts_types_agent[1])))
+              select_point_act_loss = tf.keras.losses.MeanSquaredError()(select_point_act_human, [int(acts_types_agent[1])]).numpy()
+              #print("select_point_act_loss: " + str(select_point_act_loss))
+              #print("all_losses: " + str(all_losses))
               all_losses += 0.1 * select_point_act_loss
             elif arg.id == 7:
               # action_type_arg.name: select_add
               # action_type_arg.sizes: (2,)
               select_add_human = [int(human_arg[0])]
               #print("select_add_human: " + str(select_add_human))
-              #print("acts_types_agent[1]: " + str(acts_types_agent[1]))
-              select_add_loss = tf.keras.losses.MeanSquaredError()(select_add_human, [acts_types_agent[1]])
-              all_losses += 0.1 * select_point_act_loss
+              #print("int(acts_types_agent[1]): " + str(int(acts_types_agent[1])))
+              select_add_loss = tf.keras.losses.MeanSquaredError()(select_add_human, [int(acts_types_agent[1])]).numpy()
+              #print("select_add_loss: " + str(select_add_loss))
+              #print("all_losses: " + str(all_losses))
+              all_losses += 0.1 * select_add_loss
             elif arg.id == 8:
               # action_type_arg.name: select_unit_act
               # action_type_arg.sizes: (4,)
               select_unit_act_human = [int(human_arg[0])]
               #print("select_unit_act_human: " + str(select_unit_act_human))
-              #print("acts_types_agent[1]: " + str(acts_types_agent[1]))
-              select_unit_act_loss = tf.keras.losses.MeanSquaredError()(select_unit_act_human, [acts_types_agent[1]])
+              #print("int(acts_types_agent[1]): " + str(int(acts_types_agent[1])))
+              select_unit_act_loss = tf.keras.losses.MeanSquaredError()(select_unit_act_human, [int(acts_types_agent[1])]).numpy()
+              #print("select_unit_act_loss: " + str(select_unit_act_loss))
+              #print("all_losses: " + str(all_losses))
               all_losses += 0.1 * select_unit_act_loss
             elif arg.id == 9:
               # action_type_arg.name: select_unit_id
@@ -590,8 +601,10 @@ def get_supervised_loss(batch_size, loss_function, predict_value, trajectorys):
               # action_type_arg.sizes: (4,)
               select_worker_human = [int(human_arg[0])]
               #print("select_worker_human: " + str(select_worker_human))
-              #print("acts_types_agent[1]: " + str(acts_types_agent[1]))
-              select_worker_loss = tf.keras.losses.MeanSquaredError()(select_worker_human, [acts_types_agent[1]])
+              #print("int(acts_types_agent[1]): " + str(int(acts_types_agent[1])))
+              select_worker_loss = tf.keras.losses.MeanSquaredError()(select_worker_human, [int(acts_types_agent[1])]).numpy()
+              #print("select_worker_loss: " + str(select_worker_loss))
+              #print("all_losses: " + str(all_losses))
               all_losses += 0.1 * select_worker_loss
             elif arg.id == 11:
               # action_type_arg.name: build_queue_id
