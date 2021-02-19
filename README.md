@@ -39,3 +39,6 @@ You can run AlphaStar application by running [alphastar.py file](https://github.
 ```
 $ python alphastar.py 
 ```
+
+# License
+Apache License 2.0
