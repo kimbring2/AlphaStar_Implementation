@@ -74,7 +74,6 @@ class Core(tf.keras.layers.Layer):
 
   def call(self, feature_encoded_flatten):
     batch_size = tf.shape(feature_encoded_flatten)[0]
-
     core_output = self.network(feature_encoded_flatten)
 
     return core_output
@@ -112,7 +111,7 @@ class ActionTypeHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network = tf.keras.layers.Dense(self.output_dim, activation='softmax', name="ActionTypeHead_dense_1")
-    self.autoregressive_embedding_network = tf.keras.layers.Dense(128, activation='relu', name="ActionTypeHead_dense_2")
+    self.autoregressive_embedding_network = tf.keras.layers.Dense(256, activation='relu', name="ActionTypeHead_dense_2")
 
   def get_config(self):
     config = super().get_config().copy()
@@ -130,6 +129,9 @@ class ActionTypeHead(tf.keras.layers.Layer):
     action_type_onehot = tf.one_hot(action_type, self.output_dim)
 
     autoregressive_embedding = self.autoregressive_embedding_network(action_type_onehot)
+    #print("core_output: ", core_output)
+    #print("autoregressive_embedding: ", autoregressive_embedding)
+    autoregressive_embedding += core_output
 
     return action_type_logits, autoregressive_embedding
 

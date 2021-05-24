@@ -424,7 +424,7 @@ class A3CAgent:
           total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
-        grads, _ = tf.clip_by_global_norm(grads, 50.0)
+        #grads, _ = tf.clip_by_global_norm(grads, 5.0)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
