@@ -44,14 +44,5 @@ I am writing explanation for code at Medium as series.
 5. Tutorial about training network: https://dohyeongkim.medium.com/alphastar-implementation-series-part5-fd275bea68b5
 6. Tensorflow 2.0 inplementation of FullyConv model: https://dohyeongkim.medium.com/alphastar-implementation-series-part6-4044e7efb1ce
 
-# Preprocess observation of PySC2
-I am adding the necessary code for running AlphaStar based on psuedocode of DeepMind paper
-
-1. Extract information from Replay file: [trajectory.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/trajectory.py)
-2. Encoder, Core, Head network: [network.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/network.py)
-3. Preprocessing function : [utils.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/utils.py)
-4. Edited unit inforamtion of PySC2: [units_new.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/units_new.py)
-5. Edited upgrade inforamtion of PySC2: [upgrades_new.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/pseudocode/upgrades_new.py)
-
 # License
 Apache License 2.0
