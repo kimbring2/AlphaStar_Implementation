@@ -67,8 +67,13 @@ for name, arg_type in actions.TYPES._asdict().items():
   is_spatial_action[arg_type] = name in ['minimap', 'screen', 'screen2']
 
 
-if args.gpu == False:
-  os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+if args.gpu == True:
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  tf.config.experimental.set_virtual_device_configuration(gpus[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
+
+  #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 
 class OurModel(tf.keras.Model):
   def __init__(self):
@@ -376,14 +381,6 @@ class A3CAgent:
             running_add = running_add * gamma * (1 - dones[i]) + reward[i]
             discounted_r[i] = running_add
 
-        #print("np.mean(discounted_r): ", np.mean(discounted_r))
-        #print("np.sum(reward_copy): ", np.sum(reward_copy))
-        #if np.sum(reward_copy) > 5 and np.std(discounted_r) != 0:
-        #  discounted_r -= np.mean(discounted_r) # normalizing the result
-        #  discounted_r /= np.std(discounted_r) # divide by standard deviation
-
-        #print("discounted_r: ", discounted_r)
-
         return discounted_r
 
     #@tf.function
@@ -453,10 +450,10 @@ class A3CAgent:
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
-        self.ActorCritic.load_weights(self.workspace_path + '/Models/backup/model')
+        self.ActorCritic.load_weights(self.workspace_path + '/Models/model')
 
-    def save(self):
-        self.ActorCritic.save_weights(self.workspace_path + '/Models/model')
+    def save(self, episode):
+        self.ActorCritic.save_weights(self.workspace_path + '/Models/model' + '_' + str(episode))
 
     def PlotModel(self, score, episode):
         fig = plt.figure(figsize=(18,9))
@@ -591,7 +588,6 @@ class A3CAgent:
                 score += reward
                 state = next_state
                 if len(feature_screen_list) == 16:
-                    #print("len(feature_screen_list) == 16")
                     self.lock.acquire()
                     if args.train == True:
                       self.replay(feature_screen_list, feature_player_list, available_actions_list, 
@@ -607,8 +603,8 @@ class A3CAgent:
 
             # Update episode count
             with self.lock:
-                if args.save == True:
-                  self.save()
+                if args.save == True and self.episode % 5 ==0:
+                  self.save(self.episode)
 
                 self.PlotModel(score, self.episode)
                 print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, thread, score, average, SAVING))
