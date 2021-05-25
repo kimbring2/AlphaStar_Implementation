@@ -40,7 +40,6 @@ from absl import flags
 FLAGS = flags.FLAGS
 FLAGS(['run.py'])
 
-
 parser = argparse.ArgumentParser(description='AlphaStar implementation')
 parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
 parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
@@ -49,7 +48,7 @@ parser.add_argument('--train', type=bool, default=False, help='train model')
 parser.add_argument('--gpu', type=bool, default=False, help='use gpu')
 parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
 parser.add_argument('--save', type=bool, default=False, help='save trained model')
-args = parser.parse_args()
+argument = parser.parse_args()
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
@@ -65,7 +64,7 @@ for name, arg_type in actions.TYPES._asdict().items():
   is_spatial_action[arg_type] = name in ['minimap', 'screen', 'screen2']
 
 
-if args.gpu == True:
+if argument.gpu == True:
   gpus = tf.config.experimental.list_physical_devices('GPU')
   tf.config.experimental.set_virtual_device_configuration(gpus[0],
             [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
@@ -313,7 +312,7 @@ use_raw_units = False
 step_mul = 8
 game_steps_per_episode = None
 disable_fog = False
-visualize = args.visualize
+visualize = argument.visualize
 class A3CAgent:
     # Actor-Critic Main Optimization Algorithm
     def __init__(self, env_name):
@@ -343,7 +342,7 @@ class A3CAgent:
         self.scores, self.episodes, self.average = [], [], []
 
         #self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New/"
-        self.workspace_path = args.workspace_path
+        self.workspace_path = argument.workspace_path
         self.Save_Path = 'Models'
         
         if not os.path.exists(self.Save_Path): os.makedirs(self.Save_Path)
@@ -356,7 +355,7 @@ class A3CAgent:
                                                                                             decay_steps=10000, decay_rate=0.94)
         self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=2e-7)
 
-        if args.load == True:
+        if argument.load == True:
           self.load()
 
     def act(self, feature_screen_array, feature_player_array):
@@ -515,7 +514,7 @@ class A3CAgent:
                 feature_player_list.append(feature_player_array)
                 available_actions_list.append([available_actions])
 
-                prediction = agent.act(feature_screen_array, feature_player_array)
+                prediction = self.act(feature_screen_array, feature_player_array)
                 fn_pi = prediction[0]
                 arg_pis = prediction[1]
                 value_estimate = prediction[2]
@@ -546,7 +545,7 @@ class A3CAgent:
                 score += reward
                 state = next_state
 
-                if len(feature_screen_list) == 16 and args.train == True:
+                if (len(feature_screen_list) == 16) and (argument.train == True):
                     self.replay(feature_screen_list, feature_player_list, available_actions_list, 
                                    fn_id_list, arg_ids_list, rewards, dones)
 
@@ -556,14 +555,14 @@ class A3CAgent:
             score_list.append(score)
             average = sum(score_list) / len(score_list)
 
-            # Update episode count
-            if args.save == True and self.episode % 5 ==0:
-              self.save(self.episode)
+            self.PlotModel(score, self.episode)
+            print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
+            if(self.episode < self.EPISODES):
+              self.episode += 1
 
-              self.PlotModel(score, self.episode)
-              print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
-              if(self.episode < self.EPISODES):
-                  self.episode += 1
+            # Update episode count
+            if argument.save == True and self.episode % 5 == 0:
+              self.save(self.episode)
 
         env.close()            
 
@@ -585,7 +584,11 @@ class A3CAgent:
         self.env.close()
 
 
+def main():
+  env_name = argument.environment
+  agent = A3CAgent(env_name)
+  agent.train()
+
+
 if __name__ == "__main__":
-    env_name = args.environment
-    agent = A3CAgent(env_name)
-    agent.train()
+  main()
