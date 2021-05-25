@@ -45,9 +45,11 @@ FLAGS(['run.py'])
 
 parser = argparse.ArgumentParser(description='AlphaStar implementation')
 parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
-parser.add_argument('--visualize', type=str, default=False, help='render with pygame')
-parser.add_argument('--train', type=str, default=False, help='train model')
-parser.add_argument('--gpu', type=str, default=False, help='use gpu')
+parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
+parser.add_argument('--train', type=bool, default=False, help='train model')
+parser.add_argument('--gpu', type=bool, default=False, help='use gpu')
+parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
+parser.add_argument('--save', type=bool, default=False, help='save trained model')
 args = parser.parse_args()
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
@@ -354,7 +356,8 @@ class A3CAgent:
                                                                                             decay_steps=10000, decay_rate=0.94)
         self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=2e-7)
 
-        self.load()
+        if args.load == True:
+          self.load()
 
     def act(self, feature_screen_array, feature_player_array):
         # Use the network to predict the next action to take, using the model
@@ -602,7 +605,9 @@ class A3CAgent:
 
             # Update episode count
             with self.lock:
-                #self.save()
+                if args.save == True:
+                  self.save()
+
                 self.PlotModel(score, self.episode)
                 print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, thread, score, average, SAVING))
                 if(self.episode < self.EPISODES):
