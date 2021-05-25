@@ -14,11 +14,25 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 
 # Running test
 ## MoveToBeacon
-First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py)
+First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. First, place [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py) files in your working folder. Next, start training by using below command.
 
-To check you setting all your computer environment correctly. Run [env_test.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/env_test.py) in your terminal.
+```
+$ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --train True --gpu True --save True
+```
 
-Then, screen of PySC2 will start and you can see some activation of rule-based agent of Terran. 
+In the case of MoveToBeacon environment, as shown in the graph below, total reward will continue to decrease after reaching the maximum reward. Therefore, load a weight of well trained when testing. The weight is saved every 5 episodes under the Models folder in the specified workspace.
+
+<img src="image/MoveToBeacon_A2C.png" width="800">
+
+After the training is completed, change a weight file name of best training to model. Then, test using the following command.
+
+```
+$ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --visualize True --load True
+```
+
+<img src="image/alphastar_beacon.gif" width="800">
+
+If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well, as in the video above.
 
 # Detailed information
 I am writing explanation for code at Medium as series.
