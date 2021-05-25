@@ -22,7 +22,7 @@ $ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --tr
 
 In the case of MoveToBeacon environment, as shown in the graph below, total reward will continue to decrease after reaching the maximum reward. Therefore, load a weight of well trained when testing. The weight is saved every 5 episodes under the Models folder in the specified workspace.
 
-<img src="image/MoveToBeacon_A2C.png" width="800">
+<img src="image/MoveToBeacon_A2C.png" width="600">
 
 After the training is completed, change a weight file name of best training to model. Then, test using the following command.
 
@@ -30,7 +30,7 @@ After the training is completed, change a weight file name of best training to m
 $ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --visualize True --load True
 ```
 
-<img src="image/alphastar_beacon.gif" width="800">
+<img src="image/alphastar_beacon.gif" width="600">
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well, as in the video above.
 
