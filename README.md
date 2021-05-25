@@ -13,6 +13,9 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind.
 3. Tensorflow 2.2.0
 
 # Running test
+## MoveToBeacon
+First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py)
+
 To check you setting all your computer environment correctly. Run [env_test.py file](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/env_test.py) in your terminal.
 
 Then, screen of PySC2 will start and you can see some activation of rule-based agent of Terran. 
