@@ -44,6 +44,7 @@ FLAGS(['run.py'])
 
 
 parser = argparse.ArgumentParser(description='AlphaStar implementation')
+parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
 parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
 parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
 parser.add_argument('--train', type=bool, default=False, help='train model')
@@ -595,6 +596,7 @@ class A3CAgent:
                     if args.train == True:
                       self.replay(feature_screen_list, feature_player_list, available_actions_list, 
                                     fn_id_list, arg_ids_list, rewards, dones)
+
                     self.lock.release()
 
                     feature_screen_list, feature_player_list, available_actions_list = [], [], []
@@ -634,7 +636,6 @@ class A3CAgent:
 
 
 if __name__ == "__main__":
-    env_name = 'MoveToBeacon'
+    env_name = args.environment
     agent = A3CAgent(env_name)
-    agent.train(n_threads=1) # use as A3C
-    #agent.test('Models/Pong-v0_A3C_2.5e-05_Actor.h5', '')
+    agent.train(n_threads=1)
