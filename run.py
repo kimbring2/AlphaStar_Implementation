@@ -32,8 +32,6 @@ tfd = tfp.distributions
 from sklearn import preprocessing
 
 import cv2
-import threading
-from threading import Thread, Lock
 import time
 
 from network import ScalarEncoder, SpatialEncoder, Core, Baseline, ActionTypeHead, SpatialArgumentHead, ScalarArgumentHead
@@ -255,11 +253,8 @@ def actions_to_pysc2(fn_id, arg_ids, size):
 def mask_unused_argument_samples(fn_id, arg_ids):
   for n in range(fn_id.shape[0]):
     a_0 = fn_id[n]
-    #print("a_0: ", a_0)
     unused_types = set(ACTION_TYPES) - set(FUNCTIONS._func_list[a_0].args)
     for arg_type in unused_types:
-
-      #print("arg_type: ", arg_type)
       arg_ids[arg_type][n] = -1
 
   return fn_id, arg_ids
@@ -342,7 +337,6 @@ class A3CAgent:
               visualize=visualize)
 
         self.EPISODES, self.episode, self.max_average = 20000, 0, 50.0 # specific for pong
-        self.lock = Lock()
 
         # Instantiate games and plot memory
         self.state_list, self.action_list, self.reward_list = [], [], []
@@ -553,10 +547,8 @@ class A3CAgent:
                 state = next_state
 
                 if len(feature_screen_list) == 16 and args.train == True:
-                    self.lock.acquire()
                     self.replay(feature_screen_list, feature_player_list, available_actions_list, 
                                    fn_id_list, arg_ids_list, rewards, dones)
-                    self.lock.release()
 
                     feature_screen_list, feature_player_list, available_actions_list = [], [], []
                     fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
@@ -565,14 +557,13 @@ class A3CAgent:
             average = sum(score_list) / len(score_list)
 
             # Update episode count
-            with self.lock:
-                if args.save == True and self.episode % 5 ==0:
-                  self.save(self.episode)
+            if args.save == True and self.episode % 5 ==0:
+              self.save(self.episode)
 
-                self.PlotModel(score, self.episode)
-                print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
-                if(self.episode < self.EPISODES):
-                    self.episode += 1
+              self.PlotModel(score, self.episode)
+              print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
+              if(self.episode < self.EPISODES):
+                  self.episode += 1
 
         env.close()            
 
