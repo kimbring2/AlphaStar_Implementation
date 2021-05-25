@@ -237,6 +237,7 @@ def actions_to_pysc2(fn_id, arg_ids, size):
 def mask_unused_argument_samples(fn_id, arg_ids):
   for n in range(fn_id.shape[0]):
     a_0 = fn_id[n]
+    #print("a_0: ", a_0)
     unused_types = set(ACTION_TYPES) - set(FUNCTIONS._func_list[a_0].args)
     for arg_type in unused_types:
 
@@ -299,7 +300,7 @@ use_raw_units = False
 step_mul = 8
 game_steps_per_episode = None
 disable_fog = False
-visualize = False
+visualize = True
 class A3CAgent:
     # Actor-Critic Main Optimization Algorithm
     def __init__(self, env_name):
@@ -329,7 +330,7 @@ class A3CAgent:
         self.state_list, self.action_list, self.reward_list = [], [], []
         self.scores, self.episodes, self.average = [], [], []
 
-        self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New"
+        self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New/"
         self.Save_Path = 'Models'
         
         if not os.path.exists(self.Save_Path): os.makedirs(self.Save_Path)
@@ -342,26 +343,35 @@ class A3CAgent:
                                                                                             decay_steps=10000, decay_rate=0.94)
         self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=2e-7)
 
-        #self.load()
+        self.load()
 
     def act(self, feature_screen_array, feature_player_array):
         # Use the network to predict the next action to take, using the model
         prediction = self.ActorCritic(feature_screen_array, feature_player_array, training=False)
         return prediction
 
-    @tf.function
+    #@tf.function
     def discount_rewards(self, reward, dones):
         # Compute the gamma-discounted rewards over an episode
         gamma = 0.99    # discount rate
         running_add = 0
+        reward_copy = np.array(reward)
         discounted_r = np.zeros_like(reward)
         for i in reversed(range(0, len(reward))):
             running_add = running_add * gamma * (1 - dones[i]) + reward[i]
             discounted_r[i] = running_add
 
+        #print("np.mean(discounted_r): ", np.mean(discounted_r))
+        #print("np.sum(reward_copy): ", np.sum(reward_copy))
+        #if np.sum(reward_copy) > 5 and np.std(discounted_r) != 0:
+        #  discounted_r -= np.mean(discounted_r) # normalizing the result
+        #  discounted_r /= np.std(discounted_r) # divide by standard deviation
+
+        #print("discounted_r: ", discounted_r)
+
         return discounted_r
 
-    @tf.function
+    #@tf.function
     def compute_log_probs(self, probs, labels):
       labels = tf.maximum(labels, 0)
       indices = tf.stack([tf.range(tf.shape(labels)[0]), labels], axis=1)
@@ -370,20 +380,20 @@ class A3CAgent:
 
       return self.safe_log(tf.gather_nd(probs, indices)) # TODO tf.log should suffice
 
-    @tf.function
+    #@tf.function
     def mask_unavailable_actions(self, available_actions, fn_pi):
       fn_pi *= available_actions
       fn_pi /= tf.reduce_sum(fn_pi, axis=1, keepdims=True)
       return fn_pi
 
-    @tf.function
+    #@tf.function
     def safe_log(self, x):
       return tf.where(
           tf.equal(x, 0),
           tf.zeros_like(x),
           tf.math.log(tf.maximum(1e-12, x)))
 
-    @tf.function
+    #@tf.function
     def replay(self, feature_screen_list, feature_player_list, available_actions_list, 
                 fn_id_list, arg_ids_list, 
                 rewards, dones):
@@ -424,11 +434,11 @@ class A3CAgent:
           total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
-        #grads, _ = tf.clip_by_global_norm(grads, 5.0)
+        #grads, _ = tf.clip_by_global_norm(grads, 100.0)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
-        self.ActorCritic.load_weights(self.workspace_path + '/Models/model')
+        self.ActorCritic.load_weights(self.workspace_path + '/Models/backup/model')
 
     def save(self):
         self.ActorCritic.save_weights(self.workspace_path + '/Models/model')
@@ -566,9 +576,10 @@ class A3CAgent:
                 score += reward
                 state = next_state
                 if len(feature_screen_list) == 16:
+                    #print("len(feature_screen_list) == 16")
                     self.lock.acquire()
-                    self.replay(feature_screen_list, feature_player_list, available_actions_list, 
-                                  fn_id_list, arg_ids_list, rewards, dones)
+                    #self.replay(feature_screen_list, feature_player_list, available_actions_list, 
+                    #              fn_id_list, arg_ids_list, rewards, dones)
                     self.lock.release()
 
                     feature_screen_list, feature_player_list, available_actions_list = [], [], []
@@ -579,7 +590,7 @@ class A3CAgent:
 
             # Update episode count
             with self.lock:
-                self.save()
+                #self.save()
                 self.PlotModel(score, self.episode)
                 print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, thread, score, average, SAVING))
                 if(self.episode < self.EPISODES):
