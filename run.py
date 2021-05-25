@@ -405,7 +405,7 @@ class A3CAgent:
           tf.zeros_like(x),
           tf.math.log(tf.maximum(1e-12, x)))
 
-    #@tf.function
+    @tf.function
     def replay(self, feature_screen_list, feature_player_list, available_actions_list, 
                 fn_id_list, arg_ids_list, 
                 rewards, dones):
@@ -446,7 +446,6 @@ class A3CAgent:
           total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
-        #grads, _ = tf.clip_by_global_norm(grads, 100.0)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
@@ -494,48 +493,13 @@ class A3CAgent:
     def step(self, action, env):
         next_state = env.step(action)
         return next_state
-    
-    def train(self, n_threads):
-        self.env.close()
-        # Instantiate one environment per thread
-        self.env_name = env_name       
-        players = [sc2_env.Agent(sc2_env.Race['terran'])]
-
-        envs = [sc2_env.SC2Env(
-              map_name=env_name,
-              players=players,
-              agent_interface_format=sc2_env.parse_agent_interface_format(
-                  feature_screen=feature_screen_size,
-                  feature_minimap=feature_minimap_size,
-                  rgb_screen=rgb_screen_size,
-                  rgb_minimap=rgb_minimap_size,
-                  action_space=action_space,
-                  use_feature_units=use_feature_units),
-              step_mul=step_mul,
-              game_steps_per_episode=game_steps_per_episode,
-              disable_fog=disable_fog,
-              visualize=visualize) for i in range(n_threads)]
-
-        # Create threads
-        threads = [threading.Thread(
-                target=self.train_threading,
-                daemon=True,
-                args=(self, envs[i], i)) for i in range(n_threads)]
-
-        for t in threads:
-            time.sleep(2)
-            t.start()
-            
-        for t in threads:
-            time.sleep(10)
-            t.join()
         
-    def train_threading(self, agent, env, thread):
+    def train(self):
         score_list = []
         while self.episode < self.EPISODES:
             # Reset episode
             score, done, SAVING = 0, False, ''
-            state = self.reset(env)
+            state = self.reset(self.env)
 
             feature_screen_list, feature_player_list, available_actions_list = [], [], []
             fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
@@ -574,7 +538,7 @@ class A3CAgent:
                 arg_ids_list.append(np.array([arg_id_list]))
                 actions_list = actions_to_pysc2(fn_id, arg_ids, (32, 32))
 
-                next_state = env.step(actions_list)
+                next_state = self.env.step(actions_list)
                 done = next_state[0][0]
                 if done == StepType.LAST:
                     done = True
@@ -587,12 +551,11 @@ class A3CAgent:
 
                 score += reward
                 state = next_state
-                if len(feature_screen_list) == 16:
-                    self.lock.acquire()
-                    if args.train == True:
-                      self.replay(feature_screen_list, feature_player_list, available_actions_list, 
-                                    fn_id_list, arg_ids_list, rewards, dones)
 
+                if len(feature_screen_list) == 16 and args.train == True:
+                    self.lock.acquire()
+                    self.replay(feature_screen_list, feature_player_list, available_actions_list, 
+                                   fn_id_list, arg_ids_list, rewards, dones)
                     self.lock.release()
 
                     feature_screen_list, feature_player_list, available_actions_list = [], [], []
@@ -607,7 +570,7 @@ class A3CAgent:
                   self.save(self.episode)
 
                 self.PlotModel(score, self.episode)
-                print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, thread, score, average, SAVING))
+                print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
                 if(self.episode < self.EPISODES):
                     self.episode += 1
 
@@ -634,4 +597,4 @@ class A3CAgent:
 if __name__ == "__main__":
     env_name = args.environment
     agent = A3CAgent(env_name)
-    agent.train(n_threads=1)
+    agent.train()
