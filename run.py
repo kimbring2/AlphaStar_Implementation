@@ -353,7 +353,7 @@ class A3CAgent:
         self.ActorCritic = OurModel()
         self.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=0.0005,
                                                                                             decay_steps=10000, decay_rate=0.94)
-        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=2e-7)
+        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=1e-7)
 
         if arguments.load == True:
           self.load()
@@ -439,6 +439,7 @@ class A3CAgent:
           total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
+        grads, _ = tf.clip_by_global_norm(grads, 1.0)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
