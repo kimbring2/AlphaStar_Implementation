@@ -37,9 +37,9 @@ class SpatialEncoder(tf.keras.layers.Layer):
     self.width = width
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(13, 1, padding='same', activation=None, name="SpatialEncoder_cond2d_1"),
-       tf.keras.layers.Conv2D(16, 5, padding='same', activation=None, name="SpatialEncoder_cond2d_2"),
-       tf.keras.layers.Conv2D(32, 3, padding='same', activation=None, name="SpatialEncoder_cond2d_3"),
+       tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1"),
+       tf.keras.layers.Conv2D(16, 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2"),
+       tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3"),
     ])
 
     self.dense = tf.keras.layers.Dense(256, activation='relu', name="SpatialEncoder_dense")
@@ -129,8 +129,6 @@ class ActionTypeHead(tf.keras.layers.Layer):
     action_type_onehot = tf.one_hot(action_type, self.output_dim)
 
     autoregressive_embedding = self.autoregressive_embedding_network(action_type_onehot)
-    #print("core_output: ", core_output)
-    #print("autoregressive_embedding: ", autoregressive_embedding)
     autoregressive_embedding += core_output
 
     return action_type_logits, autoregressive_embedding
@@ -180,7 +178,8 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
     self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1"))
     self.network.add(tf.keras.layers.Softmax())
 
-    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarArgumentHead_dense_2")
+    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
+                                                                                 name="ScalarArgumentHead_dense_2")
 
   def get_config(self):
     config = super().get_config().copy()
