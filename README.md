@@ -34,6 +34,13 @@ $ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --vi
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well, as in the video above.
 
+# Issue 
+If the discounted reward is not normalized, result of training changes every time I try. That phenomenon is not for only my code but also for other A2C of PySC2 code. This problem can be solved by normalizing the discounted reward. However, training speed becomes very slower than before when the discounted reward is normalized. 
+
+The following Tensorboard graph is an example of training using one of A2C code for MoveToBeacon environment. If discounted reward is not normalized, training sometimes ends at 300 episode lines. Hence, trarning performance drops significantly in the middle in some cases.
+
+<img src="image/sc2_episode_score.png" width="600">
+
 # Detailed information
 I am writing explanation for code at Medium as series.
 
