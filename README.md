@@ -40,7 +40,7 @@ If the discounted reward is not normalized, result of training changes every tim
 The following Tensorboard graph is an example of training using one of A2C code for MoveToBeacon environment. If discounted reward is not normalized, training performance comes to maximum at 300 episode lines. Though, training performance drops significantly while training in some cases. This problem is still occurred even if I change various parameter such as a gradient clipping, learning rate, and random seed for Tensorflow and Numpy.
 
 ## Episode score(normalized discounted reward)
-<img src="image/MoveToBeacon_A2C.png" width="800">
+<img src="image/MoveToBeacon_A2C_reward_normalization.png" width="800">
 
 # Detailed information
 I am writing explanation for code at Medium as series.
