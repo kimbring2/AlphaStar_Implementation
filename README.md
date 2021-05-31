@@ -22,7 +22,7 @@ $ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --tr
 
 In the case of MoveToBeacon environment, as shown in the graph below, total reward will continue to decrease after reaching the maximum reward. Therefore, load a weight of well trained when testing. The weight is saved every 5 episodes under the Models folder in the specified workspace.
 
-<img src="image/MoveToBeacon_A2C.png" width="600">
+<img src="image/MoveToBeacon_A2C.png" width="800">
 
 After the training is completed, change a weight file name of best training to model. Then, test using the following command.
 
@@ -30,7 +30,7 @@ After the training is completed, change a weight file name of best training to m
 $ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --visualize True --load True
 ```
 
-<img src="image/alphastar_beacon.gif" width="600">
+<img src="image/alphastar_beacon.gif" width="800">
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well, as in the video above.
 
@@ -39,7 +39,7 @@ If the discounted reward is not normalized, result of training changes every tim
 
 The following Tensorboard graph is an example of training using one of A2C code for MoveToBeacon environment. If discounted reward is not normalized, training sometimes ends at 300 episode lines. Hence, trarning performance drops significantly in the middle in some cases.
 
-<img src="image/sc2_episode_score.png" width="600">
+<img src="image/sc2_episode_score.png" width="800">
 
 # Detailed information
 I am writing explanation for code at Medium as series.
