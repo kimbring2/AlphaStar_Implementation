@@ -20,14 +20,10 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --training True
 ```
 
-In the case of MoveToBeacon environment, as shown in the graph below, total reward will continue to decrease after reaching the maximum reward. Therefore, load a weight of well trained when testing. The weight is saved every 5 episodes under the Models folder in the specified workspace.
-
-<img src="image/MoveToBeacon_A2C.png" width="800">
-
-After the training is completed, change a weight file name of best training to model. Then, test using the following command.
+After the training is completed, test it using the following command.
 
 ```
-$ python run.py --workspace_path /media/kimbring2/Steam/Relational_DRL_New/ --visualize True --load True
+$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --visualize True --load True
 ```
 
 <img src="image/alphastar_beacon.gif" width="800">
