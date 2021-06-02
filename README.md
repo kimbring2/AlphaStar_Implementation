@@ -17,7 +17,7 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. First, place [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py) files in your working folder. Next, start training by using below command.
 
 ```
-$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --train True --gpu True --save True
+$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --training True
 ```
 
 In the case of MoveToBeacon environment, as shown in the graph below, total reward will continue to decrease after reaching the maximum reward. Therefore, load a weight of well trained when testing. The weight is saved every 5 episodes under the Models folder in the specified workspace.
