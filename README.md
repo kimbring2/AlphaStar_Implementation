@@ -14,7 +14,7 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 
 # Running test
 ## Network architecture
-<img src="image/network_architecture.png" width="800">
+<img src="image/network_architecture.png" width="1000">
 
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. First, place [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py) files in your working folder. Next, start training by using below command.
