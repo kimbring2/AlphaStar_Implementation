@@ -31,7 +31,7 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 
 <img src="image/alphastar_beacon.gif" width="800">
 
-If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well, as in the video above.
+If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
 
 # Issue 
 If the discounted reward is not normalized, result of training changes every time I try. That phenomenon is not for only my code but also for other A2C of PySC2 code. This problem can be solved by normalizing the discounted reward. However, training speed becomes very slower than before when the discounted reward is normalized. 
