@@ -8,6 +8,7 @@ import os
 import abc
 import sys
 import math
+import argparse
 import statistics
 import random
 import gym
@@ -31,13 +32,25 @@ tfd = tfp.distributions
 from sklearn import preprocessing
 
 import cv2
-import threading
-from threading import Thread, Lock
 import time
+
+from network import ScalarEncoder, SpatialEncoder, Core, Baseline, ActionTypeHead, SpatialArgumentHead, ScalarArgumentHead
 
 from absl import flags
 FLAGS = flags.FLAGS
-FLAGS(sys.argv)
+FLAGS(['run.py'])
+
+parser = argparse.ArgumentParser(description='AlphaStar implementation')
+parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
+parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
+parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
+parser.add_argument('--training', type=bool, default=False, help='training model')
+parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
+parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
+parser.add_argument('--save', type=bool, default=False, help='save trained model')
+parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
+parser.add_argument('--gradient_clipping', type=float, default=50.0, help='gradient clipping value')
+arguments = parser.parse_args()
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
@@ -53,249 +66,99 @@ for name, arg_type in actions.TYPES._asdict().items():
   is_spatial_action[arg_type] = name in ['minimap', 'screen', 'screen2']
 
 
-class SpatialEncoder(tf.keras.layers.Layer):
-  def __init__(self, img_height, img_width, channel):
-    super(SpatialEncoder, self).__init__()
-
-    self.img_height = img_height
-    self.img_width = img_width
-
-    self.map_model = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(13, 1, padding='same', activation=None),
-       tf.keras.layers.Conv2D(16, 5, padding='same', activation=None),
-       tf.keras.layers.Conv2D(32, 3, padding='same', activation=None),
-    ])
-
-    self.dense = tf.keras.layers.Dense(256, activation='relu')
-
-  def get_config(self):
-    config = super().get_config().copy()
-    config.update({
-        'img_height': self.img_height,
-        'img_width': self.img_width,
-    })
-    return config
-
-  def call(self, feature_screen):
-    map = self.map_model(feature_screen)
-
-    map_flatten = tf.keras.layers.Flatten()(map)
-    map_flatten = tf.cast(map_flatten, tf.float32) 
-
-    embedded_spatial = self.dense(map_flatten)
-
-    return map, embedded_spatial
-
-
-class Core(tf.keras.layers.Layer):
-  def __init__(self, unit_number):
-    super(Core, self).__init__()
-
-    self.unit_number = unit_number
-    self.dense = tf.keras.layers.Dense(128, activation='relu', kernel_initializer=initializer)
-
-  def get_config(self):
-    config = super().get_config().copy()
-    config.update({
-        'unit_number': self.unit_number
-    })
-    return config
-
-  def call(self, embedded_spatial, training=False):
-    batch_size = tf.shape(embedded_spatial)[0]
-
-    core_input = embedded_spatial
-    core_input = self.dense(core_input)
-    core_input = tf.reshape(core_input, (batch_size, -1, 64))
-
-    core_output = core_input
-
-    return core_output
-
-
-class Baseline(tf.keras.layers.Layer):
-  def __init__(self, action_num):
-    super(Baseline, self).__init__()
-
-    self.action_num = action_num
-    self.dense = tf.keras.layers.Dense(1, activation='relu', kernel_initializer=initializer)
-
-  def get_config(self):
-    config = super().get_config().copy()
-    config.update({
-        'action_num': self.action_num
-    })
-    return config
-
-  def call(self, core_output):
-    batch_size = tf.shape(core_output)[0]
-
-    lstm_output = tf.reshape(core_output, [batch_size,128])
-    baseline = core_output
-    value = self.dense(baseline)
-
-    return value
-
-
-class ActionTypeHead(tf.keras.layers.Layer):
-  def __init__(self, action_num):
-    super(ActionTypeHead, self).__init__()
-
-    self.action_num = action_num
-    self.dense = tf.keras.layers.Dense(self.action_num, name="ActionTypeHead_dense", kernel_initializer=initializer)
-
-  def get_config(self):
-    config = super().get_config().copy()
-    config.update({
-        'action_num': self.action_num
-    })
-    return config
-
-  def call(self, lstm_output):
-    batch_size = tf.shape(lstm_output)[0]
-    lstm_output = tf.reshape(lstm_output, (batch_size, 2, 64))
-    lstm_output_flatten = Flatten()(lstm_output)
-
-    action_type_logits = self.dense(lstm_output_flatten)
-    action_type = tf.random.categorical(action_type_logits, 1)
-
-    return action_type_logits, action_type
-
+if arguments.gpu_use == True:
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  tf.config.experimental.set_virtual_device_configuration(gpus[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
+else:
+  os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 class OurModel(tf.keras.Model):
   def __init__(self):
     super(OurModel, self).__init__()
 
-    #self.screen_encoder = tf.keras.Sequential([
-    #   tf.keras.layers.Conv2D(13, 1, padding='same', activation=None),
-    #   tf.keras.layers.Conv2D(16, 5, padding='same', activation=None),
-    #  tf.keras.layers.Conv2D(32, 3, padding='same', activation=None),
-    #])
-
     # State Encoder
-    self.spatial_encoder = SpatialEncoder(img_height=64, img_width=64, channel=3)
+    self.player_encoder = ScalarEncoder(output_dim=11)
+    self.screen_encoder = SpatialEncoder(height=32, width=32, channel=3)
 
     # Core
-    self.core = tf.keras.layers.Dense(256, activation='relu')
+    self.core = Core(256)
 
     # Action Head
-    self.action_type_head = tf.keras.layers.Dense(_NUM_FUNCTIONS, activation='softmax')
+    self.action_type_head = ActionTypeHead(_NUM_FUNCTIONS)
+    self.screen_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
+    self.minimap_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
+    self.screen2_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
+    self.queued_argument_head = ScalarArgumentHead(2)
+    self.control_group_act_argument_head = ScalarArgumentHead(5)
+    self.control_group_id_argument_head = ScalarArgumentHead(10)
+    self.select_point_act_argument_head = ScalarArgumentHead(4)
+    self.select_add_argument_head = ScalarArgumentHead(2)
+    self.select_unit_act_argument_head = ScalarArgumentHead(4)
+    self.select_unit_id_argument_head = ScalarArgumentHead(500)
+    self.select_worker_argument_head = ScalarArgumentHead(4)
+    self.build_queue_id_argument_head = ScalarArgumentHead(10)
+    self.unload_id_argument_head = ScalarArgumentHead(500)
 
-    self.screen = tf.keras.Sequential()
-    self.screen.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
-    self.screen.add(tf.keras.layers.Flatten())
-    self.screen.add(tf.keras.layers.Softmax())
-
-    self.minimap = tf.keras.Sequential()
-    self.minimap.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
-    self.minimap.add(tf.keras.layers.Flatten())
-    self.minimap.add(tf.keras.layers.Softmax())
-
-    self.screen2 = tf.keras.Sequential()
-    self.screen2.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
-    self.screen2.add(tf.keras.layers.Flatten())
-    self.screen2.add(tf.keras.layers.Softmax())
-
-    self.queued = tf.keras.Sequential()
-    self.queued.add(tf.keras.layers.Dense(2))
-    self.queued.add(tf.keras.layers.Softmax())
-
-    self.control_group_act = tf.keras.Sequential()
-    self.control_group_act.add(tf.keras.layers.Dense(5))
-    self.control_group_act.add(tf.keras.layers.Softmax())
-
-    self.control_group_id = tf.keras.Sequential()
-    self.control_group_id.add(tf.keras.layers.Dense(10))
-    self.control_group_id.add(tf.keras.layers.Softmax())
-
-    self.select_point_act = tf.keras.Sequential()
-    self.select_point_act.add(tf.keras.layers.Dense(4))
-    self.select_point_act.add(tf.keras.layers.Softmax())
-
-    self.select_add = tf.keras.Sequential()
-    self.select_add.add(tf.keras.layers.Dense(2))
-    self.select_add.add(tf.keras.layers.Softmax())
-
-    self.select_unit_act = tf.keras.Sequential()
-    self.select_unit_act.add(tf.keras.layers.Dense(4))
-    self.select_unit_act.add(tf.keras.layers.Softmax())
-
-    self.select_unit_id = tf.keras.Sequential()
-    self.select_unit_id.add(tf.keras.layers.Dense(500))
-    self.select_unit_id.add(tf.keras.layers.Softmax())
-
-    self.select_worker = tf.keras.Sequential()
-    self.select_worker.add(tf.keras.layers.Dense(4))
-    self.select_worker.add(tf.keras.layers.Softmax())
-
-    self.build_queue_id = tf.keras.Sequential()
-    self.build_queue_id.add(tf.keras.layers.Dense(10))
-    self.build_queue_id.add(tf.keras.layers.Softmax())
-
-    self.unload_id = tf.keras.Sequential()
-    self.unload_id.add(tf.keras.layers.Dense(500))
-    self.unload_id.add(tf.keras.layers.Softmax())
-
-    self.flatten2 = Flatten()
-    self.baseline = tf.keras.layers.Dense(1)
+    self.baseline = Baseline(256)
+    self.args_out_logits = dict()
 
   def get_config(self):
     config = super().get_config().copy()
     config.update({
-        'args_out': self.args_out
+        'args_out_logits': self.args_out_logits
     })
     return config
 
   def call(self, feature_screen, feature_player):
     batch_size = tf.shape(feature_screen)[0]
 
-    feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player, 1), 2),
-                                         tf.stack([1, 32, 32, 1]))
-    feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
-
     #feature_screen_array.shape:  (1, 32, 32, 13)
     #feature_player_array.shape:  (1, 32, 32, 11)
-    feature_screen_encoded = self.spatial_encoder(feature_screen)
+    feature_player_encoded = self.player_encoder(feature_player)
+    feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player_encoded, 1), 2),
+                                            tf.stack([1, 32, 32, 1]))
+    feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
 
+    feature_screen_encoded = self.screen_encoder(feature_screen)
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
-    feature_decoded_flatten = self.flatten2(feature_encoded)
-    core_output = self.core(feature_decoded_flatten)
 
-    action_type = self.action_type_head(core_output)
+    core_output = self.core(feature_encoded)
+    action_type_logits, autoregressive_embedding = self.action_type_head(core_output)
     
-    args_out = dict()
+    #args_out_logits = dict()
     for arg_type in actions.TYPES:
       if arg_type.name == 'screen':
-        args_out[arg_type] = self.screen(feature_encoded)
+        self.args_out_logits[arg_type] = self.screen_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
       elif arg_type.name == 'minimap':
-        args_out[arg_type] = self.minimap(feature_encoded)
+        self.args_out_logits[arg_type] = self.minimap_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
       elif arg_type.name == 'screen2':
-        args_out[arg_type] = self.screen2(feature_encoded)
+        self.args_out_logits[arg_type] = self.screen2_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
       elif arg_type.name == 'queued':
-        args_out[arg_type] = self.queued(feature_fc)
+        self.args_out_logits[arg_type] = self.queued_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'control_group_act':
-        args_out[arg_type] = self.control_group_act(feature_fc)
+        self.args_out_logits[arg_type] = self.control_group_act_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'control_group_id':
-        args_out[arg_type] = self.control_group_id(feature_fc)
+        self.args_out_logits[arg_type] = self.control_group_id_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'select_point_act':
-        args_out[arg_type] = self.select_point_act(feature_fc)
+        self.args_out_logits[arg_type] = self.select_point_act_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'select_add':
-        args_out[arg_type] = self.select_add(feature_fc)
+        self.args_out_logits[arg_type] = self.select_add_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'select_unit_act':
-        args_out[arg_type] = self.select_unit_act(feature_fc)
+        self.args_out_logits[arg_type] = self.select_unit_act_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'select_unit_id':
-        args_out[arg_type] = self.select_unit_id(feature_fc)
+        self.args_out_logits[arg_type] = self.select_unit_id_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'select_worker':
-        args_out[arg_type] = self.select_worker(feature_fc)
+        self.args_out_logits[arg_type] = self.select_worker_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'build_queue_id':
-        args_out[arg_type] = self.build_queue_id(feature_fc)
+        self.args_out_logits[arg_type] = self.build_queue_id_argument_head(core_output, autoregressive_embedding)
       elif arg_type.name == 'unload_id':
-        args_out[arg_type] = self.unload_id(feature_fc)
+        self.args_out_logits[arg_type] = self.unload_id_argument_head(core_output, autoregressive_embedding)
 
-    value = self.baseline(core_output)
+    value = self.baseline(feature_encoded, core_output)
 
-    return action_type, args_out, value
+    return action_type_logits, self.args_out_logits, value
 
 
 def check_nonzero(mask):
@@ -320,14 +183,6 @@ def preprocess_screen(screen):
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
 
   return np.concatenate(layers, axis=0)
-
-
-def preprocess_player_backup(player):
-  layers = []
-  for i in range(0, len(player)):
-    layers.append(np.ones((32,32,1)) * np.log(player[i] + 1.0))
-
-  return np.concatenate(layers, axis=2)
 
 
 FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
@@ -368,34 +223,34 @@ def actions_to_pysc2(fn_id, arg_ids, size):
   height, width = size
   actions_list = []
 
-  for n in range(fn_id.shape[0]):
-    a_0 = fn_id[n]
-    a_l = []
-    for arg_type in FUNCTIONS._func_list[a_0].args:
-      arg_id = arg_ids[arg_type][n]
-      if is_spatial_action[arg_type]:
-        arg = [arg_id % width, arg_id // height]
-      else:
-        arg = [arg_id]
+  a_0 = int(fn_id)
+  a_l = []
+  for arg_type in FUNCTIONS._func_list[a_0].args:
+    arg_id = int(arg_ids[arg_type])
+    if is_spatial_action[arg_type]:
+      arg = [arg_id % width, arg_id // height]
+    else:
+      arg = [arg_id]
 
-      a_l.append(arg)
+    a_l.append(arg)
 
-    action = FunctionCall(a_0, a_l)
-    actions_list.append(action)
+  action = FunctionCall(a_0, a_l)
+  actions_list.append(action)
 
   return actions_list
 
 
 def mask_unused_argument_samples(fn_id, arg_ids):
-  for n in range(fn_id.shape[0]):
-    a_0 = fn_id[n]
-    unused_types = set(ACTION_TYPES) - set(FUNCTIONS._func_list[a_0].args)
-    for arg_type in unused_types:
+  args_out = dict()
+  for arg_type in actions.TYPES:
+    args_out[arg_type] = arg_ids[arg_type][0]
 
-      #print("arg_type: ", arg_type)
-      arg_ids[arg_type][n] = -1
+  a_0 = fn_id[0]
+  unused_types = set(ACTION_TYPES) - set(FUNCTIONS._func_list[int(a_0)].args)
+  for arg_type in unused_types:
+    args_out[arg_type] = -1
 
-  return fn_id, arg_ids
+  return fn_id, args_out
 
 
 def mask_unavailable_actions(available_actions, fn_pi):
@@ -405,17 +260,18 @@ def mask_unavailable_actions(available_actions, fn_pi):
   return fn_pi
 
 
+@tf.function
 def sample_actions(available_actions, fn_pi, arg_pis):
   def sample(probs):
     dist = tfd.Categorical(probs=probs)
     return dist.sample()
 
   fn_pi = mask_unavailable_actions(available_actions, fn_pi)
-  fn_samples = sample(fn_pi).numpy()
+  fn_samples = sample(fn_pi)
 
   arg_samples = dict()
   for arg_type, arg_pi in arg_pis.items():
-    arg_samples[arg_type] = sample(arg_pi).numpy()
+    arg_samples[arg_type] = sample(arg_pi)
 
   return fn_samples, arg_samples
 
@@ -451,12 +307,11 @@ use_raw_units = False
 step_mul = 8
 game_steps_per_episode = None
 disable_fog = False
-visualize = False
-class A3CAgent:
+visualize = arguments.visualize
+class A2CAgent:
     # Actor-Critic Main Optimization Algorithm
     def __init__(self, env_name):
         # Initialization
-        # Environment and PPO parameters
         self.env_name = env_name       
         players = [sc2_env.Agent(sc2_env.Race['terran'])]
         self.env = sc2_env.SC2Env(
@@ -475,13 +330,13 @@ class A3CAgent:
               visualize=visualize)
 
         self.EPISODES, self.episode, self.max_average = 20000, 0, 50.0 # specific for pong
-        self.lock = Lock()
 
         # Instantiate games and plot memory
         self.state_list, self.action_list, self.reward_list = [], [], []
         self.scores, self.episodes, self.average = [], [], []
 
-        self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New"
+        #self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New/"
+        self.workspace_path = arguments.workspace_path
         self.Save_Path = 'Models'
         
         if not os.path.exists(self.Save_Path): os.makedirs(self.Save_Path)
@@ -490,13 +345,14 @@ class A3CAgent:
 
         # Create Actor-Critic network model
         self.ActorCritic = OurModel()
-        self.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=0.0005,
-                                                                                            decay_steps=10000, decay_rate=0.94)
-        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=2e-7)
+        self.learning_rate = arguments.learning_rate
+        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=1e-7)
 
-        #ssself.load()
+        if arguments.load == True:
+          self.load()
 
-    def act(self, feature_screen_array, feature_player_array):
+    @tf.function
+    def act(self, feature_screen_array, feature_player_array, available_actions):
         # Use the network to predict the next action to take, using the model
         prediction = self.ActorCritic(feature_screen_array, feature_player_array, training=False)
         return prediction
@@ -506,20 +362,25 @@ class A3CAgent:
         # Compute the gamma-discounted rewards over an episode
         gamma = 0.99    # discount rate
         running_add = 0
+        reward_copy = np.array(reward)
         discounted_r = np.zeros_like(reward)
         for i in reversed(range(0, len(reward))):
             running_add = running_add * gamma * (1 - dones[i]) + reward[i]
             discounted_r[i] = running_add
+
+        if np.std(discounted_r) != 0:
+          discounted_r -= np.mean(discounted_r) # normalizing the result
+          discounted_r /= np.std(discounted_r) # divide by standard deviation
 
         return discounted_r
 
     @tf.function
     def compute_log_probs(self, probs, labels):
       labels = tf.maximum(labels, 0)
+      labels = tf.cast(labels, 'int32')
       indices = tf.stack([tf.range(tf.shape(labels)[0]), labels], axis=1)
       result = tf.gather_nd(probs, indices)
       result = self.safe_log(result)
-
       return self.safe_log(tf.gather_nd(probs, indices)) # TODO tf.log should suffice
 
     @tf.function
@@ -535,10 +396,9 @@ class A3CAgent:
           tf.zeros_like(x),
           tf.math.log(tf.maximum(1e-12, x)))
 
-    @tf.function
     def replay(self, feature_screen_list, feature_player_list, available_actions_list, 
-                fn_id_list, arg_ids_list, 
-                rewards, dones):
+                 fn_id_list, arg_ids_list, 
+                 rewards, dones):
         feature_screen_array = tf.concat(feature_screen_list, 0)
         feature_player_array = tf.concat(feature_player_list, 0)
         available_actions_array = tf.concat(available_actions_list, 0)
@@ -553,7 +413,7 @@ class A3CAgent:
           value_estimate = prediction[2]
 
           discounted_r_array = tf.cast(discounted_r_array, 'float32')
-          advantage = discounted_r_array - tf.stack(value_estimate)[:, 0] 
+          advantage = discounted_r_array - tf.stack(value_estimate)[:, 0]
 
           fn_pi = self.mask_unavailable_actions(available_actions_array, fn_pi) # TODO: this should be unneccessary
 
@@ -562,7 +422,6 @@ class A3CAgent:
           for index, arg_type in enumerate(actions.TYPES):
             arg_id = arg_ids_array[:,index]
             arg_pi = arg_pis[arg_type]
-
             arg_log_prob = self.compute_log_probs(arg_pi, arg_id)
             arg_log_prob *= tf.cast(tf.not_equal(arg_id, -1), 'float32')
             log_prob += arg_log_prob
@@ -576,7 +435,7 @@ class A3CAgent:
           total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
-        grads, _ = tf.clip_by_global_norm(grads, 50.0)
+        grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def load(self):
@@ -616,56 +475,21 @@ class A3CAgent:
             cv2.destroyAllWindows()
             return
 
-    def reset(self, env):
-        frame = env.reset()
+    def reset(self):
+        frame = self.env.reset()
         state = frame
         return state
 
-    def step(self, action, env):
-        next_state = env.step(action)
+    def step(self, action):
+        next_state = self.env.step(action)
         return next_state
-    
-    def train(self, n_threads):
-        self.env.close()
-        # Instantiate one environment per thread
-        self.env_name = env_name       
-        players = [sc2_env.Agent(sc2_env.Race['terran'])]
-
-        envs = [sc2_env.SC2Env(
-              map_name=env_name,
-              players=players,
-              agent_interface_format=sc2_env.parse_agent_interface_format(
-                  feature_screen=feature_screen_size,
-                  feature_minimap=feature_minimap_size,
-                  rgb_screen=rgb_screen_size,
-                  rgb_minimap=rgb_minimap_size,
-                  action_space=action_space,
-                  use_feature_units=use_feature_units),
-              step_mul=step_mul,
-              game_steps_per_episode=game_steps_per_episode,
-              disable_fog=disable_fog,
-              visualize=visualize) for i in range(n_threads)]
-
-        # Create threads
-        threads = [threading.Thread(
-                target=self.train_threading,
-                daemon=True,
-                args=(self, envs[i], i)) for i in range(n_threads)]
-
-        for t in threads:
-            time.sleep(2)
-            t.start()
-            
-        for t in threads:
-            time.sleep(10)
-            t.join()
         
-    def train_threading(self, agent, env, thread):
+    def train(self):
         score_list = []
         while self.episode < self.EPISODES:
             # Reset episode
             score, done, SAVING = 0, False, ''
-            state = self.reset(env)
+            state = self.reset()
 
             feature_screen_list, feature_player_list, available_actions_list = [], [], []
             fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
@@ -682,15 +506,15 @@ class A3CAgent:
 
                 feature_screen_array = np.array([feature_screen])
                 feature_player_array = np.array([feature_player])
+                available_actions_array = np.array([available_actions])
 
                 feature_screen_list.append(feature_screen_array)
                 feature_player_list.append(feature_player_array)
                 available_actions_list.append([available_actions])
-
-                prediction = agent.act(feature_screen_array, feature_player_array)
+                
+                prediction = self.act(feature_screen_array, feature_player_array, available_actions)
                 fn_pi = prediction[0]
                 arg_pis = prediction[1]
-                value_estimate = prediction[2]
 
                 fn_samples, arg_samples = sample_actions(available_actions, fn_pi, arg_pis)
                 fn_id, arg_ids = mask_unused_argument_samples(fn_samples, arg_samples)
@@ -699,18 +523,18 @@ class A3CAgent:
                 arg_id_list = []
                 for arg_type in arg_ids.keys():
                     arg_id = arg_ids[arg_type]
-                    arg_id_list.append(arg_id[0])
-
+                    arg_id_list.append(arg_id)
+                
                 arg_ids_list.append(np.array([arg_id_list]))
                 actions_list = actions_to_pysc2(fn_id, arg_ids, (32, 32))
-
-                next_state = env.step(actions_list)
+                
+                next_state = self.env.step(actions_list)
                 done = next_state[0][0]
                 if done == StepType.LAST:
                     done = True
                 else:
                     done = False
-
+                
                 reward = float(next_state[0][1])
                 rewards.append(reward)
                 dones.append(done)
@@ -718,26 +542,24 @@ class A3CAgent:
                 score += reward
                 state = next_state
                 if len(feature_screen_list) == 16:
-                    self.lock.acquire()
-                    self.replay(feature_screen_list, feature_player_list, available_actions_list, 
-                                  fn_id_list, arg_ids_list, rewards, dones)
-                    self.lock.release()
+                    if arguments.training == True:
+                      self.replay(feature_screen_list, feature_player_list, available_actions_list, 
+                                     fn_id_list, arg_ids_list, rewards, dones)
 
                     feature_screen_list, feature_player_list, available_actions_list = [], [], []
                     fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
-
+                
             score_list.append(score)
             average = sum(score_list) / len(score_list)
 
             # Update episode count
-            with self.lock:
-                self.save()
-                self.PlotModel(score, self.episode)
-                print("episode: {}/{}, thread: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, thread, score, average, SAVING))
-                if(self.episode < self.EPISODES):
-                    self.episode += 1
-
-        env.close()            
+            self.save()
+            self.PlotModel(score, self.episode)
+            print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
+            if(self.episode < self.EPISODES):
+                self.episode += 1
+            
+        self.env.close()      
 
     def test(self, Actor_name, Critic_name):
         self.load(Actor_name, Critic_name)
@@ -757,8 +579,11 @@ class A3CAgent:
         self.env.close()
 
 
+def main():
+  env_name = arguments.environment
+  agent = A2CAgent(env_name)
+  agent.train()
+
+
 if __name__ == "__main__":
-    env_name = 'MoveToBeacon'
-    agent = A3CAgent(env_name)
-    agent.train(n_threads=1) # use as A3C
-    #agent.test('Models/Pong-v0_A3C_2.5e-05_Actor.h5', '')
+  main()

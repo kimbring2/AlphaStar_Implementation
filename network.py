@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_probability as tfp
+from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten
 from tensorflow_probability.python.distributions import kullback_leibler
 
 tfd = tfp.distributions
@@ -25,7 +26,6 @@ class ScalarEncoder(tf.keras.layers.Layer):
   def call(self, scalar_feature):
     batch_size = tf.shape(scalar_feature)[0]
     scalar_feature_encoded = self.network(scalar_feature)
-
     return scalar_feature_encoded
 
 
@@ -39,7 +39,7 @@ class SpatialEncoder(tf.keras.layers.Layer):
     self.network = tf.keras.Sequential([
        tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1"),
        tf.keras.layers.Conv2D(16, 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2"),
-       tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3"),
+       tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3")
     ])
 
     self.dense = tf.keras.layers.Dense(256, activation='relu', name="SpatialEncoder_dense")
@@ -72,9 +72,12 @@ class Core(tf.keras.layers.Layer):
     })
     return config
 
-  def call(self, feature_encoded_flatten):
-    batch_size = tf.shape(feature_encoded_flatten)[0]
-    core_output = self.network(feature_encoded_flatten)
+  def call(self, feature_encoded):
+    batch_size = tf.shape(feature_encoded)[0]
+
+    feature_encoded_flattened = Flatten()(feature_encoded)
+
+    core_output = self.network(feature_encoded_flattened)
 
     return core_output
 
@@ -86,7 +89,8 @@ class Baseline(tf.keras.layers.Layer):
     self.output_dim = output_dim
     self.network = tf.keras.layers.Dense(1, activation='relu')
 
-    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', name="Baseline_dense")
+    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
+                                                                                 name="Baseline_dense")
 
   def get_config(self):
     config = super().get_config().copy()
@@ -95,11 +99,13 @@ class Baseline(tf.keras.layers.Layer):
     })
     return config
 
-  def call(self, core_output, autoregressive_embedding):
+  def call(self, feature_encoded, core_output):
     batch_size = tf.shape(core_output)[0]
 
-    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder(autoregressive_embedding)
-    network_input = tf.concat([core_output, encoded_autoregressive_embedding], axis=1)
+    feature_encoded_flattened = tf.keras.layers.Flatten()(feature_encoded)
+    feature_encoded_flattened_embedding = self.autoregressive_embedding_encoder(feature_encoded_flattened)
+
+    network_input = tf.concat([core_output, feature_encoded_flattened_embedding], axis=1)
     value = self.network(network_input)
 
     return value
@@ -146,8 +152,10 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
     self.network.add(tf.keras.layers.Flatten())
     self.network.add(tf.keras.layers.Softmax())
 
-    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.height*self.width, activation='relu', 
-                                                                                 name="SpatialArgumentHead_dense")
+    self.autoregressive_embedding_encoder_1 = tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                                  name="SpatialArgumentHead_dense_1")
+    self.autoregressive_embedding_encoder_2 = tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                                  name="SpatialArgumentHead_dense_2")
 
   def get_config(self):
     config = super().get_config().copy()
@@ -157,13 +165,16 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
     })
     return config
 
-  def call(self, encoded_spatial_feature, autoregressive_embedding):
-    batch_size = tf.shape(encoded_spatial_feature)[0]
+  def call(self, feature_encoded, core_output, autoregressive_embedding):
+    batch_size = tf.shape(core_output)[0]
 
-    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder(autoregressive_embedding)
-    encoded_autoregressive_embedding = tf.reshape(encoded_autoregressive_embedding, (batch_size,self.height,self.width,1))
-    network_input = tf.concat([encoded_spatial_feature, encoded_autoregressive_embedding], axis=3)
+    encoded_core_output = self.autoregressive_embedding_encoder_1(core_output)
+    encoded_core_output = tf.reshape(encoded_core_output, (batch_size, self.height, self.width, 1))
 
+    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder_2(autoregressive_embedding)
+    encoded_autoregressive_embedding = tf.reshape(encoded_autoregressive_embedding, (batch_size, self.height, self.width, 1))
+
+    network_input = tf.concat([feature_encoded, encoded_core_output, encoded_autoregressive_embedding], axis=3)
     action_logits = self.network(network_input)
 
     return action_logits
@@ -178,6 +189,8 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
     self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1"))
     self.network.add(tf.keras.layers.Softmax())
 
+    self.feature_encoded_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
+                                                                     name="ScalarArgumentHead_dense_1")
     self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
                                                                                  name="ScalarArgumentHead_dense_2")
 
@@ -191,7 +204,11 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
   def call(self, core_output, autoregressive_embedding):
     batch_size = tf.shape(core_output)[0]
 
+    #feature_encoded_flattened = tf.keras.layers.Flatten()(feature_encoded)
+    #feature_encoded_flattened_embedding = self.feature_encoded_encoder(feature_encoded_flattened)
+
     encoded_autoregressive_embedding = self.autoregressive_embedding_encoder(autoregressive_embedding)
+
     network_input = tf.concat([core_output, encoded_autoregressive_embedding], axis=1)
     action_logits = self.network(network_input)
     
