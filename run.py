@@ -156,7 +156,7 @@ class OurModel(tf.keras.Model):
       elif arg_type.name == 'unload_id':
         self.args_out_logits[arg_type] = self.unload_id_argument_head(core_output, autoregressive_embedding)
 
-    value = self.baseline(feature_encoded, core_output)
+    value = self.baseline(core_output)
 
     return action_type_logits, self.args_out_logits, value
 
@@ -368,9 +368,9 @@ class A2CAgent:
             running_add = running_add * gamma * (1 - dones[i]) + reward[i]
             discounted_r[i] = running_add
 
-        if np.std(discounted_r) != 0:
-          discounted_r -= np.mean(discounted_r) # normalizing the result
-          discounted_r /= np.std(discounted_r) # divide by standard deviation
+        #if np.std(discounted_r) != 0:
+        #  discounted_r -= np.mean(discounted_r) # normalizing the result
+        #  discounted_r /= np.std(discounted_r) # divide by standard deviation
 
         return discounted_r
 

@@ -99,13 +99,14 @@ class Baseline(tf.keras.layers.Layer):
     })
     return config
 
-  def call(self, feature_encoded, core_output):
+  def call(self, core_output):
     batch_size = tf.shape(core_output)[0]
 
-    feature_encoded_flattened = tf.keras.layers.Flatten()(feature_encoded)
-    feature_encoded_flattened_embedding = self.autoregressive_embedding_encoder(feature_encoded_flattened)
+    #feature_encoded_flattened = tf.keras.layers.Flatten()(feature_encoded)
+    #feature_encoded_flattened_embedding = self.autoregressive_embedding_encoder(feature_encoded_flattened)
 
-    network_input = tf.concat([core_output, feature_encoded_flattened_embedding], axis=1)
+    #network_input = tf.concat([core_output, feature_encoded_flattened_embedding], axis=1)
+    network_input = core_output
     value = self.network(network_input)
 
     return value
