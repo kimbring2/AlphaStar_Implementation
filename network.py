@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_probability as tfp
-from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten
+from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten, LSTM, Reshape
 from tensorflow_probability.python.distributions import kullback_leibler
 
 tfd = tfp.distributions
@@ -13,7 +13,7 @@ class ScalarEncoder(tf.keras.layers.Layer):
     self.output_dim = output_dim
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense")
+       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense_2")
     ])
 
   def get_config(self):
@@ -42,7 +42,9 @@ class SpatialEncoder(tf.keras.layers.Layer):
        tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3")
     ])
 
-    self.dense = tf.keras.layers.Dense(256, activation='relu', name="SpatialEncoder_dense")
+    #self.dense = tf.keras.Sequential([tf.keras.layers.Dense(256, activation='relu', name="SpatialEncoder_dense_1"),
+    #                                         tf.keras.layers.Dense(256, activation='relu', name="SpatialEncoder_dense_2")
+    #                                        ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -63,7 +65,14 @@ class Core(tf.keras.layers.Layer):
     super(Core, self).__init__()
 
     self.unit_number = unit_number
-    self.network = tf.keras.layers.Dense(256, activation='relu', name="core_dense")
+    #self.network = tf.keras.Sequential([tf.keras.layers.Dense(512, activation='relu', name="core_dense_1"),
+    #                                            tf.keras.layers.Dense(256, activation='relu', name="core_dense_2")
+    #                                           ])
+    self.network = tf.keras.Sequential([LSTM(256, activation='relu', name="core_lstm", return_sequences=True),
+                                                Reshape((172, 256)),
+                                                Flatten(),
+                                                tf.keras.layers.Dense(256, activation='relu', name="core_dense")
+                                               ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -76,6 +85,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
+    feature_encoded_flattened = Reshape((172, 256))(feature_encoded_flattened)
 
     core_output = self.network(feature_encoded_flattened)
 
@@ -87,10 +97,13 @@ class Baseline(tf.keras.layers.Layer):
     super(Baseline, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.layers.Dense(1, activation='relu')
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(1, activation='relu')])
 
-    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                                 name="Baseline_dense")
+    #self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(256, activation='relu', 
+    #                                                                             name="Baseline_dense_1"),
+    #                                                                           tf.keras.layers.Dense(self.output_dim, activation='relu', 
+    #                                                                             name="Baseline_dense_2")
+    #                                                                           ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -117,9 +130,11 @@ class ActionTypeHead(tf.keras.layers.Layer):
     super(ActionTypeHead, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.layers.Dense(self.output_dim, activation='softmax', name="ActionTypeHead_dense_1")
-    self.autoregressive_embedding_network = tf.keras.layers.Dense(256, activation='relu', name="ActionTypeHead_dense_2")
-
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='softmax', name="ActionTypeHead_dense_2")
+                                               ])
+    self.autoregressive_embedding_network = tf.keras.Sequential([
+                                                                               tf.keras.layers.Dense(256, activation='relu', name="ActionTypeHead_dense_5")
+                                                                               ])
   def get_config(self):
     config = super().get_config().copy()
     config.update({
@@ -148,15 +163,19 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
     self.height = height
     self.width = width
 
-    self.network = tf.keras.Sequential()
-    self.network.add(tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d"))
-    self.network.add(tf.keras.layers.Flatten())
-    self.network.add(tf.keras.layers.Softmax())
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_1"),
+                                                tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2"),
+                                                tf.keras.layers.Flatten(),
+                                                tf.keras.layers.Softmax()])
 
-    self.autoregressive_embedding_encoder_1 = tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                                  name="SpatialArgumentHead_dense_1")
-    self.autoregressive_embedding_encoder_2 = tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+    self.autoregressive_embedding_encoder_1 = tf.keras.Sequential([
+                                                                                 tf.keras.layers.Dense(self.height * self.width, activation='relu', 
                                                                                   name="SpatialArgumentHead_dense_2")
+                                                                                ])
+    self.autoregressive_embedding_encoder_2 = tf.keras.Sequential([
+                                                                                 tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                                  name="SpatialArgumentHead_dense_4")
+                                                                                ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -187,13 +206,17 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network = tf.keras.Sequential()
-    self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1"))
+    self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2"))
     self.network.add(tf.keras.layers.Softmax())
 
-    self.feature_encoded_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                     name="ScalarArgumentHead_dense_1")
-    self.autoregressive_embedding_encoder = tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                                 name="ScalarArgumentHead_dense_2")
+    #self.feature_encoded_encoder = tf.keras.Sequential([tf.keras.layers.Dense(256, activation='relu', 
+    #                                                                 name="ScalarArgumentHead_dense_3"),
+    #                                                               tf.keras.layers.Dense(self.output_dim, activation='relu', 
+    #                                                                 name="ScalarArgumentHead_dense_4")
+    #                                                              ])
+    self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
+                                                                                  name="ScalarArgumentHead_dense_6")
+                                                                              ])
 
   def get_config(self):
     config = super().get_config().copy()

@@ -46,11 +46,16 @@ parser.add_argument('--workspace_path', type=str, help='root directory for check
 parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
 parser.add_argument('--training', type=bool, default=False, help='training model')
 parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
+parser.add_argument('--seed', type=int, default=123, help='seed number')
 parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
 parser.add_argument('--save', type=bool, default=False, help='save trained model')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
 parser.add_argument('--gradient_clipping', type=float, default=50.0, help='gradient clipping value')
 arguments = parser.parse_args()
+
+seed = arguments.seed
+tf.random.set_seed(seed)
+np.random.seed(seed)
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_RELATIVE_SCALE = features.SCREEN_FEATURES.player_relative.scale
@@ -124,7 +129,9 @@ class OurModel(tf.keras.Model):
     feature_screen_encoded = self.screen_encoder(feature_screen)
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
 
+    #print("feature_encoded.shape: ", feature_encoded.shape)
     core_output = self.core(feature_encoded)
+    #print("core_output.shape: ", core_output.shape)
     action_type_logits, autoregressive_embedding = self.action_type_head(core_output)
     
     #args_out_logits = dict()
@@ -346,7 +353,15 @@ class A2CAgent:
         # Create Actor-Critic network model
         self.ActorCritic = OurModel()
         self.learning_rate = arguments.learning_rate
-        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=1e-7)
+
+        initial_learning_rate = self.learning_rate
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate,
+            decay_steps=10000,
+            decay_rate=0.94,
+            staircase=True)
+
+        self.optimizer = tf.keras.optimizers.RMSprop(lr_schedule, epsilon=1e-5)
 
         if arguments.load == True:
           self.load()
