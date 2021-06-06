@@ -27,6 +27,8 @@ After the training is completed, test it using the following command. Training p
 
 <img src="image/MoveToBeacon_A2C.png" width="800">
 
+After placing [pretrained model](https://drive.google.com/drive/folders/1GQ9FsKGXYjWXhUI_6mBv2247IhU8iYma?usp=sharing) under Models folder of your workspace, run below command to test.
+
 ```
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --visualize True --load True
 ```
