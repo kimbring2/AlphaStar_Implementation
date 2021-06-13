@@ -1,0 +1,345 @@
+from pysc2.env import sc2_env, available_actions_printer
+from pysc2.lib import actions, features, units
+from pysc2.lib.actions import FunctionCall, FUNCTIONS
+from pysc2.env.environment import TimeStep, StepType
+from pysc2.lib.actions import TYPES as ACTION_TYPES
+
+import tensorflow as tf
+import numpy as np
+import tensorflow_probability as tfp
+from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten, LSTM, Reshape
+from tensorflow_probability.python.distributions import kullback_leibler
+
+
+mse_loss = tf.keras.losses.MeanSquaredError()
+kl_loss = tf.keras.losses.KLDivergence()
+cce = tf.keras.losses.CategoricalCrossentropy()
+
+class A2CAgent:
+    # Actor-Critic Main Optimization Algorithm
+    def __init__(self, network, learning_rate, gradient_clipping):
+        # Instantiate games and plot memory
+        #self.state_list, self.action_list, self.reward_list = [], [], []
+        #self.scores, self.episodes, self.average = [], [], []
+
+        #self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New/"
+        #self.workspace_path = arguments.workspace_path
+        #self.Save_Path = 'Models'
+        
+        #if not os.path.exists(self.Save_Path): os.makedirs(self.Save_Path)
+        #self.path = '{}_A2C'.format(self.env_name)
+        #self.Model_name = os.path.join(self.Save_Path, self.path)
+
+        # Create Actor-Critic network model
+        self.ActorCritic = network
+        self.learning_rate = learning_rate
+        self.gradient_clipping = gradient_clipping
+
+        initial_learning_rate = self.learning_rate
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate,
+            decay_steps=10000,
+            decay_rate=0.94,
+            staircase=True)
+
+        self.optimizer = tf.keras.optimizers.RMSprop(lr_schedule, epsilon=1e-5)
+        self.optimizer_sl = tf.keras.optimizers.Adam(lr_schedule, epsilon=1e-7)
+
+        #if arguments.load == True:
+        #  self.load()
+
+    @tf.function
+    def act(self, feature_screen_array, feature_player_array, feature_units_array, available_actions, memory_state, carry_state):
+        # Use the network to predict the next action to take, using the model
+        prediction = self.ActorCritic(feature_screen_array, feature_player_array, feature_units_array, memory_state, carry_state, training=False)
+        return prediction
+    
+    @tf.function
+    def discount_rewards(self, reward, dones):
+        # Compute the gamma-discounted rewards over an episode
+        gamma = 0.99    # discount rate
+        running_add = 0
+        reward_copy = np.array(reward)
+        discounted_r = np.zeros_like(reward)
+        for i in reversed(range(0, len(reward))):
+            running_add = running_add * gamma * (1 - dones[i]) + reward[i]
+            discounted_r[i] = running_add
+
+        return discounted_r
+    
+    @tf.function
+    def compute_log_probs(self, probs, labels):
+      labels = tf.maximum(labels, 0)
+      labels = tf.cast(labels, 'int32')
+      indices = tf.stack([tf.range(tf.shape(labels)[0]), labels], axis=1)
+      result = tf.gather_nd(probs, indices)
+      result = self.safe_log(result)
+      return self.safe_log(tf.gather_nd(probs, indices)) # TODO tf.log should suffice
+    
+    @tf.function
+    def mask_unavailable_actions(self, available_actions, fn_pi):
+      fn_pi *= available_actions
+      fn_pi /= tf.reduce_sum(fn_pi, axis=1, keepdims=True)
+      return fn_pi
+
+    @tf.function
+    def safe_log(self, x):
+      return tf.where(
+          tf.equal(x, 0),
+          tf.zeros_like(x),
+          tf.math.log(tf.maximum(1e-12, x)))
+    
+    def supervised_replay(self, replay_feature_screen_list, replay_feature_player_list, replay_available_actions_list,
+                                replay_fn_id_list, replay_args_ids_list,
+                                memory_state_list, carry_state_list):
+        replay_feature_screen_array = tf.concat(replay_feature_screen_list, 0)
+        replay_feature_player_array = tf.concat(replay_feature_player_list, 0)
+        replay_available_actions_array = tf.concat(replay_available_actions_list, 0)
+        replay_fn_id_array = tf.concat(replay_fn_id_list, 0)
+        #replay_fn_id_array = tf.reshape(replay_fn_id_list, [16, 1])
+        replay_arg_ids_array = tf.concat(replay_args_ids_list, 0)
+
+        home_memory_state_array = tf.concat(memory_state_list, 0)
+        home_carry_state_array = tf.concat(carry_state_list, 0)
+        with tf.GradientTape() as tape:
+          #print("replay_feature_screen_array: ", replay_feature_screen_array)
+          prediction = self.ActorCritic(replay_feature_screen_array, replay_feature_player_array, 
+                                               home_memory_state_array, home_carry_state_array, training=True)
+          fn_pi = prediction[0]
+          arg_pis = prediction[1]
+
+          fn_pi = self.mask_unavailable_actions(replay_available_actions_array, fn_pi) 
+          replay_fn_id_array_onehot = tf.one_hot(replay_fn_id_array, 573)
+
+          #print("replay_fn_id_array_onehot: ", replay_fn_id_array_onehot)
+          fn_id_loss = cce(replay_fn_id_array_onehot, fn_pi)
+          #print("fn_id_loss: ", fn_id_loss)
+
+          arg_ids_loss = 0 
+          for index, arg_type in enumerate(actions.TYPES):
+            replay_arg_id = replay_arg_ids_array[:,index]
+            arg_pi = arg_pis[arg_type]
+            replay_arg_id_array_onehot = tf.one_hot(replay_arg_id, arg_pi.shape[1])
+
+            arg_id_loss = cce(replay_arg_id_array_onehot, arg_pi)
+            #arg_id_loss *= tf.cast(tf.not_equal(replay_arg_id, -1), 'float32')
+            #print("arg_id_loss: ", arg_id_loss)
+            arg_ids_loss += arg_id_loss
+
+          #print("fn_id_loss: ", fn_id_loss)
+          #print("arg_ids_loss: ", arg_ids_loss)
+          total_loss = fn_id_loss + arg_ids_loss
+
+        print("total_loss: ", total_loss)
+        print("")
+        grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
+        grads, _ = tf.clip_by_global_norm(grads, self.gradient_clipping)
+        self.optimizer_sl.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
+
+    def reinforcement_replay(self, feature_screen_list, feature_player_list, feature_units_list, available_actions_list, 
+                                fn_id_list, arg_ids_list, 
+                                rewards, dones, 
+                                home_memory_state_list, home_carry_state_list):
+        feature_screen_array = tf.concat(feature_screen_list, 0)
+        feature_player_array = tf.concat(feature_player_list, 0)
+        feature_units_array = tf.concat(feature_units_list, 0)
+        available_actions_array = tf.concat(available_actions_list, 0)
+        arg_ids_array = tf.concat(arg_ids_list, 0)
+
+        home_memory_state_array = tf.concat(home_memory_state_list, 0)
+        home_carry_state_array = tf.concat(home_carry_state_list, 0)
+
+        # Compute discounted rewards
+        discounted_r_array = self.discount_rewards(rewards, dones)
+        with tf.GradientTape() as tape:
+          prediction = self.ActorCritic(feature_screen_array, feature_player_array, feature_units_array, 
+                                            home_memory_state_array, home_carry_state_array, 
+                                            training=True)
+          fn_pi = prediction[0]
+          arg_pis = prediction[1]
+          value_estimate = prediction[2]
+
+          discounted_r_array = tf.cast(discounted_r_array, 'float32')
+          advantage = discounted_r_array - tf.stack(value_estimate)[:, 0]
+
+          #print("available_actions_array: ", available_actions_array)
+          #print("fn_pi: ", fn_pi)
+          fn_pi = self.mask_unavailable_actions(available_actions_array, fn_pi) # TODO: this should be unneccessary
+
+          fn_log_prob = self.compute_log_probs(fn_pi, fn_id_list)
+          log_prob = fn_log_prob
+          for index, arg_type in enumerate(actions.TYPES):
+            arg_id = arg_ids_array[:,index]
+            arg_pi = arg_pis[arg_type]
+            arg_log_prob = self.compute_log_probs(arg_pi, arg_id)
+            arg_log_prob *= tf.cast(tf.not_equal(arg_id, -1), 'float32')
+            log_prob += arg_log_prob
+
+          actor_loss = -tf.math.reduce_mean(log_prob * advantage) 
+          actor_loss = tf.cast(actor_loss, 'float32')
+
+          critic_loss = mse_loss(tf.stack(value_estimate)[:, 0] , discounted_r_array)
+          critic_loss = tf.cast(critic_loss, 'float32')
+        
+          total_loss = actor_loss + critic_loss * 0.5
+
+        grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
+        grads, _ = tf.clip_by_global_norm(grads, self.gradient_clipping)
+        self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
+    '''
+    def load(self):
+        self.ActorCritic.load_weights(self.workspace_path + '/Models/model')
+    '''
+    '''
+    def save(self):
+        self.ActorCritic.save_weights(self.workspace_path + '/Models/model')
+    '''
+    '''
+    def PlotModel(self, score, episode):
+        fig = plt.figure(figsize=(18,9))
+        ax = fig.add_subplot(111)
+        ax.locator_params(numticks=12)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        self.scores.append(score)
+        self.episodes.append(episode)
+        self.average.append(sum(self.scores[-50:]) / len(self.scores[-50:]))
+        #if str(episode)[-2:] == "0": # much faster than episode % 100
+        if True:
+            #new_list = range(0, 500)
+            #plt.xticks(new_list)
+            ax.plot(self.episodes, self.scores, 'b')
+            ax.plot(self.episodes, self.average, 'r')
+            ax.set_ylabel('Score', fontsize=18)
+            ax.set_xlabel('Steps', fontsize=18)
+            try:
+                fig.savefig(self.path + ".png")
+                plt.close(fig)
+            except OSError:
+                pass
+
+        return self.average[-1]
+    '''
+    '''
+    def imshow(self, image, rem_step=0):
+        cv2.imshow(self.Model_name+str(rem_step), image[rem_step,...])
+        if cv2.waitKey(25) & 0xFF == ord("q"):
+            cv2.destroyAllWindows()
+            return
+    '''
+    '''
+    def reset(self):
+        frame = self.env.reset()
+        state = frame
+        return state
+    '''
+    '''
+    def step(self, action):
+        next_state = self.env.step(action)
+        return next_state
+    '''
+    '''
+    def train(self):
+        score_list = []
+        max_average = 5.0
+        while self.episode < self.EPISODES:
+            # Reset episode
+            score, done, SAVING = 0, False, ''
+            state = self.reset()
+
+            feature_screen_list, feature_player_list, available_actions_list = [], [], []
+            fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
+            while not done:
+                feature_screen = state[0][3]['feature_screen']
+                feature_screen = preprocess_screen(feature_screen)
+                feature_screen = np.transpose(feature_screen, (1, 2, 0))
+
+                feature_player = state[0][3]['player']
+                feature_player = preprocess_player(feature_player)
+
+                available_actions = state[0][3]['available_actions']
+                available_actions = preprocess_available_actions(available_actions)
+
+                feature_screen_array = np.array([feature_screen])
+                feature_player_array = np.array([feature_player])
+                available_actions_array = np.array([available_actions])
+
+                feature_screen_list.append(feature_screen_array)
+                feature_player_list.append(feature_player_array)
+                available_actions_list.append([available_actions])
+                
+                prediction = self.act(feature_screen_array, feature_player_array, available_actions)
+                fn_pi = prediction[0]
+                arg_pis = prediction[1]
+
+                fn_samples, arg_samples = sample_actions(available_actions, fn_pi, arg_pis)
+                fn_id, arg_ids = mask_unused_argument_samples(fn_samples, arg_samples)
+                fn_id_list.append(fn_id[0])
+
+                arg_id_list = []
+                for arg_type in arg_ids.keys():
+                    arg_id = arg_ids[arg_type]
+                    arg_id_list.append(arg_id)
+                
+                arg_ids_list.append(np.array([arg_id_list]))
+                actions_list = actions_to_pysc2(fn_id, arg_ids, (32, 32))
+                
+                next_state = self.env.step(actions_list)
+                done = next_state[0][0]
+                if done == StepType.LAST:
+                    done = True
+                else:
+                    done = False
+                
+                reward = float(next_state[0][1])
+                rewards.append(reward)
+                dones.append(done)
+
+                score += reward
+                state = next_state
+                if len(feature_screen_list) == 16:
+                    if arguments.training == True:
+                      self.replay(feature_screen_list, feature_player_list, available_actions_list, 
+                                     fn_id_list, arg_ids_list, rewards, dones)
+
+                    feature_screen_list, feature_player_list, available_actions_list = [], [], []
+                    fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
+                
+            score_list.append(score)
+            average = sum(score_list) / len(score_list)
+
+            # Update episode count
+            # saving best models
+            if average >= max_average:
+                max_average = average
+                self.save()
+                SAVING = "SAVING"
+            else:
+                SAVING = ""
+
+            self.PlotModel(score, self.episode)
+            #print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
+            print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
+            if(self.episode < self.EPISODES):
+                self.episode += 1
+            
+        self.env.close()      
+    '''
+    '''
+    def test(self, Actor_name, Critic_name):
+        self.load(Actor_name, Critic_name)
+        for e in range(100):
+            state = self.reset(self.env)
+            done = False
+            score = 0
+            while not done:
+                self.env.render()
+                action = np.argmax(self.Actor.predict(state))
+                state, reward, done, _ = self.step(action, self.env, state)
+                score += reward
+                if done:
+                    print("episode: {}/{}, score: {}".format(e, self.EPISODES, score))
+                    break
+
+        self.env.close()
+    '''

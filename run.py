@@ -5,6 +5,8 @@ from pysc2.env.environment import TimeStep, StepType
 from pysc2.lib.actions import TYPES as ACTION_TYPES
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+
 import abc
 import sys
 import math
@@ -34,7 +36,10 @@ from sklearn import preprocessing
 import cv2
 import time
 
-from network import ScalarEncoder, SpatialEncoder, Core, Baseline, ActionTypeHead, SpatialArgumentHead, ScalarArgumentHead
+import network as network
+import agent as agent
+import trajectory as trajectory
+from utils import preprocess_screen, preprocess_player, preprocess_feature_units, preprocess_available_actions
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -51,6 +56,10 @@ parser.add_argument('--load', type=bool, default=False, help='load pretrained mo
 parser.add_argument('--save', type=bool, default=False, help='save trained model')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
 parser.add_argument('--gradient_clipping', type=float, default=50.0, help='gradient clipping value')
+parser.add_argument('--player_1', type=str, default='terran', help='race of player 1')
+parser.add_argument('--player_2', type=str, default='terran', help='race of player 2')
+parser.add_argument('--screen_size', type=int, default=32, help='screen resolution')
+parser.add_argument('--minimap_size', type=int, default=32, help='minimap resolution')
 arguments = parser.parse_args()
 
 seed = arguments.seed
@@ -74,98 +83,9 @@ for name, arg_type in actions.TYPES._asdict().items():
 if arguments.gpu_use == True:
   gpus = tf.config.experimental.list_physical_devices('GPU')
   tf.config.experimental.set_virtual_device_configuration(gpus[0],
-            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4000)])
 else:
   os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
-
-class OurModel(tf.keras.Model):
-  def __init__(self):
-    super(OurModel, self).__init__()
-
-    # State Encoder
-    self.player_encoder = ScalarEncoder(output_dim=11)
-    self.screen_encoder = SpatialEncoder(height=32, width=32, channel=3)
-
-    # Core
-    self.core = Core(256)
-
-    # Action Head
-    self.action_type_head = ActionTypeHead(_NUM_FUNCTIONS)
-    self.screen_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
-    self.minimap_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
-    self.screen2_argument_head = SpatialArgumentHead(height=32, width=32, channel=3)
-    self.queued_argument_head = ScalarArgumentHead(2)
-    self.control_group_act_argument_head = ScalarArgumentHead(5)
-    self.control_group_id_argument_head = ScalarArgumentHead(10)
-    self.select_point_act_argument_head = ScalarArgumentHead(4)
-    self.select_add_argument_head = ScalarArgumentHead(2)
-    self.select_unit_act_argument_head = ScalarArgumentHead(4)
-    self.select_unit_id_argument_head = ScalarArgumentHead(500)
-    self.select_worker_argument_head = ScalarArgumentHead(4)
-    self.build_queue_id_argument_head = ScalarArgumentHead(10)
-    self.unload_id_argument_head = ScalarArgumentHead(500)
-
-    self.baseline = Baseline(256)
-    self.args_out_logits = dict()
-
-  def get_config(self):
-    config = super().get_config().copy()
-    config.update({
-        'args_out_logits': self.args_out_logits
-    })
-    return config
-
-  def call(self, feature_screen, feature_player):
-    batch_size = tf.shape(feature_screen)[0]
-
-    #feature_screen_array.shape:  (1, 32, 32, 13)
-    #feature_player_array.shape:  (1, 32, 32, 11)
-    feature_player_encoded = self.player_encoder(feature_player)
-    feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player_encoded, 1), 2),
-                                            tf.stack([1, 32, 32, 1]))
-    feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
-
-    feature_screen_encoded = self.screen_encoder(feature_screen)
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
-
-    #print("feature_encoded.shape: ", feature_encoded.shape)
-    core_output = self.core(feature_encoded)
-    #print("core_output.shape: ", core_output.shape)
-    action_type_logits, autoregressive_embedding = self.action_type_head(core_output)
-    
-    #args_out_logits = dict()
-    for arg_type in actions.TYPES:
-      if arg_type.name == 'screen':
-        self.args_out_logits[arg_type] = self.screen_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
-      elif arg_type.name == 'minimap':
-        self.args_out_logits[arg_type] = self.minimap_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
-      elif arg_type.name == 'screen2':
-        self.args_out_logits[arg_type] = self.screen2_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
-      elif arg_type.name == 'queued':
-        self.args_out_logits[arg_type] = self.queued_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'control_group_act':
-        self.args_out_logits[arg_type] = self.control_group_act_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'control_group_id':
-        self.args_out_logits[arg_type] = self.control_group_id_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'select_point_act':
-        self.args_out_logits[arg_type] = self.select_point_act_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'select_add':
-        self.args_out_logits[arg_type] = self.select_add_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'select_unit_act':
-        self.args_out_logits[arg_type] = self.select_unit_act_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'select_unit_id':
-        self.args_out_logits[arg_type] = self.select_unit_id_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'select_worker':
-        self.args_out_logits[arg_type] = self.select_worker_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'build_queue_id':
-        self.args_out_logits[arg_type] = self.build_queue_id_argument_head(core_output, autoregressive_embedding)
-      elif arg_type.name == 'unload_id':
-        self.args_out_logits[arg_type] = self.unload_id_argument_head(core_output, autoregressive_embedding)
-
-    value = self.baseline(core_output)
-
-    return action_type_logits, self.args_out_logits, value
 
 
 def check_nonzero(mask):
@@ -175,51 +95,6 @@ def check_nonzero(mask):
   for indexs_nonzero in indexs_nonzero_list:
     x = indexs_nonzero[0]
     y = indexs_nonzero[1]
-
-
-_MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
-_SCREEN_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
-_SCREEN_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
-def preprocess_screen(screen):
-  layers = []
-  assert screen.shape[0] == len(features.SCREEN_FEATURES)
-  for i in range(len(features.SCREEN_FEATURES)):
-    if i == _SCREEN_PLAYER_ID or i == _SCREEN_UNIT_TYPE:
-      layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
-    elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
-      layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
-
-  return np.concatenate(layers, axis=0)
-
-
-FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
-FLAT_FEATURES = [
-  FlatFeature(0,  features.FeatureType.SCALAR, 1, 'player_id'),
-  FlatFeature(1,  features.FeatureType.SCALAR, 1, 'minerals'),
-  FlatFeature(2,  features.FeatureType.SCALAR, 1, 'vespene'),
-  FlatFeature(3,  features.FeatureType.SCALAR, 1, 'food_used'),
-  FlatFeature(4,  features.FeatureType.SCALAR, 1, 'food_cap'),
-  FlatFeature(5,  features.FeatureType.SCALAR, 1, 'food_army'),
-  FlatFeature(6,  features.FeatureType.SCALAR, 1, 'food_workers'),
-  FlatFeature(7,  features.FeatureType.SCALAR, 1, 'idle_worker_count'),
-  FlatFeature(8,  features.FeatureType.SCALAR, 1, 'army_count'),
-  FlatFeature(9,  features.FeatureType.SCALAR, 1, 'warp_gate_count'),
-  FlatFeature(10, features.FeatureType.SCALAR, 1, 'larva_count'),
-]
-def preprocess_player(player):
-  layers = []
-  for s in FLAT_FEATURES:
-    out = player[s.index] / s.scale
-    layers.append(out)
-
-  return layers
-
-
-def preprocess_available_actions(available_action):
-    available_actions = np.zeros(_NUM_FUNCTIONS, dtype=np.float32)
-    available_actions[available_action] = 1
-
-    return available_actions
 
 
 def take_vector_elements(vectors, indices):
@@ -300,12 +175,144 @@ def compute_policy_entropy(available_actions, fn_pi, arg_pis, fn_id, arg_ids):
 
   return entropy
 
+env_name = arguments.environment
+workspace_path = arguments.workspace_path
+Save_Path = 'Models'
+        
+if not os.path.exists(Save_Path): os.makedirs(Save_Path)
+path = '{}_A2C'.format(env_name)
+scores, episodes, average = [], [], []
+def PlotModel(score, episode):
+    fig = plt.figure(figsize=(18,9))
+    ax = fig.add_subplot(111)
+    ax.locator_params(numticks=12)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    scores.append(score)
+    episodes.append(episode)
+    average.append(sum(scores[-50:]) / len(scores[-50:]))
+    if True:
+        ax.plot(episodes, scores, 'b')
+        ax.plot(episodes, average, 'r')
+        ax.set_ylabel('Score', fontsize=18)
+        ax.set_xlabel('Steps', fontsize=18)
+        try:
+            fig.savefig(path + ".png")
+            plt.close(fig)
+        except OSError:
+            pass
 
-mse_loss = tf.keras.losses.MeanSquaredError()
+    return average[-1]
+
+home_agent = agent.A2CAgent(network.OurModel(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
+                                  arguments.learning_rate, 
+                                  arguments.gradient_clipping)
+#agent_2 = agent.A2CAgent(network.OurModel())
+
+def supervised_train(training_episode):
+    # Initialization
+    EPISODES, episode, max_average = 20000, 0, 50.0 # specific for pong
+
+    while episode < training_episode:
+        if episode < EPISODES:
+            episode += 1
+
+        replay = trajectory.Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
+        replay.get_random_trajectory()
+
+        replay_index = 0
+        home_replay_done = False
+
+        home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_available_actions_list = [], [], []
+        home_replay_fn_id_list, home_replay_arg_ids_list = [], []
+        home_replay_memory_state_list, home_replay_carry_state_list = [], []
+
+        memory_state = np.zeros([1,256], dtype=np.float32)
+        carry_state = np.zeros([1,256], dtype=np.float32)
+        while not home_replay_done:
+            home_replay_state = replay.home_trajectory[replay_index][0]
+            home_replay_actions = replay.home_trajectory[replay_index][1]
+            home_replay_done = replay.home_trajectory[replay_index][2]
+            
+            home_replay_feature_screen = home_replay_state['feature_screen']
+            home_replay_feature_screen = preprocess_screen(home_replay_feature_screen)
+            home_replay_feature_screen = np.transpose(home_replay_feature_screen, (1, 2, 0))
+
+            home_replay_feature_player = home_replay_state['player']
+            home_replay_feature_player = preprocess_player(home_replay_feature_player)
+
+            home_replay_available_actions = home_replay_state['available_actions']
+            home_replay_available_actions = preprocess_available_actions(home_replay_available_actions)
+
+            home_replay_feature_screen_array = np.array([home_replay_feature_screen])
+            home_replay_feature_player_array = np.array([home_replay_feature_player])
+            home_replay_available_actions_array = np.array([home_replay_available_actions])
+
+            home_replay_feature_screen_list.append(home_replay_feature_screen_array)
+            home_replay_feature_player_list.append(home_replay_feature_player_array)
+            home_replay_available_actions_list.append(home_replay_available_actions_array)
+            home_replay_memory_state_list.append(memory_state)
+            home_replay_carry_state_list.append(carry_state)
+
+            home_replay_prediction = home_agent.act(home_replay_feature_screen_array, home_replay_feature_player_array, 
+                                                             home_replay_available_actions_array, memory_state, carry_state)
+            home_replay_next_memory_state = home_replay_prediction[3]
+            home_replay_next_carry_state = home_replay_prediction[4]
+            home_replay_action = random.choice(home_replay_actions)
+
+            home_replay_fn_id = int(home_replay_action.function)
+            home_replay_args_ids = dict()
+            for arg_type in actions.TYPES:
+              home_replay_args_ids[arg_type] = -1
+
+            arg_index = 0
+            for arg_type in FUNCTIONS._func_list[home_replay_fn_id].args:
+                home_replay_args_ids[arg_type] = home_replay_action.arguments[arg_index]
+                arg_index += 1
+
+            home_replay_fn_id_list.append(home_replay_fn_id)
+            home_replay_arg_id_list = []
+            for arg_type in home_replay_args_ids.keys():
+                arg_id = home_replay_args_ids[arg_type]
+
+                if type(arg_id) == list:
+                  if len(arg_id) == 2:
+                    arg_id = arg_id[0] * feature_screen_size + arg_id[1]
+                  else:
+                    arg_id = int(arg_id[0])
+
+                home_replay_arg_id_list.append(arg_id)
+
+            home_replay_arg_ids_list.append(np.array([home_replay_arg_id_list]))
+
+            if home_replay_done == StepType.LAST:
+                home_replay_done = True
+            else:
+                home_replay_done = False
+
+            if home_replay_done:
+                break
+
+            replay_index += 1
+            #print("replay_index: ", replay_index)
+            if replay_index >= len(replay.home_trajectory) - 1:
+              break
+
+            memory_state = home_replay_next_memory_state
+            carry_state =  home_replay_next_carry_state
+            if len(home_replay_feature_screen_list) == 16:
+                if arguments.training == True:
+                    home_agent.supervised_replay(home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_available_actions_list,
+                                                        home_replay_fn_id_list, home_replay_arg_ids_list,
+                                                        home_replay_memory_state_list, home_replay_carry_state_list)
+
+                home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_available_actions_list = [], [], []
+                home_replay_fn_id_list, home_replay_arg_ids_list = [], []
+                home_replay_memory_state_list, home_replay_carry_state_list = [], []
 
 
-feature_screen_size = 32
-feature_minimap_size = 32
+feature_screen_size = arguments.screen_size
+feature_minimap_size = arguments.minimap_size
 rgb_screen_size = None
 rgb_minimap_size = None
 action_space = None
@@ -314,290 +321,142 @@ use_raw_units = False
 step_mul = 8
 game_steps_per_episode = None
 disable_fog = False
-visualize = arguments.visualize
-class A2CAgent:
-    # Actor-Critic Main Optimization Algorithm
-    def __init__(self, env_name):
-        # Initialization
-        self.env_name = env_name       
-        players = [sc2_env.Agent(sc2_env.Race['terran'])]
-        self.env = sc2_env.SC2Env(
-              map_name=env_name,
-              players=players,
-              agent_interface_format=sc2_env.parse_agent_interface_format(
-                  feature_screen=feature_screen_size,
-                  feature_minimap=feature_minimap_size,
-                  rgb_screen=rgb_screen_size,
-                  rgb_minimap=rgb_minimap_size,
-                  action_space=action_space,
-                  use_feature_units=use_feature_units),
-              step_mul=step_mul,
-              game_steps_per_episode=game_steps_per_episode,
-              disable_fog=disable_fog,
-              visualize=visualize)
 
-        self.EPISODES, self.episode, self.max_average = 20000, 0, 50.0 # specific for pong
+minigame_environment_list = ['MoveToBeacon', 'DefeatRoaches']
 
-        # Instantiate games and plot memory
-        self.state_list, self.action_list, self.reward_list = [], [], []
-        self.scores, self.episodes, self.average = [], [], []
+if arguments.environment not in minigame_environment_list:
+  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1]), sc2_env.Agent(sc2_env.Race[arguments.player_2])]
+else:
+  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1])]
 
-        #self.workspace_path = "/media/kimbring2/Steam/Relational_DRL_New/"
-        self.workspace_path = arguments.workspace_path
-        self.Save_Path = 'Models'
-        
-        if not os.path.exists(self.Save_Path): os.makedirs(self.Save_Path)
-        self.path = '{}_A2C'.format(self.env_name)
-        self.Model_name = os.path.join(self.Save_Path, self.path)
+env = sc2_env.SC2Env(
+      map_name=env_name,
+      players=players,
+      agent_interface_format=sc2_env.parse_agent_interface_format(
+        feature_screen=feature_screen_size,
+        feature_minimap=feature_minimap_size,
+        rgb_screen=rgb_screen_size,
+        rgb_minimap=rgb_minimap_size,
+        action_space=action_space,
+        use_feature_units=use_feature_units),
+      step_mul=step_mul,
+      game_steps_per_episode=game_steps_per_episode,
+      disable_fog=disable_fog,
+      visualize=arguments.visualize)
 
-        # Create Actor-Critic network model
-        self.ActorCritic = OurModel()
-        self.learning_rate = arguments.learning_rate
+def reinforcement_train(training_episode):
+    score_list = []
+    max_average = 5.0
+    EPISODES, episode, max_average = 20000, 0, 5.0
+    while episode < training_episode:
+        # Reset episode
+        home_score, home_done, SAVING = 0, False, ''
+        opponent_score, opponent_done = 0, False
+        state = env.reset()
 
-        initial_learning_rate = self.learning_rate
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate,
-            decay_steps=10000,
-            decay_rate=0.94,
-            staircase=True)
+        home_feature_screen_list, home_feature_player_list, home_feature_units_list, home_available_actions_list = [], [], [], []
+        home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
+        home_memory_state_list, home_carry_state_list = [], []
 
-        self.optimizer = tf.keras.optimizers.RMSprop(lr_schedule, epsilon=1e-5)
+        memory_state = np.zeros([1,256], dtype=np.float32)
+        carry_state =  np.zeros([1,256], dtype=np.float32)
+        while not home_done:
+            home_state = state[0]
+            #opponent_state = state[1]
 
-        if arguments.load == True:
-          self.load()
+            home_feature_screen = home_state[3]['feature_screen']
+            home_feature_screen = preprocess_screen(home_feature_screen)
+            home_feature_screen = np.transpose(home_feature_screen, (1, 2, 0))
 
-    @tf.function
-    def act(self, feature_screen_array, feature_player_array, available_actions):
-        # Use the network to predict the next action to take, using the model
-        prediction = self.ActorCritic(feature_screen_array, feature_player_array, training=False)
-        return prediction
+            home_feature_player = home_state[3]['player']
+            home_feature_player = preprocess_player(home_feature_player)
 
-    @tf.function
-    def discount_rewards(self, reward, dones):
-        # Compute the gamma-discounted rewards over an episode
-        gamma = 0.99    # discount rate
-        running_add = 0
-        reward_copy = np.array(reward)
-        discounted_r = np.zeros_like(reward)
-        for i in reversed(range(0, len(reward))):
-            running_add = running_add * gamma * (1 - dones[i]) + reward[i]
-            discounted_r[i] = running_add
+            home_available_actions = home_state[3]['available_actions']
+            home_available_actions = preprocess_available_actions(home_available_actions)
 
-        #if np.std(discounted_r) != 0:
-        #  discounted_r -= np.mean(discounted_r) # normalizing the result
-        #  discounted_r /= np.std(discounted_r) # divide by standard deviation
+            home_feature_units = home_state[3]['feature_units']
+            home_feature_units = preprocess_feature_units(home_feature_units, feature_screen_size)
+            #print("home_feature_units.shape: ", home_feature_units.shape)
 
-        return discounted_r
+            home_feature_screen_array = np.array([home_feature_screen])
+            home_feature_player_array = np.array([home_feature_player])
+            home_feature_units_array = np.array([home_feature_units])
+            home_available_actions_array = np.array([home_available_actions])
 
-    @tf.function
-    def compute_log_probs(self, probs, labels):
-      labels = tf.maximum(labels, 0)
-      labels = tf.cast(labels, 'int32')
-      indices = tf.stack([tf.range(tf.shape(labels)[0]), labels], axis=1)
-      result = tf.gather_nd(probs, indices)
-      result = self.safe_log(result)
-      return self.safe_log(tf.gather_nd(probs, indices)) # TODO tf.log should suffice
+            home_feature_screen_list.append(home_feature_screen_array)
+            home_feature_player_list.append(home_feature_player_array)
+            home_feature_units_list.append(home_feature_units_array)
+            home_available_actions_list.append([home_available_actions])
+            home_memory_state_list.append(memory_state)
+            home_carry_state_list.append(carry_state)
 
-    @tf.function
-    def mask_unavailable_actions(self, available_actions, fn_pi):
-      fn_pi *= available_actions
-      fn_pi /= tf.reduce_sum(fn_pi, axis=1, keepdims=True)
-      return fn_pi
+            home_prediction = home_agent.act(home_feature_screen_array, home_feature_player_array, home_feature_units_array, 
+                                                 home_available_actions_array, 
+                                                 memory_state, carry_state)
+            home_fn_pi = home_prediction[0]
+            home_arg_pis = home_prediction[1]
+            home_next_memory_state = home_prediction[3]
+            home_next_carry_state = home_prediction[4]
 
-    @tf.function
-    def safe_log(self, x):
-      return tf.where(
-          tf.equal(x, 0),
-          tf.zeros_like(x),
-          tf.math.log(tf.maximum(1e-12, x)))
+            home_fn_samples, home_arg_samples = sample_actions(home_available_actions, home_fn_pi, home_arg_pis)
+            home_fn_id, home_arg_ids = mask_unused_argument_samples(home_fn_samples, home_arg_samples)
+            home_fn_id_list.append(home_fn_id[0])
 
-    def replay(self, feature_screen_list, feature_player_list, available_actions_list, 
-                 fn_id_list, arg_ids_list, 
-                 rewards, dones):
-        feature_screen_array = tf.concat(feature_screen_list, 0)
-        feature_player_array = tf.concat(feature_player_list, 0)
-        available_actions_array = tf.concat(available_actions_list, 0)
-        arg_ids_array = tf.concat(arg_ids_list, 0)
-
-        # Compute discounted rewards
-        discounted_r_array = self.discount_rewards(rewards, dones)
-        with tf.GradientTape() as tape:
-          prediction = self.ActorCritic(feature_screen_array, feature_player_array, training=True)
-          fn_pi = prediction[0]
-          arg_pis = prediction[1]
-          value_estimate = prediction[2]
-
-          discounted_r_array = tf.cast(discounted_r_array, 'float32')
-          advantage = discounted_r_array - tf.stack(value_estimate)[:, 0]
-
-          fn_pi = self.mask_unavailable_actions(available_actions_array, fn_pi) # TODO: this should be unneccessary
-
-          fn_log_prob = self.compute_log_probs(fn_pi, fn_id_list)
-          log_prob = fn_log_prob
-          for index, arg_type in enumerate(actions.TYPES):
-            arg_id = arg_ids_array[:,index]
-            arg_pi = arg_pis[arg_type]
-            arg_log_prob = self.compute_log_probs(arg_pi, arg_id)
-            arg_log_prob *= tf.cast(tf.not_equal(arg_id, -1), 'float32')
-            log_prob += arg_log_prob
-
-          actor_loss = -tf.math.reduce_mean(log_prob * advantage) 
-          actor_loss = tf.cast(actor_loss, 'float32')
-
-          critic_loss = mse_loss(tf.stack(value_estimate)[:, 0] , discounted_r_array)
-          critic_loss = tf.cast(critic_loss, 'float32')
-        
-          total_loss = actor_loss + critic_loss * 0.5
-
-        grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
-        grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
-        self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
-
-    def load(self):
-        self.ActorCritic.load_weights(self.workspace_path + '/Models/model')
-
-    def save(self):
-        self.ActorCritic.save_weights(self.workspace_path + '/Models/model')
-
-    def PlotModel(self, score, episode):
-        fig = plt.figure(figsize=(18,9))
-        ax = fig.add_subplot(111)
-        ax.locator_params(numticks=12)
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-        self.scores.append(score)
-        self.episodes.append(episode)
-        self.average.append(sum(self.scores[-50:]) / len(self.scores[-50:]))
-        #if str(episode)[-2:] == "0": # much faster than episode % 100
-        if True:
-            #new_list = range(0, 500)
-            #plt.xticks(new_list)
-            ax.plot(self.episodes, self.scores, 'b')
-            ax.plot(self.episodes, self.average, 'r')
-            ax.set_ylabel('Score', fontsize=18)
-            ax.set_xlabel('Steps', fontsize=18)
-            try:
-                fig.savefig(self.path + ".png")
-                plt.close(fig)
-            except OSError:
-                pass
-
-        return self.average[-1]
-
-    def imshow(self, image, rem_step=0):
-        cv2.imshow(self.Model_name+str(rem_step), image[rem_step,...])
-        if cv2.waitKey(25) & 0xFF == ord("q"):
-            cv2.destroyAllWindows()
-            return
-
-    def reset(self):
-        frame = self.env.reset()
-        state = frame
-        return state
-
-    def step(self, action):
-        next_state = self.env.step(action)
-        return next_state
-        
-    def train(self):
-        score_list = []
-        while self.episode < self.EPISODES:
-            # Reset episode
-            score, done, SAVING = 0, False, ''
-            state = self.reset()
-
-            feature_screen_list, feature_player_list, available_actions_list = [], [], []
-            fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
-            while not done:
-                feature_screen = state[0][3]['feature_screen']
-                feature_screen = preprocess_screen(feature_screen)
-                feature_screen = np.transpose(feature_screen, (1, 2, 0))
-
-                feature_player = state[0][3]['player']
-                feature_player = preprocess_player(feature_player)
-
-                available_actions = state[0][3]['available_actions']
-                available_actions = preprocess_available_actions(available_actions)
-
-                feature_screen_array = np.array([feature_screen])
-                feature_player_array = np.array([feature_player])
-                available_actions_array = np.array([available_actions])
-
-                feature_screen_list.append(feature_screen_array)
-                feature_player_list.append(feature_player_array)
-                available_actions_list.append([available_actions])
-                
-                prediction = self.act(feature_screen_array, feature_player_array, available_actions)
-                fn_pi = prediction[0]
-                arg_pis = prediction[1]
-
-                fn_samples, arg_samples = sample_actions(available_actions, fn_pi, arg_pis)
-                fn_id, arg_ids = mask_unused_argument_samples(fn_samples, arg_samples)
-                fn_id_list.append(fn_id[0])
-
-                arg_id_list = []
-                for arg_type in arg_ids.keys():
-                    arg_id = arg_ids[arg_type]
-                    arg_id_list.append(arg_id)
-                
-                arg_ids_list.append(np.array([arg_id_list]))
-                actions_list = actions_to_pysc2(fn_id, arg_ids, (32, 32))
-                
-                next_state = self.env.step(actions_list)
-                done = next_state[0][0]
-                if done == StepType.LAST:
-                    done = True
-                else:
-                    done = False
-                
-                reward = float(next_state[0][1])
-                rewards.append(reward)
-                dones.append(done)
-
-                score += reward
-                state = next_state
-                if len(feature_screen_list) == 16:
-                    if arguments.training == True:
-                      self.replay(feature_screen_list, feature_player_list, available_actions_list, 
-                                     fn_id_list, arg_ids_list, rewards, dones)
-
-                    feature_screen_list, feature_player_list, available_actions_list = [], [], []
-                    fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
-                
-            score_list.append(score)
-            average = sum(score_list) / len(score_list)
-
-            # Update episode count
-            self.save()
-            self.PlotModel(score, self.episode)
-            print("episode: {}/{}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, score, average, SAVING))
-            if(self.episode < self.EPISODES):
-                self.episode += 1
+            home_arg_id_list = []
+            for arg_type in home_arg_ids.keys():
+                arg_id = home_arg_ids[arg_type]
+                home_arg_id_list.append(arg_id)
             
-        self.env.close()      
+            home_arg_ids_list.append(np.array([home_arg_id_list]))
+            home_actions_list = actions_to_pysc2(home_fn_id, home_arg_ids, (32, 32))
 
-    def test(self, Actor_name, Critic_name):
-        self.load(Actor_name, Critic_name)
-        for e in range(100):
-            state = self.reset(self.env)
-            done = False
-            score = 0
-            while not done:
-                self.env.render()
-                action = np.argmax(self.Actor.predict(state))
-                state, reward, done, _ = self.step(action, self.env, state)
-                score += reward
-                if done:
-                    print("episode: {}/{}, score: {}".format(e, self.EPISODES, score))
-                    break
+            actions_list = [home_actions_list, actions.FUNCTIONS.no_op()] 
+            next_state = env.step(actions_list)
 
-        self.env.close()
+            home_next_state = next_state[0]
+
+            home_done = home_next_state[0]
+            if home_done == StepType.LAST:
+                home_done = True
+            else:
+                home_done = False
+
+            state = next_state
+            memory_state = home_next_memory_state
+            carry_state =  home_next_carry_state
+
+            home_reward = float(home_next_state[1])
+            home_rewards.append(home_reward)
+            home_dones.append(home_done)
+
+            home_score += home_reward
+            state = next_state
+            if len(home_feature_screen_list) == 16:
+                if arguments.training == True:
+                  home_agent.reinforcement_replay(home_feature_screen_list, home_feature_player_list, home_feature_units_list, 
+                                                      home_available_actions_list, home_fn_id_list, home_arg_ids_list, 
+                                                      home_rewards, home_dones, 
+                                                      home_memory_state_list, home_carry_state_list)
+
+                home_feature_screen_list, home_feature_player_list, home_feature_units_list, home_available_actions_list = [], [], [], []
+                home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
+                home_memory_state_list, home_carry_state_list = [], []
+
+        score_list.append(home_score)
+        average = sum(score_list) / len(score_list)
+
+        PlotModel(home_score, episode)
+        print("episode: {}/{}, score: {}, average: {:.2f} {}".format(episode, EPISODES, home_score, average, SAVING))
+        if episode < EPISODES:
+            episode += 1
+
+    env.close()   
 
 
 def main():
   env_name = arguments.environment
-  agent = A2CAgent(env_name)
-  agent.train()
+  #supervised_train(20)
+  reinforcement_train(50000)
 
 
 if __name__ == "__main__":
