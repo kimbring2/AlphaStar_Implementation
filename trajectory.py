@@ -4,7 +4,6 @@ from pysc2.env.environment import TimeStep, StepType
 from pysc2.env import sc2_env, available_actions_printer
 from pysc2 import run_configs
 from s2clientprotocol import sc2api_pb2 as sc_pb
-import units_new
 
 import importlib
 import random
@@ -63,7 +62,7 @@ class Trajectory(object):
 
 			replay_file_path = random.choice(file_list)
 			#print ("replay_file_path: {}".format(replay_file_path))
-			#replay_file_path = root_path + '0a0f62052fe4311368910ad38c662bf979e292b86ad02b49b41a87013e58c432.SC2Replay'
+			#replay_file_path = root_path + '/Simple64_2021-06-28-21-03-54.SC2Replay'
 			#replay_file_path = root_path + '/0a1b09abc9e98f4e0c3921ae0a427c27e97c2bbdcf34f50df18dc41cea3f3249.SC2Replay'
 			#replay_file_path_2 = root_path + '/0a01d32e9a98e1596b88bc2cdec7752249b22aca774e3305dae2e93efef34be3.SC2Replay'
 			#replay_file_path_0 = human_data
@@ -83,7 +82,7 @@ class Trajectory(object):
 				print("player0_mmr: " + str(player0_mmr))
 				print("player0_apm: " + str(player0_apm))
 				print("player0_result: " + str(player0_result))
-
+				'''
 				home_race = race_list.index(self.home_race_name) + 1
 				if (home_race == player0_race):
 					print("player0_race pass")
@@ -91,12 +90,13 @@ class Trajectory(object):
 					print("player0_race fail")
 					continue
 
+				
 				if (player0_mmr >= self.replay_filter):
 					print("player0_mmr pass ")
 				else:
 					print("player0_mmr fail")
 					continue
-
+				
 				player1_race = info.player_info[0].player_info.race_actual
 				player1_mmr = info.player_info[0].player_mmr
 				player1_apm = info.player_info[0].player_apm
@@ -106,6 +106,7 @@ class Trajectory(object):
 				print("player1_apm: " + str(player1_apm))
 				print("player1_result: " + str(player1_result))
 
+				
 				away_race = race_list.index(self.away_race_name) + 1
 				if (away_race == player1_race):
 					print("player1_race pass ")
@@ -118,12 +119,12 @@ class Trajectory(object):
 				else:
 					print("player1_mmr fail")
 					continue
-
-				screen_size_px = (128, 128)
-				minimap_size_px = (64, 64)
+				'''
+				screen_size_px = (32, 32)
+				minimap_size_px = (32, 32)
 				player_id = 1
 				discount = 1.
-				step_mul = 8
+				step_mul = 2
 
 				screen_size_px = point.Point(*screen_size_px)
 				minimap_size_px = point.Point(*minimap_size_px)
@@ -153,8 +154,8 @@ class Trajectory(object):
 					print("error")
 					continue
 
-				feature_screen_size = 128
-				feature_minimap_size = 64
+				feature_screen_size = 32
+				feature_minimap_size = 32
 				rgb_screen_size = None
 				rgb_minimap_size = None
 				action_space = None
@@ -179,7 +180,7 @@ class Trajectory(object):
 					#print("#####################################################")
 					print("replay_step: " + str(replay_step))
 
-					#if replay_step == 500:
+					#if replay_step == 800:
 					#	break
 
 					controller.step(step_mul)
@@ -230,6 +231,7 @@ class Trajectory(object):
 					exec_actions = []
 					if len(obs.actions) != 0:
 						for ac in obs.actions:
+							#print("ac: " + str(ac))
 							exec_act = _features.reverse_action(ac)
 							#print("exec_act: " + str(exec_act))
 							exec_actions.append(exec_act)
@@ -240,7 +242,7 @@ class Trajectory(object):
 					#print("exec_actions: " + str(exec_actions))
 					#print("")
 					
-					self.home_trajectory.append([agent_obs, exec_actions])
+					self.home_trajectory.append([agent_obs, exec_actions, _state])
 					step = TimeStep(step_type=_state, reward=0,
 				                       discount=discount, observation=agent_obs)
 
