@@ -215,12 +215,12 @@ class A2CAgent:
                                 fn_id_list, arg_ids_list, 
                                 rewards, dones, 
                                 home_memory_state_list, home_carry_state_list, 
-                                game_loop_list, delay_list, last_action_type_list):
+                                game_loop_list, last_action_type_list):
         feature_screen_array = tf.concat(feature_screen_list, 0)
         feature_player_array = tf.concat(feature_player_list, 0)
         feature_units_array = tf.concat(feature_units_list, 0)
         game_loop_array = tf.concat(game_loop_list, 0)
-        delay_array = tf.concat(delay_list, 0)
+        #delay_array = tf.concat(delay_list, 0)
         last_action_type_array = tf.concat(last_action_type_list, 0)
         available_actions_array = tf.concat(available_actions_list, 0)
         arg_ids_array = tf.concat(arg_ids_list, 0)
@@ -238,7 +238,7 @@ class A2CAgent:
           fn_pi = prediction[0]
           arg_pis = prediction[1]
           value_estimate = prediction[2]
-          delay_pi = prediction[5]
+          #delay_pi = prediction[5]
 
           discounted_r_array = tf.cast(discounted_r_array, 'float32')
           advantage = discounted_r_array - tf.stack(value_estimate)[:, 0]
@@ -257,9 +257,9 @@ class A2CAgent:
 
           #print("delay_pi: ", delay_pi)
           #print("delay_list: ", delay_list)
-          delay_log_prob = self.compute_log_probs(delay_pi, delay_list)
-          delay_log_prob *= tf.cast(tf.not_equal(delay_list, -1), 'float32')
-          log_prob += delay_log_prob
+          #delay_log_prob = self.compute_log_probs(delay_pi, delay_list)
+          #delay_log_prob *= tf.cast(tf.not_equal(delay_list, -1), 'float32')
+          #log_prob += delay_log_prob
 
           actor_loss = -tf.math.reduce_mean(log_prob * advantage) 
           actor_loss = tf.cast(actor_loss, 'float32')
@@ -267,7 +267,7 @@ class A2CAgent:
           critic_loss = mse_loss(tf.stack(value_estimate)[:, 0] , discounted_r_array)
           critic_loss = tf.cast(critic_loss, 'float32')
         
-          total_loss = actor_loss + critic_loss * 0.5
+          total_loss = actor_loss * 0.5 + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
         grads, _ = tf.clip_by_global_norm(grads, self.gradient_clipping)

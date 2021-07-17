@@ -187,7 +187,7 @@ workspace_path = arguments.workspace_path
 Save_Path = 'Models'
         
 if not os.path.exists(Save_Path): os.makedirs(Save_Path)
-path = '{}_A2C_{}_{}'.format(env_name, seed, arguments.learning_rate)
+path = '{}_A2C_{}_{}_{}'.format(env_name, seed, arguments.learning_rate, arguments.gradient_clipping)
 scores, episodes, average = [], [], []
 def PlotModel(score, episode):
     fig = plt.figure(figsize=(18,9))
@@ -357,7 +357,7 @@ rgb_minimap_size = None
 action_space = None
 use_feature_units = True
 use_raw_units = False
-step_mul = 8
+step_mul = 16
 game_steps_per_episode = None
 disable_fog = False
 
@@ -391,9 +391,9 @@ def reinforcement_train(training_episode):
     max_average = 5.0
     EPISODES, episode, max_average = 20000, 0, 5.0
 
-    home_agent.load(workspace_path + '/Models/reinforcment_model')
+    #home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model_1')
     while episode < training_episode:
-        #home_agent.save(workspace_path + '/Models/reinforcment_model_1')
+        home_agent.save(workspace_path + '/Models/reinforcment_model_1')
 
         # Reset episode
         home_score, home_done, SAVING = 0, False, ''
@@ -464,7 +464,8 @@ def reinforcement_train(training_episode):
             
             home_arg_ids_list.append(np.array([home_arg_id_list]))
             home_actions_list = actions_to_pysc2(home_fn_id, home_arg_ids, (32, 32))
-
+            #print("delay:", delay)
+            '''
             last_action_type = home_fn_id
             if delay != 0:
               delay -= 1
@@ -475,7 +476,8 @@ def reinforcement_train(training_episode):
               delay = np.argmax(home_delay, 1)[0]
               delay_list.append(np.array(delay))
               actions_list = [home_actions_list]
-
+            '''
+            actions_list = [home_actions_list]
             next_state = env.step(actions_list)
 
             home_next_state = next_state[0]
@@ -502,7 +504,7 @@ def reinforcement_train(training_episode):
                                                       home_available_actions_list, home_fn_id_list, home_arg_ids_list, 
                                                       home_rewards, home_dones, 
                                                       home_memory_state_list, home_carry_state_list,
-                                                      game_loop_list, delay_list, last_action_type_list)
+                                                      game_loop_list, last_action_type_list)
 
                 home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
                 home_available_actions_list, last_action_type_list = [], []

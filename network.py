@@ -181,8 +181,10 @@ class Core(tf.keras.layers.Layer):
     self.unit_number = unit_number
     self.network_scale = network_scale
 
-    self.lstm = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm", return_sequences=True, 
+    self.lstm_1 = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm_1", return_sequences=True, 
                       return_state=True, kernel_regularizer='l2')
+    #self.lstm_2 = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm_2", return_sequences=True, 
+    #                  return_state=True, kernel_regularizer='l2')
 
     self.network = tf.keras.Sequential([Reshape((212, 256*self.network_scale*self.network_scale)),
                                             Flatten(),
@@ -205,11 +207,12 @@ class Core(tf.keras.layers.Layer):
     feature_encoded_flattened = Flatten()(feature_encoded)
     feature_encoded_flattened = Reshape((212, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
-    core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, initial_state=(memory_state, carry_state))
+    core_output_1, final_memory_state_1, final_carry_state_1 = self.lstm_1(feature_encoded_flattened, initial_state=(memory_state, carry_state))
+    #core_output_2, final_memory_state_2, final_carry_state_2 = self.lstm_2(core_output_1, initial_state=(final_memory_state_1, final_carry_state_1))
 
-    core_output = self.network(core_output)
+    core_output = self.network(core_output_1)
 
-    return core_output, final_memory_state, final_carry_state
+    return core_output, final_memory_state_1, final_carry_state_1
 
 
 class ActionTypeHead(tf.keras.layers.Layer):
@@ -291,12 +294,12 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
     super(ScalarArgumentHead, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential()
-    self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2", kernel_regularizer='l2'))
-    self.network.add(tf.keras.layers.Softmax())
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1", kernel_regularizer='l2'),
+                                            tf.keras.layers.Softmax()
+                                           ])
 
     self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                        name="ScalarArgumentHead_dense_6", kernel_regularizer='l2')
+                                                                        name="ScalarArgumentHead_dense_2", kernel_regularizer='l2')
                                                                        ])
 
   def get_config(self):
@@ -373,7 +376,7 @@ class OurModel(tf.keras.Model):
     self.build_queue_id_argument_head = ScalarArgumentHead(10)
     self.unload_id_argument_head = ScalarArgumentHead(50)
 
-    self.delay_head = ScalarArgumentHead(5)
+    #self.delay_head = ScalarArgumentHead(200)
 
     self.baseline = Baseline(256)
     self.args_out_logits = dict()
@@ -425,8 +428,8 @@ class OurModel(tf.keras.Model):
     #print("game_loop_encoded.shape: ", game_loop_encoded.shape)
     #print("available_actions_encoded.shape: ", available_actions_encoded.shape)
     #print("last_action_type_encoded.shape: ", last_action_type_encoded.shape)
-    #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
-    #                                available_actions_encoded, last_action_type_encoded], axis=3)
+    #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, game_loop_encoded, 
+    #                                last_action_type_encoded], axis=3)
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
                                     last_action_type_encoded], axis=3)
     
@@ -464,8 +467,8 @@ class OurModel(tf.keras.Model):
       elif arg_type.name == 'unload_id':
         self.args_out_logits[arg_type] = self.unload_id_argument_head(core_output, autoregressive_embedding)
 
-    delay = self.delay_head(core_output, autoregressive_embedding)
+    #delay = self.delay_head(core_output, autoregressive_embedding)
 
     value = self.baseline(core_output)
 
-    return action_type_logits, self.args_out_logits, value, final_memory_state, final_carry_state, delay
+    return action_type_logits, self.args_out_logits, value, final_memory_state, final_carry_state
