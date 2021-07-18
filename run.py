@@ -357,7 +357,7 @@ rgb_minimap_size = None
 action_space = None
 use_feature_units = True
 use_raw_units = False
-step_mul = 16
+step_mul = 8
 game_steps_per_episode = None
 disable_fog = False
 
