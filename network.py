@@ -190,7 +190,7 @@ class Core(tf.keras.layers.Layer):
     #self.lstm_2 = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm_2", return_sequences=True, 
     #                  return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((176, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((172, 256*self.network_scale*self.network_scale)),
                                             Flatten(),
                                             tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                                      name="core_dense", 
@@ -209,7 +209,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((176, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((172, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output_1, final_memory_state_1, final_carry_state_1 = self.lstm_1(feature_encoded_flattened, initial_state=(memory_state, carry_state))
     #core_output_2, final_memory_state_2, final_carry_state_2 = self.lstm_2(core_output_1, initial_state=(final_memory_state_1, final_carry_state_1))
@@ -430,7 +430,7 @@ class OurModel(tf.keras.Model):
     #print("game_loop_encoded.shape: ", game_loop_encoded.shape)
     #print("available_actions_encoded.shape: ", available_actions_encoded.shape)
     #print("last_action_type_encoded.shape: ", last_action_type_encoded.shape)
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, game_loop_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
     #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
     #                                last_action_type_encoded], axis=3)
     
