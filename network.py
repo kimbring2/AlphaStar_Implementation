@@ -21,7 +21,7 @@ class ScalarEncoder(tf.keras.layers.Layer):
     self.output_dim = output_dim
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense_1", kernel_regularizer='l2')
+       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -47,8 +47,8 @@ class SpatialEncoder(tf.keras.layers.Layer):
     self.network = tf.keras.Sequential([
        tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
        tf.keras.layers.Conv2D(int(height/2), 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", 
-                              kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(height, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
+                                 kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(height, 3, padding='same', activation='elu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -143,10 +143,6 @@ class EntityEncoder(tf.keras.layers.Layer):
     self.layernorm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
     self.dropout = tf.keras.layers.Dropout(0.1)
 
-    self.network = tf.keras.Sequential([
-       tf.keras.layers.Dense(64, activation='relu', name="EntityEncoder_dense_2", kernel_regularizer='l2')
-    ])
-
     self.entity_num = entity_num
     self.locs = []
     for i in range(0, self.entity_num):
@@ -173,9 +169,7 @@ class EntityEncoder(tf.keras.layers.Layer):
     attention_output = self.dropout(attention_output, training=training)
     attention_output = self.layernorm(entity_features_locs + attention_output)
     max_pool_1d = tf.math.reduce_max(attention_output, 1)
-    #output = max_pool_1d
-    
-    output = self.network(max_pool_1d)
+    output = max_pool_1d
 
     return output
 
@@ -192,11 +186,12 @@ class Core(tf.keras.layers.Layer):
     #self.lstm_2 = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm_2", return_sequences=True, 
     #                  return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((464, 256*self.network_scale*self.network_scale)),
-                                        Flatten(),
-                                        tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
-                                                              name="core_dense_1", kernel_regularizer='l2')
-                                      ])
+    self.network = tf.keras.Sequential([Reshape((180, 256*self.network_scale*self.network_scale)),
+                                            Flatten(),
+                                            tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
+                                                                     name="core_dense", 
+                                                                     kernel_regularizer='l2')
+                                           ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -210,7 +205,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((464, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((180, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output_1, final_memory_state_1, final_carry_state_1 = self.lstm_1(feature_encoded_flattened, initial_state=(memory_state, carry_state))
     #core_output_2, final_memory_state_2, final_carry_state_2 = self.lstm_2(core_output_1, initial_state=(final_memory_state_1, final_carry_state_1))
@@ -227,11 +222,10 @@ class ActionTypeHead(tf.keras.layers.Layer):
     self.output_dim = output_dim
     self.network_scale = network_scale
     self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_2", kernel_regularizer='l2'),
-                                        tf.keras.layers.Softmax()])
+                                            tf.keras.layers.Softmax()])
     self.autoregressive_embedding_network = tf.keras.Sequential([tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
-                                                                                       activation='relu', name="ActionTypeHead_dense_3", 
-                                                                                       kernel_regularizer='l2')
-                                                               ])
+                                                                                                 activation='relu', name="ActionTypeHead_dense_5", 
+                                                                                                 kernel_regularizer='l2')])
   def get_config(self):
     config = super().get_config().copy()
     config.update({
@@ -260,24 +254,17 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    
-    self.core_output_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_1", 
-                                                                          kernel_regularizer='l2')
-                                                   ])
-    
     self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu', name="SpatialArgumentHead_conv2d_1", 
-                                        			 kernel_regularizer='l2'),
-                                        tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
-                                            			 kernel_regularizer='l2'),
-                                        tf.keras.layers.Flatten(),
-                                        tf.keras.layers.Softmax()
-                                       ])
-                                                                  
-    self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          		  name="SpatialArgumentHead_dense_3", 
-                                                                          		  kernel_regularizer='l2')
-                                                                ])
+                                            kernel_regularizer='l2'),
+                                            tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+                                            kernel_regularizer='l2'),
+                                            tf.keras.layers.Flatten(),
+                                            tf.keras.layers.Softmax()])
+
+    self.autoregressive_embedding_encoder_1 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                          name="SpatialArgumentHead_dense_2", kernel_regularizer='l2')])
+    self.autoregressive_embedding_encoder_2 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                          name="SpatialArgumentHead_dense_4", kernel_regularizer='l2')])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -290,10 +277,10 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
   def call(self, feature_encoded, core_output, autoregressive_embedding):
     batch_size = tf.shape(core_output)[0]
 
-    encoded_core_output = self.core_output_encoder(core_output)
+    encoded_core_output = self.autoregressive_embedding_encoder_1(core_output)
     encoded_core_output = tf.reshape(encoded_core_output, (batch_size, self.height, self.width, 1))
 
-    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder(autoregressive_embedding)
+    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder_2(autoregressive_embedding)
     encoded_autoregressive_embedding = tf.reshape(encoded_autoregressive_embedding, (batch_size, self.height, self.width, 1))
 
     network_input = tf.concat([feature_encoded, encoded_core_output, encoded_autoregressive_embedding], axis=3)
@@ -307,14 +294,13 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
     super(ScalarArgumentHead, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2", kernel_regularizer='l2'),
-                                        tf.keras.layers.Softmax()
-                                       ])
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1", kernel_regularizer='l2'),
+                                            tf.keras.layers.Softmax()
+                                           ])
 
-    self.autoregressive_embedding_encoder = tf.keras.Sequential([
-                                                                 tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                        		  name="ScalarArgumentHead_dense_4", kernel_regularizer='l2')
-                                                                ])
+    self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
+                                                                        name="ScalarArgumentHead_dense_2", kernel_regularizer='l2')
+                                                                       ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -339,9 +325,7 @@ class Baseline(tf.keras.layers.Layer):
     super(Baseline, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential([
-                                        tf.keras.layers.Dense(1, name="Baseline_dense_2", kernel_regularizer='l2')
-                                       ])
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(1, name="Baseline_dense", kernel_regularizer='l2')])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -368,9 +352,9 @@ class OurModel(tf.keras.Model):
     self.network_scale = int(screen_size / 32)
 
     # State Encoder
-    self.player_encoder = ScalarEncoder(output_dim=20)
+    self.player_encoder = ScalarEncoder(output_dim=11)
     self.screen_encoder = SpatialEncoder(height=screen_size, width=screen_size, channel=3)
-    self.entity_encoder = EntityEncoder(output_dim=11, entity_num=50)
+    #self.entity_encoder = EntityEncoder(output_dim=11, entity_num=50)
     #self.available_actions_encoder = ScalarEncoder(output_dim=11)
 
     # Core
@@ -407,22 +391,36 @@ class OurModel(tf.keras.Model):
   def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
     batch_size = tf.shape(feature_screen)[0]
 
-    feature_screen_encoded = self.screen_encoder(feature_screen)
-
     #feature_screen_array.shape:  (1, 32, 32, 13)
     #feature_player_array.shape:  (1, 32, 32, 11)
-    last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
-    feature_player = tf.concat([feature_player, last_action_type_encoded, game_loop], 1)
-    
+    feature_screen_encoded = self.screen_encoder(feature_screen)
+
     feature_player_encoded = self.player_encoder(feature_player)
     feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player_encoded, 1), 2),
                                          tf.stack([1, self.screen_size, self.screen_size, 1]))
     feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
 
-    feature_units_encoded = self.entity_encoder(feature_units)
-    feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
-                                        tf.stack([1, self.screen_size, self.screen_size, 1]))
-    feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
+    #feature_units_encoded = self.entity_encoder(feature_units)
+    #feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
+    #                                    tf.stack([1, self.screen_size, self.screen_size, 1]))
+    #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
+
+    #print("game_loop: ", game_loop)
+    game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop, 1), 2),
+                                   tf.stack([1, self.screen_size, self.screen_size, 1]))
+    game_loop_encoded = tf.cast(game_loop_encoded, 'float32')
+
+    #available_actions_encoded = self.available_actions_encoder(available_actions)
+    #print("available_actions_encoded: ", available_actions_encoded)
+    #available_actions_encoded = tf.tile(tf.expand_dims(tf.expand_dims(available_actions_encoded, 1), 2),
+    #                                        tf.stack([1, self.screen_size, self.screen_size, 1]))
+    #available_actions_encoded = tf.cast(available_actions_encoded, 'float32')
+
+    #print("last_action_type: ", last_action_type)
+    last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
+    last_action_type_encoded = tf.tile(tf.expand_dims(tf.expand_dims(last_action_type_encoded, 1), 2),
+                                           tf.stack([1, self.screen_size, self.screen_size, 1]))
+    last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
 
     #print("feature_screen_encoded.shape: ", feature_screen_encoded.shape)
     #print("feature_player_encoded.shape: ", feature_player_encoded.shape)
@@ -430,7 +428,10 @@ class OurModel(tf.keras.Model):
     #print("game_loop_encoded.shape: ", game_loop_encoded.shape)
     #print("available_actions_encoded.shape: ", available_actions_encoded.shape)
     #print("last_action_type_encoded.shape: ", last_action_type_encoded.shape)
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, game_loop_encoded, 
+                                    last_action_type_encoded], axis=3)
+    #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
+    #                                last_action_type_encoded], axis=3)
     
     core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
 
