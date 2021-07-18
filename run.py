@@ -464,6 +464,7 @@ def reinforcement_train(training_episode):
             
             home_arg_ids_list.append(np.array([home_arg_id_list]))
             home_actions_list = actions_to_pysc2(home_fn_id, home_arg_ids, (32, 32))
+            last_action_type = home_fn_id
             #print("delay:", delay)
             '''
             last_action_type = home_fn_id
@@ -496,7 +497,6 @@ def reinforcement_train(training_episode):
             home_dones.append(home_done)
 
             home_score += home_reward
-            state = next_state
             if len(home_feature_screen_list) == 16:
                 if arguments.training == True:
                   #print("len(last_action_type_list): ", len(last_action_type_list))
