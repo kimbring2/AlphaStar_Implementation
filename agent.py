@@ -267,7 +267,7 @@ class A2CAgent:
           critic_loss = mse_loss(tf.stack(value_estimate)[:, 0] , discounted_r_array)
           critic_loss = tf.cast(critic_loss, 'float32')
         
-          total_loss = actor_loss * 0.5 + critic_loss * 0.5
+          total_loss = actor_loss + critic_loss * 0.5
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
         grads, _ = tf.clip_by_global_norm(grads, self.gradient_clipping)
