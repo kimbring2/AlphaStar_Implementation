@@ -48,7 +48,7 @@ class SpatialEncoder(tf.keras.layers.Layer):
        tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
        tf.keras.layers.Conv2D(int(height/2), 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", 
                                  kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(height, 3, padding='same', activation='elu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
+       tf.keras.layers.Conv2D(height, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
     ])
 
   def get_config(self):
