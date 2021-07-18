@@ -24,7 +24,7 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --seed 456
 ```
 
-After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. I use a 456 as seed number to get training performance of below.
+After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. I use a 456 as seed number to get the training performance of below.
 
 <img src="image/MoveToBeacon_A2C.png" width="800">
 
