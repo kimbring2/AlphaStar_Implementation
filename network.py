@@ -221,10 +221,10 @@ class ActionTypeHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network_scale = network_scale
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_2", kernel_regularizer='l2'),
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_1", kernel_regularizer='l2'),
                                             tf.keras.layers.Softmax()])
     self.autoregressive_embedding_network = tf.keras.Sequential([tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
-                                                                                                 activation='relu', name="ActionTypeHead_dense_5", 
+                                                                                                 activation='relu', name="ActionTypeHead_dense_2", 
                                                                                                  kernel_regularizer='l2')])
   def get_config(self):
     config = super().get_config().copy()
@@ -254,9 +254,7 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu', name="SpatialArgumentHead_conv2d_1", 
-                                            kernel_regularizer='l2'),
-                                            tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_1", 
                                             kernel_regularizer='l2'),
                                             tf.keras.layers.Flatten(),
                                             tf.keras.layers.Softmax()])
