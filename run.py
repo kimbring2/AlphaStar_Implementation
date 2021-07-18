@@ -393,7 +393,7 @@ def reinforcement_train(training_episode):
 
     #home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model_1')
     while episode < training_episode:
-        home_agent.save(workspace_path + '/Models/reinforcment_model_1')
+        #home_agent.save(workspace_path + '/Models/reinforcment_model_1')
 
         # Reset episode
         home_score, home_done, SAVING = 0, False, ''

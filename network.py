@@ -48,7 +48,7 @@ class SpatialEncoder(tf.keras.layers.Layer):
        tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
        tf.keras.layers.Conv2D(int(height/2), 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", 
                                  kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(height, 3, padding='same', activation='elu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
+       tf.keras.layers.Conv2D(height, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -184,7 +184,7 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm", return_sequences=True, 
                       return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((212, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((208, 256*self.network_scale*self.network_scale)),
                                             Flatten(),
                                             tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                                      name="core_dense", 
@@ -203,7 +203,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((212, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((208, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, initial_state=(memory_state, carry_state))
 
@@ -427,7 +427,7 @@ class OurModel(tf.keras.Model):
     #print("last_action_type_encoded.shape: ", last_action_type_encoded.shape)
     #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
     #                                available_actions_encoded, last_action_type_encoded], axis=3)
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, 
                                     last_action_type_encoded], axis=3)
     
     core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
