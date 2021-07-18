@@ -260,16 +260,24 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+    
+    self.core_output_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                          name="SpatialArgumentHead_dense_1", 
+                                                                          kernel_regularizer='l2')
+                                                   ])
+    
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu', name="SpatialArgumentHead_conv2d_1", 
+                                        			 kernel_regularizer='l2'),
+                                        tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
                                             			 kernel_regularizer='l2'),
                                         tf.keras.layers.Flatten(),
                                         tf.keras.layers.Softmax()
                                        ])
-
-    self.autoregressive_embedding_encoder_1 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_1", kernel_regularizer='l2')])
-    self.autoregressive_embedding_encoder_2 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_3", kernel_regularizer='l2')])
+                                                                  
+    self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
+                                                                          		  name="SpatialArgumentHead_dense_3", 
+                                                                          		  kernel_regularizer='l2')
+                                                                ])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -282,10 +290,10 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
   def call(self, feature_encoded, core_output, autoregressive_embedding):
     batch_size = tf.shape(core_output)[0]
 
-    encoded_core_output = self.autoregressive_embedding_encoder_1(core_output)
+    encoded_core_output = self.core_output_encoder(core_output)
     encoded_core_output = tf.reshape(encoded_core_output, (batch_size, self.height, self.width, 1))
 
-    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder_2(autoregressive_embedding)
+    encoded_autoregressive_embedding = self.autoregressive_embedding_encoder(autoregressive_embedding)
     encoded_autoregressive_embedding = tf.reshape(encoded_autoregressive_embedding, (batch_size, self.height, self.width, 1))
 
     network_input = tf.concat([feature_encoded, encoded_core_output, encoded_autoregressive_embedding], axis=3)
@@ -303,7 +311,8 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
                                         tf.keras.layers.Softmax()
                                        ])
 
-    self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
+    self.autoregressive_embedding_encoder = tf.keras.Sequential([
+                                                                 tf.keras.layers.Dense(self.output_dim, activation='relu', 
                                                                         		  name="ScalarArgumentHead_dense_4", kernel_regularizer='l2')
                                                                 ])
 
