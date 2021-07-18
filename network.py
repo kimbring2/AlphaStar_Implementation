@@ -21,8 +21,7 @@ class ScalarEncoder(tf.keras.layers.Layer):
     self.output_dim = output_dim
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense_1", kernel_regularizer='l2'),
-       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense_2", kernel_regularizer='l2')
+       tf.keras.layers.Dense(self.output_dim, activation='relu', name="ScalarEncoder_dense_1", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -145,7 +144,6 @@ class EntityEncoder(tf.keras.layers.Layer):
     self.dropout = tf.keras.layers.Dropout(0.1)
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Dense(64, activation='relu', name="EntityEncoder_dense_1", kernel_regularizer='l2'),
        tf.keras.layers.Dense(64, activation='relu', name="EntityEncoder_dense_2", kernel_regularizer='l2')
     ])
 
@@ -197,9 +195,7 @@ class Core(tf.keras.layers.Layer):
     self.network = tf.keras.Sequential([Reshape((464, 256*self.network_scale*self.network_scale)),
                                         Flatten(),
                                         tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
-                                                              name="core_dense_1", kernel_regularizer='l2'),\
-                                        tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
-                                                              name="core_dense_2", kernel_regularizer='l2')
+                                                              name="core_dense_1", kernel_regularizer='l2')
                                       ])
 
   def get_config(self):
@@ -230,15 +226,10 @@ class ActionTypeHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network_scale = network_scale
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', name="ActionTypeHead_dense_1", 
-    								 kernel_regularizer='l2'),
-                                        tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_2", kernel_regularizer='l2'),
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_2", kernel_regularizer='l2'),
                                         tf.keras.layers.Softmax()])
     self.autoregressive_embedding_network = tf.keras.Sequential([tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
                                                                                        activation='relu', name="ActionTypeHead_dense_3", 
-                                                                                       kernel_regularizer='l2'),
-                                                                 tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
-                                                                                       activation='relu', name="ActionTypeHead_dense_4", 
                                                                                        kernel_regularizer='l2')
                                                                ])
   def get_config(self):
@@ -269,22 +260,16 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu', name="SpatialArgumentHead_conv2d_1", 
-                                        			 kernel_regularizer='l2'),
-                                        tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
                                             			 kernel_regularizer='l2'),
                                         tf.keras.layers.Flatten(),
                                         tf.keras.layers.Softmax()
                                        ])
 
     self.autoregressive_embedding_encoder_1 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_1", kernel_regularizer='l2'),
-    								     tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_2", kernel_regularizer='l2')])
+                                                                          name="SpatialArgumentHead_dense_1", kernel_regularizer='l2')])
     self.autoregressive_embedding_encoder_2 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_3", kernel_regularizer='l2'),
-    								     tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          name="SpatialArgumentHead_dense_4", kernel_regularizer='l2')])
+                                                                          name="SpatialArgumentHead_dense_3", kernel_regularizer='l2')])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -314,14 +299,11 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
     super(ScalarArgumentHead, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, activation='relu', name="ScalarArgumentHead_dense_1", kernel_regularizer='l2'),
-                                        tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2", kernel_regularizer='l2'),
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2", kernel_regularizer='l2'),
                                         tf.keras.layers.Softmax()
                                        ])
 
     self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                        		  name="ScalarArgumentHead_dense_3", kernel_regularizer='l2'),
-                                                                 tf.keras.layers.Dense(self.output_dim, activation='relu', 
                                                                         		  name="ScalarArgumentHead_dense_4", kernel_regularizer='l2')
                                                                 ])
 
@@ -348,8 +330,8 @@ class Baseline(tf.keras.layers.Layer):
     super(Baseline, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(256, activation='relu', name="Baseline_dense_1", kernel_regularizer='l2'),
-                                        tf.keras.layers.Dense(1, activation='relu', name="Baseline_dense_2", kernel_regularizer='l2')
+    self.network = tf.keras.Sequential([
+                                        tf.keras.layers.Dense(1, name="Baseline_dense_2", kernel_regularizer='l2')
                                        ])
 
   def get_config(self):
