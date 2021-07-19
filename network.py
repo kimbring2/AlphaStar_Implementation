@@ -181,7 +181,7 @@ class Core(tf.keras.layers.Layer):
     self.unit_number = unit_number
     self.network_scale = network_scale
 
-    self.lstm = LSTM(256*self.network_scale*self.network_scale, activation='relu', name="core_lstm", return_sequences=True, 
+    self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                       return_state=True, kernel_regularizer='l2')
 
     self.network = tf.keras.Sequential([Reshape((208, 256*self.network_scale*self.network_scale)),
@@ -251,9 +251,7 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu', name="SpatialArgumentHead_conv2d_1", 
-                                            kernel_regularizer='l2'),
-                                            tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
                                             kernel_regularizer='l2'),
                                             tf.keras.layers.Flatten(),
                                             tf.keras.layers.Softmax()])
