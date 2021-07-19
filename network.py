@@ -184,7 +184,7 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                       return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((208, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((176, 256*self.network_scale*self.network_scale)),
                                             Flatten(),
                                             tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                                      name="core_dense", 
@@ -203,7 +203,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((208, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((176, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, initial_state=(memory_state, carry_state))
 
@@ -349,7 +349,7 @@ class OurModel(tf.keras.Model):
     # State Encoder
     self.player_encoder = ScalarEncoder(output_dim=11)
     self.screen_encoder = SpatialEncoder(height=screen_size, width=screen_size, channel=3)
-    self.entity_encoder = EntityEncoder(output_dim=11, entity_num=50)
+    #self.entity_encoder = EntityEncoder(output_dim=11, entity_num=50)
     #self.available_actions_encoder = ScalarEncoder(output_dim=11)
 
     # Core
@@ -395,10 +395,10 @@ class OurModel(tf.keras.Model):
 
     feature_screen_encoded = self.screen_encoder(feature_screen)
 
-    feature_units_encoded = self.entity_encoder(feature_units)
-    feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
-                                        tf.stack([1, self.screen_size, self.screen_size, 1]))
-    feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
+    #feature_units_encoded = self.entity_encoder(feature_units)
+    #feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
+    #                                    tf.stack([1, self.screen_size, self.screen_size, 1]))
+    #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
 
     #print("game_loop: ", game_loop)
     game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop, 1), 2),
@@ -425,8 +425,7 @@ class OurModel(tf.keras.Model):
     #print("last_action_type_encoded.shape: ", last_action_type_encoded.shape)
     #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, game_loop_encoded, 
     #                                available_actions_encoded, last_action_type_encoded], axis=3)
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, feature_units_encoded, 
-                                    last_action_type_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
     
     core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
 
