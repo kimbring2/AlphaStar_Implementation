@@ -128,6 +128,10 @@ class A2CAgent:
         return discounted_r
     
     @tf.function
+    def compute_entropy(self, probs):
+      return -tf.reduce_sum(self.safe_log(probs) * probs, axis=-1)
+
+    @tf.function
     def compute_log_probs(self, probs, labels):
       labels = tf.maximum(labels, 0)
       labels = tf.cast(labels, 'int32')
@@ -141,6 +145,16 @@ class A2CAgent:
       fn_pi *= available_actions
       fn_pi /= tf.reduce_sum(fn_pi, axis=1, keepdims=True)
       return fn_pi
+
+    @tf.function
+    def safe_div(self, numerator, denominator, name="value"):
+      return tf.where(
+        tf.greater(denominator, 0),
+        tf.math.divide(numerator, tf.where(
+            tf.math.equal(denominator, 0),
+            tf.ones_like(denominator), denominator)),
+        tf.zeros_like(numerator),
+        name=name)
 
     @tf.function
     def safe_log(self, x):
@@ -267,7 +281,18 @@ class A2CAgent:
           critic_loss = mse_loss(tf.stack(value_estimate)[:, 0] , discounted_r_array)
           critic_loss = tf.cast(critic_loss, 'float32')
         
-          total_loss = actor_loss + critic_loss * 0.5
+          entropy_loss = tf.reduce_mean(self.compute_entropy(fn_pi))
+          for index, arg_type in enumerate(actions.TYPES):
+            arg_id = arg_ids_array[:,index]
+            arg_pi = arg_pis[arg_type]
+            batch_mask = tf.cast(tf.not_equal(arg_id, -1), 'float32')
+            arg_entropy = self.safe_div(
+               tf.reduce_sum(self.compute_entropy(arg_pi) * batch_mask),
+               tf.reduce_sum(batch_mask))
+           
+            entropy_loss += arg_entropy
+          
+          total_loss = actor_loss + 0.5 * critic_loss - 1e-3 * entropy_loss
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
         grads, _ = tf.clip_by_global_norm(grads, self.gradient_clipping)
