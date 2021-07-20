@@ -1,3 +1,5 @@
+Deprecated. Please use a code of first page. 
+
 # Pseudocode of AlphaStar
 I am adding the necessary code for running AlphaStar based on psuedocode of DeepMind paper
 
