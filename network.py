@@ -337,9 +337,9 @@ class Baseline(tf.keras.layers.Layer):
     return value
 
 
-class OurModel(tf.keras.Model):
+class AlphaStar(tf.keras.Model):
   def __init__(self, screen_size, minimap_size):
-    super(OurModel, self).__init__()
+    super(AlphaStar, self).__init__()
 
     self.screen_size = screen_size
     self.minimap_size = minimap_size
@@ -466,3 +466,149 @@ class OurModel(tf.keras.Model):
     value = self.baseline(core_output)
 
     return action_type_logits, self.args_out_logits, value, final_memory_state, final_carry_state
+    
+    
+class ConvLSTM(tf.keras.Model):
+  def __init__(self, screen_size, minimap_size):
+    super(ConvLSTM, self).__init__()
+
+    self.screen_size = screen_size
+    self.minimap_size = minimap_size
+
+    self.network_scale = int(screen_size / 32)
+
+    self.screen_encoder = tf.keras.Sequential([
+       tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(16, 5, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
+    ])
+    
+    self.lstm = LSTM(256, name="lstm", return_sequences=True, return_state=True, kernel_regularizer='l2')
+    
+    self.feature_fc = tf.keras.layers.Dense(256, activation='relu')
+    self.fn_out = tf.keras.layers.Dense(_NUM_FUNCTIONS, activation='softmax')
+
+    self.screen = tf.keras.Sequential()
+    self.screen.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
+    self.screen.add(tf.keras.layers.Flatten())
+    self.screen.add(tf.keras.layers.Softmax())
+
+    self.minimap = tf.keras.Sequential()
+    self.minimap.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
+    self.minimap.add(tf.keras.layers.Flatten())
+    self.minimap.add(tf.keras.layers.Softmax())
+
+    self.screen2 = tf.keras.Sequential()
+    self.screen2.add(tf.keras.layers.Conv2D(1, 1, padding='same'))
+    self.screen2.add(tf.keras.layers.Flatten())
+    self.screen2.add(tf.keras.layers.Softmax())
+
+    self.queued = tf.keras.Sequential()
+    self.queued.add(tf.keras.layers.Dense(2))
+    self.queued.add(tf.keras.layers.Softmax())
+
+    self.control_group_act = tf.keras.Sequential()
+    self.control_group_act.add(tf.keras.layers.Dense(5))
+    self.control_group_act.add(tf.keras.layers.Softmax())
+
+    self.control_group_id = tf.keras.Sequential()
+    self.control_group_id.add(tf.keras.layers.Dense(10))
+    self.control_group_id.add(tf.keras.layers.Softmax())
+
+    self.select_point_act = tf.keras.Sequential()
+    self.select_point_act.add(tf.keras.layers.Dense(4))
+    self.select_point_act.add(tf.keras.layers.Softmax())
+
+    self.select_add = tf.keras.Sequential()
+    self.select_add.add(tf.keras.layers.Dense(2))
+    self.select_add.add(tf.keras.layers.Softmax())
+
+    self.select_unit_act = tf.keras.Sequential()
+    self.select_unit_act.add(tf.keras.layers.Dense(4))
+    self.select_unit_act.add(tf.keras.layers.Softmax())
+
+    self.select_unit_id = tf.keras.Sequential()
+    self.select_unit_id.add(tf.keras.layers.Dense(500))
+    self.select_unit_id.add(tf.keras.layers.Softmax())
+
+    self.select_worker = tf.keras.Sequential()
+    self.select_worker.add(tf.keras.layers.Dense(4))
+    self.select_worker.add(tf.keras.layers.Softmax())
+
+    self.build_queue_id = tf.keras.Sequential()
+    self.build_queue_id.add(tf.keras.layers.Dense(10))
+    self.build_queue_id.add(tf.keras.layers.Softmax())
+
+    self.unload_id = tf.keras.Sequential()
+    self.unload_id.add(tf.keras.layers.Dense(500))
+    self.unload_id.add(tf.keras.layers.Softmax())
+
+    self.flatten2 = Flatten()
+    self.dense2 = tf.keras.layers.Dense(1)
+
+  def get_config(self):
+    config = super().get_config().copy()
+    config.update({
+        'args_out': self.args_out
+    })
+    return config
+
+  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
+    batch_size = tf.shape(feature_screen)[0]
+
+    #feature_screen_array.shape:  (1, 32, 32, 13)
+    #feature_player_array.shape:  (1, 32, 32, 11)
+    feature_screen_encoded = self.screen_encoder(feature_screen)
+    feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player, 1), 2),
+                                     tf.stack([1, 32, 32, 1]))
+    feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
+
+    last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
+    last_action_type_encoded = tf.tile(tf.expand_dims(tf.expand_dims(last_action_type_encoded, 1), 2),
+                                           tf.stack([1, self.screen_size, self.screen_size, 1]))
+    last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
+
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
+    #print("feature_encoded.shape: ", feature_encoded.shape)
+    
+    feature_encoded_reshaped = Reshape((176, 256))(feature_encoded)
+    
+    core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_reshaped, initial_state=(memory_state, carry_state))
+    
+    feature_encoded_flatten = self.flatten2(core_output)
+    feature_fc = self.feature_fc(feature_encoded_flatten)
+
+    fn_out = self.fn_out(feature_fc)
+    
+    args_out = dict()
+    for arg_type in actions.TYPES:
+      if arg_type.name == 'screen':
+        args_out[arg_type] = self.screen(feature_encoded)
+      elif arg_type.name == 'minimap':
+        args_out[arg_type] = self.minimap(feature_encoded)
+      elif arg_type.name == 'screen2':
+        args_out[arg_type] = self.screen2(feature_encoded)
+      elif arg_type.name == 'queued':
+        args_out[arg_type] = self.queued(feature_fc)
+      elif arg_type.name == 'control_group_act':
+        args_out[arg_type] = self.control_group_act(feature_fc)
+      elif arg_type.name == 'control_group_id':
+        args_out[arg_type] = self.control_group_id(feature_fc)
+      elif arg_type.name == 'select_point_act':
+        args_out[arg_type] = self.select_point_act(feature_fc)
+      elif arg_type.name == 'select_add':
+        args_out[arg_type] = self.select_add(feature_fc)
+      elif arg_type.name == 'select_unit_act':
+        args_out[arg_type] = self.select_unit_act(feature_fc)
+      elif arg_type.name == 'select_unit_id':
+        args_out[arg_type] = self.select_unit_id(feature_fc)
+      elif arg_type.name == 'select_worker':
+        args_out[arg_type] = self.select_worker(feature_fc)
+      elif arg_type.name == 'build_queue_id':
+        args_out[arg_type] = self.build_queue_id(feature_fc)
+      elif arg_type.name == 'unload_id':
+        args_out[arg_type] = self.unload_id(feature_fc)
+
+    value = self.dense2(feature_fc)
+
+    return fn_out, args_out, value, final_memory_state, final_carry_state
