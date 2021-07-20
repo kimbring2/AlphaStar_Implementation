@@ -18,13 +18,13 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 
 # Test for minigame
 ## MoveToBeacon
-First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has same network structure as AlphaStar. First, place [run.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/run.py), [network.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/network.py), [agent.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/agent.py), [utils.py](https://github.com/kimbring2/AlphaStar_Implementation/blob/master/utils.py) files in your working folder. Next, start training by using below command.
+First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command.
 
 ```
-$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --seed 456
+$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001
 ```
 
-After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. I use a 456 as seed number to get the training performance of below.
+After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. I use a 789 as seed number to get the training performance of below.
 
 <img src="image/MoveToBeacon_A2C.png" width="800">
 
