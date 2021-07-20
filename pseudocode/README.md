@@ -1,4 +1,4 @@
-Deprecated. Please use a code of first page. 
+Code of this page is deprecated for a while. Please use a code of first page. 
 
 # Pseudocode of AlphaStar
 I am adding the necessary code for running AlphaStar based on psuedocode of DeepMind paper
