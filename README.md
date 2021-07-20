@@ -9,8 +9,8 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 # Version
 1. Python3
 2. PySC2 3.0.0
-3. Tensorflow 2.4.0
-4. Tensorflow-probability  
+3. Tensorflow 2.2.0
+4. Tensorflow-probability 0.9.0
 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
