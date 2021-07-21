@@ -211,7 +211,7 @@ def PlotModel(score, episode):
 
     return average[-1]
 
-home_agent = agent.A2CAgent(network.OurModel(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
+home_agent = agent.A2CAgent(network.ConvLSTM(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
                                 arguments.learning_rate, 
                                 arguments.gradient_clipping)
 #agent_2 = agent.A2CAgent(network.OurModel())
@@ -388,13 +388,10 @@ env = sc2_env.SC2Env(
 
 def reinforcement_train(training_episode):
     score_list = []
-    max_average = 5.0
-    EPISODES, episode, max_average = 20000, 0, 5.0
+    EPISODES, episode, max_average, SAVING  = 20000, 0, 5.0, ''
 
     #home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model_1')
     while episode < training_episode:
-        #home_agent.save(workspace_path + '/Models/reinforcment_model_1')
-
         # Reset episode
         home_score, home_done, SAVING = 0, False, ''
         opponent_score, opponent_done = 0, False
@@ -418,10 +415,10 @@ def reinforcement_train(training_episode):
             home_feature_screen = home_state[3]['feature_screen']
             home_feature_screen = utils.preprocess_screen(home_feature_screen)
             home_feature_screen = np.transpose(home_feature_screen, (1, 2, 0))
-
+            #print("home_feature_screen.shape: ", home_feature_screen.shape)
             home_feature_player = home_state[3]['player']
             home_feature_player = utils.preprocess_player(home_feature_player)
-
+            #print("len(home_feature_player): ", len(home_feature_player))
             home_available_actions = home_state[3]['available_actions']
             home_available_actions = utils.preprocess_available_actions(home_available_actions)
 
@@ -514,6 +511,12 @@ def reinforcement_train(training_episode):
 
         score_list.append(home_score)
         average = sum(score_list) / len(score_list)
+        if average >= max_average:
+          SAVING = "SAVING"
+          max_average = average
+          home_agent.save(workspace_path + '/Models/reinforcment_model')
+        else:
+          SAVING = ""
 
         PlotModel(home_score, episode)
         print("episode: {}/{}, score: {}, average: {:.2f} {}".format(episode, EPISODES, home_score, average, SAVING))
