@@ -389,8 +389,8 @@ env = sc2_env.SC2Env(
 def reinforcement_train(training_episode):
     score_list = []
     EPISODES, episode, max_average, SAVING  = 20000, 0, 5.0, ''
-
-    if arguments.load != None:
+  
+    if arguments.load != False:
         home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model')
 
     while episode < training_episode:
