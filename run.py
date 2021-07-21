@@ -211,7 +211,7 @@ def PlotModel(score, episode):
 
     return average[-1]
 
-home_agent = agent.A2CAgent(network.ConvLSTM(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
+home_agent = agent.A2CAgent(network.AlphaStar(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
                                 arguments.learning_rate, 
                                 arguments.gradient_clipping)
 #agent_2 = agent.A2CAgent(network.OurModel())
