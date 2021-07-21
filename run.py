@@ -390,7 +390,9 @@ def reinforcement_train(training_episode):
     score_list = []
     EPISODES, episode, max_average, SAVING  = 20000, 0, 5.0, ''
 
-    #home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model_1')
+    if arguments.load != None:
+        home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model')
+
     while episode < training_episode:
         # Reset episode
         home_score, home_done, SAVING = 0, False, ''
