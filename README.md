@@ -23,11 +23,11 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001
 ```
 
-After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. I use a 789 as seed number to get the training performance of below.
+After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
 <img src="image/MoveToBeacon_A2C.png" width="800">
 
-After placing [pretrained model](https://drive.google.com/drive/folders/1GQ9FsKGXYjWXhUI_6mBv2247IhU8iYma?usp=sharing) under Models folder of your workspace, run below command to test.
+After finishing training, run below command to test pretrained model.
 
 ```
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --visualize True --load True
