@@ -37,6 +37,9 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
 
+# Supervised Training 
+To implement AlphaStar susuccessfully, Supervised Training is crucial. Therefore, I collect amount if 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 using Terran, and only marine rush from two Barrack.
+
 # Detailed information
 I am writing explanation for code at Medium as series.
 
