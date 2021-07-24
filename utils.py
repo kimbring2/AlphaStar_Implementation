@@ -46,6 +46,7 @@ def preprocess_screen(screen):
     if i == _SCREEN_PLAYER_ID or i == _SCREEN_UNIT_TYPE:
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
     elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
+      #print("features.SCREEN_FEATURES[i]: ", features.SCREEN_FEATURES[i])
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
 
   return np.concatenate(layers, axis=0)

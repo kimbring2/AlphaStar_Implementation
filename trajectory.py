@@ -180,7 +180,7 @@ class Trajectory(object):
 					#print("#####################################################")
 					print("replay_step: " + str(replay_step))
 
-					#if replay_step == 800:
+					#if replay_step == 400:
 					#	break
 
 					controller.step(step_mul)

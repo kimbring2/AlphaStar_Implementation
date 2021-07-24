@@ -7,7 +7,7 @@ from pysc2.lib.actions import TYPES as ACTION_TYPES
 import tensorflow as tf
 import numpy as np
 import tensorflow_probability as tfp
-from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten, LSTM, Reshape
+from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten, LSTM, Reshape, ConvLSTM2D, BatchNormalization, Conv3D
 from tensorflow_probability.python.distributions import kullback_leibler
 
 tfd = tfp.distributions
@@ -184,7 +184,7 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                       return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((176, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((144, 256*self.network_scale*self.network_scale)),
                                             Flatten(),
                                             tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                                      name="core_dense", 
@@ -203,7 +203,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((176, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((144, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, initial_state=(memory_state, carry_state))
 
@@ -388,12 +388,12 @@ class AlphaStar(tf.keras.Model):
 
     #feature_screen_array.shape:  (1, 32, 32, 13)
     #feature_player_array.shape:  (1, 32, 32, 11)
+    feature_screen_encoded = self.screen_encoder(feature_screen)
+
     feature_player_encoded = self.player_encoder(feature_player)
     feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player_encoded, 1), 2),
                                          tf.stack([1, self.screen_size, self.screen_size, 1]))
     feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
-
-    feature_screen_encoded = self.screen_encoder(feature_screen)
 
     #feature_units_encoded = self.entity_encoder(feature_units)
     #feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
@@ -468,9 +468,9 @@ class AlphaStar(tf.keras.Model):
     return action_type_logits, self.args_out_logits, value, final_memory_state, final_carry_state
     
     
-class ConvLSTM(tf.keras.Model):
+class FullyConvLSTM(tf.keras.Model):
   def __init__(self, screen_size, minimap_size):
-    super(ConvLSTM, self).__init__()
+    super(FullyConvLSTM, self).__init__()
 
     self.screen_size = screen_size
     self.minimap_size = minimap_size
@@ -483,8 +483,15 @@ class ConvLSTM(tf.keras.Model):
        tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
     ])
     
-    self.lstm = LSTM(256, name="lstm", return_sequences=True, return_state=True, kernel_regularizer='l2')
-    
+    '''
+    self.screen_encoder = tf.keras.Sequential()
+    self.screen_encoder.add(ConvLSTM2D(filters=16, kernel_size=(5,5), padding='same', activation='relu', return_sequences=True))
+    self.screen_encoder.add(BatchNormalization())
+    self.screen_encoder.add(ConvLSTM2D(filters=32, kernel_size=(3,3), padding='same', activation='relu', return_sequences=True))
+    self.screen_encoder.add(BatchNormalization())
+    #self.screen_encoder.add(ConvLSTM2D(filters=64, kernel_size=(1,1), padding='same', activation='relu', return_sequences=True))
+    self.screen_encoder.add(Conv3D(filters=1, kernel_size=(2, 2, 2), activation="relu", padding="same"))
+    '''
     self.feature_fc = tf.keras.layers.Dense(256, activation='relu')
     self.fn_out = tf.keras.layers.Dense(_NUM_FUNCTIONS, activation='softmax')
 
@@ -543,24 +550,28 @@ class ConvLSTM(tf.keras.Model):
     self.unload_id.add(tf.keras.layers.Dense(500))
     self.unload_id.add(tf.keras.layers.Softmax())
 
-    self.flatten2 = Flatten()
     self.dense2 = tf.keras.layers.Dense(1)
 
   def get_config(self):
     config = super().get_config().copy()
     config.update({
-        'args_out': self.args_out
+        'args_out': self.args_out,
+        'input_shape': self.input_shape
     })
     return config
 
-  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
+  def call(self, feature_screen, feature_player, feature_units, game_loop, available_actions, last_action_type):
     batch_size = tf.shape(feature_screen)[0]
 
     #feature_screen_array.shape:  (1, 32, 32, 13)
     #feature_player_array.shape:  (1, 32, 32, 11)
+    #feature_screen_encoded = self.screen_encoder(feature_screen)
     feature_screen_encoded = self.screen_encoder(feature_screen)
+    #feature_screen_flatten = Flatten()(feature_screen_encoded)
+    #feature_screen_reshaped = Reshape((32, 32, 4))(feature_screen_flatten)
+
     feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player, 1), 2),
-                                     tf.stack([1, 32, 32, 1]))
+                                         tf.stack([1, 32, 32, 1]))
     feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
 
     last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
@@ -569,13 +580,9 @@ class ConvLSTM(tf.keras.Model):
     last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
 
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
-    #print("feature_encoded.shape: ", feature_encoded.shape)
-    
-    feature_encoded_reshaped = Reshape((176, 256))(feature_encoded)
-    
-    core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_reshaped, initial_state=(memory_state, carry_state))
-    
-    feature_encoded_flatten = self.flatten2(core_output)
+    #feature_encoded_reshaped = Reshape((64, 128))(feature_encoded)
+
+    feature_encoded_flatten = Flatten()(feature_encoded)
     feature_fc = self.feature_fc(feature_encoded_flatten)
 
     fn_out = self.fn_out(feature_fc)
@@ -611,4 +618,32 @@ class ConvLSTM(tf.keras.Model):
 
     value = self.dense2(feature_fc)
 
-    return fn_out, args_out, value, final_memory_state, final_carry_state
+    return fn_out, args_out, value
+
+
+def make_model(name):
+    '''
+    feature_screen.shape:  (1, 32, 32, 2)
+    feature_player.shape:  (1, 3)
+    feature_units.shape:  (1, 50, 7)
+    game_loop.shape:  (1, 1)
+    available_actions.shape:  (1, 573)
+    last_action_type.shape:  (1, 1)
+    feature_screen_history.shape:  (1, 4, 32, 32, 2)
+    '''
+    feature_screen = tf.keras.Input(shape=(32, 32, 13))
+    feature_player = tf.keras.Input(shape=(11))
+    feature_units = tf.keras.Input(shape=(50, 7))
+    game_loop = tf.keras.Input(shape=(1))
+    available_actions = tf.keras.Input(shape=(573))
+    last_action_type = tf.keras.Input(shape=(1))
+    #feature_screen_history = tf.keras.Input(shape=(4, 32, 32, 13))
+
+    fn_out, args_out, value = FullyConvLSTM(32, 32)(feature_screen, feature_player, feature_units, game_loop, available_actions, 
+                                                             last_action_type)
+    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'feature_player': feature_player, 
+                                          'feature_units': feature_units, 'game_loop': game_loop,
+                                          'available_actions': available_actions, 'last_action_type': last_action_type}, 
+                              outputs={'fn_out': fn_out, 'args_out': args_out, 'value':value}, 
+                              name=name)
+    return model
