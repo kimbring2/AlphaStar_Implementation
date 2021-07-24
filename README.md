@@ -40,7 +40,7 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 # Supervised Training 
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Therefore, I collect amount if 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 using Terran, and only marine rush from two Barrack.
 
-After downloding this files to your workspace, try to start Supervised Learning using below command.
+After downloding this files to your workspace, try to start the Supervised Learning using below command.
 
 ```
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --sl_training True --replay_file_path /home/kimbring2/StarCraftII/Replays/local_Simple64/
