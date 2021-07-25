@@ -11,6 +11,7 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 2. PySC2 3.0.0
 3. Tensorflow 2.3.0
 4. Tensorflow-probability 0.12.2
+5. Starcraft2 4.8.2 version
 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
