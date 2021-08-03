@@ -47,6 +47,10 @@ After downloding this files to your workspace, try to start the Supervised Learn
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --sl_training True --replay_file_path /home/kimbring2/StarCraftII/Replays/local_Simple64/
 ```
 
+```
+python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.001 --replay_file_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --load True --visualize True --environment Simple64
+```
+
 I can not see huge improvement of agent using Supervised Learning yet. If you find some fault in my code, please notify me!
 
 # Detailed information
