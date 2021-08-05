@@ -55,7 +55,8 @@ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ 
 
 ~~I can not see huge improvement of agent using Supervised Learning yet. If you find some fault in my code, please notify me~~ I find I did not use a Minimap feature. After adding that feature, my agent start to learn my build. I could not update code of GitHub because I am not sure other part work. Please download [testing code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) for Supervised Learning from Google Drive. 
 
-[Supervised Learning demo 1](https://youtu.be/A4c3yb83KDY)
+[![Supervised Learning demo 1](http://i3.ytimg.com/vi/2b6BUH5tF1g/hqdefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
+<strong>Click to Watch!</strong>
 
 # Detailed information
 I am writing explanation for code at Medium as series.
