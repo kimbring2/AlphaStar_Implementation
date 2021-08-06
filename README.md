@@ -48,7 +48,7 @@ First, change a Starcraft2 replay file to hkl file format for fast training. It 
 $ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64 --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
 ```
 
-After downloding this files to your workspace, try to start the Supervised Learning using below command.
+After making hkl file of replay in your workspace, try to start the Supervised Learning using below command.
 
 ```
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --sl_training True --replay_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
