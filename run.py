@@ -12,14 +12,13 @@ import argparse
 import statistics
 import random
 import gym
+import glob
 import gc
 import pylab
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from collections import namedtuple
-#import grpc
-#import vtrace
 
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
@@ -36,6 +35,7 @@ import time
 import network as network
 import agent as agent
 import trajectory as trajectory
+import hickle as hkl 
 import utils
 
 from absl import flags
@@ -59,9 +59,10 @@ parser.add_argument('--player_2', type=str, default='terran', help='race of play
 parser.add_argument('--screen_size', type=int, default=32, help='screen resolution')
 parser.add_argument('--minimap_size', type=int, default=32, help='minimap resolution')
 parser.add_argument('--replay_dir', type=str, default="replay", help='replay save path')
-parser.add_argument('--replay_file_path', type=str, default="replay", help='path of replay file for SL')
+parser.add_argument('--replay_hkl_file_path', type=str, default="replay", help='path of replay file for SL')
 parser.add_argument('--sl_training', type=bool, default=False, help='Supervised Training')
 parser.add_argument('--save_replay_episodes', type=int, default=10, help='minimap resolution')
+parser.add_argument('--tensorboard_path', type=str, default="tensorboard", help='Folder for saving Tensorboard log file')
 
 arguments = parser.parse_args()
 
@@ -214,89 +215,86 @@ def PlotModel(score, episode):
 #home_agent = agent.A2CAgent(network.ConvLSTM(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
 #                               arguments.learning_rate, 
 #                               arguments.gradient_clipping)
-conv_lstm_model = network.make_model('fullyconv_lstm')
-home_agent = agent.A2CAgent(conv_lstm_model, arguments.learning_rate, arguments.gradient_clipping)
+model = network.make_model('alphastar')
+home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
 #agent_2 = agent.A2CAgent(network.OurModel())
+writer = tf.summary.create_file_writer(arguments.tensorboard_path)
+
 
 def supervised_train(training_episode):
     # Initialization
-    EPISODES, episode, max_average = 20000, 0, 50.0 # specific for pong
     #home_agent.load(workspace_path + '/Models/supervised_model')
 
-    while episode < training_episode:
+    for episode in range(0, training_episode):
         home_agent.save(workspace_path + '/Models/supervised_model')
 
-        if episode < EPISODES:
-            episode += 1
+        replay_file_path_list = glob.glob(arguments.replay_hkl_file_path + '*.*')
+        replay_file_path = random.choice(replay_file_path_list)
 
-        #replay = trajectory.Trajectory('/media/kimbring2/Steam/StarCraftII/Replays/', 'Terran', 'Terran', 2500)
-        replay = trajectory.Trajectory(arguments.replay_file_path, 'Terran', 'Terran', 500)
-        replay.get_random_trajectory()
+        replay = hkl.load(replay_file_path)
+        replay_file_length = len(replay['home_game_loop'])
 
         replay_index = 0
         home_replay_done = False
 
-        home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_feature_units_list = [], [], []
+        home_replay_feature_screen_list, home_replay_feature_minimap_list = [], []
+        home_replay_feature_player_list, home_replay_feature_units_list = [], []
         home_replay_available_actions_list, last_action_type_list = [], []
         home_replay_fn_id_list, home_replay_arg_ids_list = [], []
         home_replay_memory_state_list, home_replay_carry_state_list = [], []
-        replay_game_loop_list, delay_list = [], []
+        replay_game_loop_list = []
 
         memory_state = np.zeros([1,256], dtype=np.float32)
         carry_state = np.zeros([1,256], dtype=np.float32)
-        delay = 0
         last_action_type = [0]
-        for replay_index in range(0, len(replay.home_trajectory)):
-            home_replay_state = replay.home_trajectory[replay_index][0]
-            home_replay_actions = replay.home_trajectory[replay_index][1]
-            home_replay_done = replay.home_trajectory[replay_index][2]
-              
-            home_replay_feature_screen = home_replay_state['feature_screen']
+        for replay_index in range(0, replay_file_length):
+            home_replay_feature_screen = replay['home_feature_screen'][replay_index]
             home_replay_feature_screen = utils.preprocess_screen(home_replay_feature_screen)
             home_replay_feature_screen = np.transpose(home_replay_feature_screen, (1, 2, 0))
 
-            home_replay_feature_player = home_replay_state['player']
+            home_replay_feature_minimap = replay['home_feature_minimap'][replay_index]
+            home_replay_feature_minimap = utils.preprocess_minimap(home_replay_feature_minimap)
+            home_replay_feature_minimap = np.transpose(home_replay_feature_minimap, (1, 2, 0))
+            #print("home_replay_feature_minimap.shape: ", home_replay_feature_minimap.shape)
+
+            home_replay_feature_player = replay['home_player'][replay_index]
             home_replay_feature_player = utils.preprocess_player(home_replay_feature_player)
 
-            home_replay_feature_units = home_replay_state['feature_units']
+            home_replay_feature_units = replay['home_feature_units'][replay_index]
             home_replay_feature_units = utils.preprocess_feature_units(home_replay_feature_units, feature_screen_size)
-            #print("home_replay_feature_units.shape: ", home_replay_feature_units.shape)
 
-            replay_game_loop = home_replay_state['game_loop'] / 15000.0
+            replay_game_loop = replay['home_game_loop'][replay_index] / 15000.0
 
-            home_replay_available_actions = home_replay_state['available_actions']
+            home_replay_available_actions = replay['home_available_actions'][replay_index]
             home_replay_available_actions = utils.preprocess_available_actions(home_replay_available_actions)
 
             home_replay_feature_screen_array = np.array([home_replay_feature_screen])
+            home_replay_feature_minimap_array = np.array([home_replay_feature_minimap])
             home_replay_feature_player_array = np.array([home_replay_feature_player])
             home_replay_feature_units_array = np.array([home_replay_feature_units])
             home_replay_available_actions_array = np.array([home_replay_available_actions])
             replay_game_loop_array = np.array([replay_game_loop])
             last_action_type_array = np.array([last_action_type])
 
-            home_replay_prediction = home_agent.act(home_replay_feature_screen_array, home_replay_feature_player_array, 
-                                                            home_replay_feature_units_array, home_replay_available_actions_array, 
-                                                            replay_game_loop_array, last_action_type_array)
-            #home_replay_next_memory_state = home_replay_prediction[3]
-            #home_replay_next_carry_state = home_replay_prediction[4]
+            home_replay_prediction = home_agent.act(home_replay_feature_screen_array, home_replay_feature_minimap_array,
+                                                             home_replay_feature_player_array, home_replay_feature_units_array, 
+                                                             home_replay_available_actions_array, memory_state, carry_state,
+                                                             replay_game_loop_array, last_action_type_array)
+            home_replay_next_memory_state = home_replay_prediction['final_memory_state']
+            home_replay_next_carry_state = home_replay_prediction['final_carry_state']
 
+            home_replay_actions = replay['home_action'][replay_index]
             home_replay_action = random.choice(home_replay_actions)
-            home_replay_fn_id = int(home_replay_action.function)
-            #if home_replay_fn_id == 0:
-            #  if delay < 499:
-            #    delay += 1
-            #  continue
+            home_replay_fn_id = int(home_replay_action[0])
 
             home_replay_feature_screen_list.append(home_replay_feature_screen_array)
+            home_replay_feature_minimap_list.append(home_replay_feature_minimap_array)
             home_replay_feature_player_list.append(home_replay_feature_player_array)
             home_replay_feature_units_list.append(home_replay_feature_units_array)
             home_replay_available_actions_list.append(home_replay_available_actions_array)
-            #home_replay_memory_state_list.append(memory_state)
-            #home_replay_carry_state_list.append(carry_state)
+            home_replay_memory_state_list.append(memory_state)
+            home_replay_carry_state_list.append(carry_state)
             replay_game_loop_list.append(replay_game_loop_array)
-
-            delay_list.append(np.array([delay]))
-
             last_action_type_list.append(np.array([last_action_type]))
 
             home_replay_args_ids = dict()
@@ -305,10 +303,9 @@ def supervised_train(training_episode):
 
             arg_index = 0
             for arg_type in FUNCTIONS._func_list[home_replay_fn_id].args:
-                home_replay_args_ids[arg_type] = home_replay_action.arguments[arg_index]
+                home_replay_args_ids[arg_type] = home_replay_action[1][arg_index]
                 arg_index += 1
 
-            #print("home_replay_fn_id: ", home_replay_fn_id)
             last_action_type = [home_replay_fn_id]
             home_replay_fn_id_list.append(home_replay_fn_id)
             home_replay_arg_id_list = []
@@ -316,35 +313,40 @@ def supervised_train(training_episode):
                 arg_id = home_replay_args_ids[arg_type]
                 if type(arg_id) == list:
                   if len(arg_id) == 2:
-                    arg_id = arg_id[0] * feature_screen_size + arg_id[1]
+                    arg_id = arg_id[0] + arg_id[1] * feature_screen_size
                   else:
                     arg_id = int(arg_id[0])
 
                 home_replay_arg_id_list.append(arg_id)
 
             home_replay_arg_ids_list.append(np.array([home_replay_arg_id_list]))
-            if home_replay_done == StepType.LAST:
-                home_replay_done = True
-            else:
-                home_replay_done = False
+            if replay_index == replay_file_length - 1:
+              home_replay_done = True
+            
+            memory_state = home_replay_next_memory_state
+            carry_state =  home_replay_next_carry_state
 
-            #memory_state = home_replay_next_memory_state
-            #carry_state =  home_replay_next_carry_state
-
-            delay = 0
-            if arguments.training == True and len(home_replay_feature_screen_list) != 0 and len(home_replay_feature_screen_list) == 64 or home_replay_done == True:
-                #print("len(home_replay_feature_screen_list): ", len(home_replay_feature_screen_list))
+            if len(home_replay_feature_screen_list) != 0 and len(home_replay_feature_screen_list) == 16 or home_replay_done == True:
                 print("episode: ", episode)
-                home_agent.supervised_replay(home_replay_feature_screen_list, home_replay_feature_player_list, 
-                                                    home_replay_feature_units_list, home_replay_available_actions_list,
-                                                    home_replay_fn_id_list, home_replay_arg_ids_list,
-                                                    replay_game_loop_list, last_action_type_list)
 
-                home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_feature_units_list= [], [], []
+                if arguments.training == True:
+                  total_loss = home_agent.supervised_replay(home_replay_feature_screen_list, home_replay_feature_minimap_list,
+                                                                      home_replay_feature_player_list, home_replay_feature_units_list, 
+                                                                      home_replay_available_actions_list, home_replay_fn_id_list, 
+                                                                      home_replay_arg_ids_list,
+                                                                      home_replay_memory_state_list, home_replay_carry_state_list,
+                                                                      replay_game_loop_list, last_action_type_list)
+
+                home_replay_feature_screen_list, home_replay_feature_minimap_list = [], []
+                home_replay_feature_player_list, home_replay_feature_units_list= [], []
                 home_replay_available_actions_list, last_action_type_list = [], []
                 home_replay_fn_id_list, home_replay_arg_ids_list = [], []
                 home_replay_memory_state_list, home_replay_carry_state_list = [], []
-                replay_game_loop_list, delay_list = [], []
+                replay_game_loop_list = []
+
+                with writer.as_default():
+                  tf.summary.scalar("total_loss", total_loss, step=episode)
+                  writer.flush()
 
                 if home_replay_done:
                     break
@@ -357,16 +359,16 @@ rgb_minimap_size = None
 action_space = None
 use_feature_units = True
 use_raw_units = False
-step_mul = 8
+step_mul = 2
 game_steps_per_episode = None
 disable_fog = False
 
 minigame_environment_list = ['MoveToBeacon', 'DefeatRoaches', 'BuildMarines']
 
 if arguments.environment not in minigame_environment_list:
-  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1]), sc2_env.Agent(sc2_env.Race[arguments.player_2])]
+  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1]), sc2_env.Bot(sc2_env.Race.random, sc2_env.Difficulty.very_easy)]
 else:
-  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1])]
+  players = [sc2_env.Agent(sc2_env.Race[arguments.player_1]), sc2_env.Agent(sc2_env.Race[arguments.player_1])]
 
 env = sc2_env.SC2Env(
       map_name=env_name,
@@ -391,7 +393,8 @@ def reinforcement_train(training_episode):
     EPISODES, episode, max_average, SAVING  = 20000, 0, 5.0, ''
   
     if arguments.load != False:
-        home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model')
+        #home_agent.load(workspace_path + '/Models/BuildMarines/reinforcment_model')
+        home_agent.load(workspace_path + '/Models/supervised_model')
 
     while episode < training_episode:
         # Reset episode
@@ -399,15 +402,15 @@ def reinforcement_train(training_episode):
         opponent_score, opponent_done = 0, False
         state = env.reset()
 
-        home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
+        home_feature_screen_list, home_feature_minimap_list = [], []
+        home_feature_player_list, home_feature_units_list = [], []
         home_available_actions_list, last_action_type_list = [], []
         home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
         home_memory_state_list, home_carry_state_list = [], []
-        game_loop_list, delay_list = [], []
-        home_feature_screen_history_list = [] 
+        game_loop_list, home_feature_screen_history_list = [], []
 
-        memory_state = np.zeros([1,32,32,2], dtype=np.float32)
-        carry_state =  np.zeros([1,32,32,2], dtype=np.float32)
+        memory_state = np.zeros([1,256], dtype=np.float32)
+        carry_state =  np.zeros([1,256], dtype=np.float32)
 
         home_state = state[0]
         home_feature_screen = home_state[3]['feature_screen']
@@ -424,10 +427,14 @@ def reinforcement_train(training_episode):
             home_feature_screen = home_state[3]['feature_screen']
             home_feature_screen = utils.preprocess_screen(home_feature_screen)
             home_feature_screen = np.transpose(home_feature_screen, (1, 2, 0))
-            #print("home_feature_screen.shape: ", home_feature_screen.shape)
+
             home_feature_player = home_state[3]['player']
             home_feature_player = utils.preprocess_player(home_feature_player)
-            #print("len(home_feature_player): ", len(home_feature_player))
+
+            home_feature_minimap = home_state[3]['feature_minimap']
+            home_feature_minimap = utils.preprocess_minimap(home_feature_minimap)
+            home_feature_minimap = np.transpose(home_feature_minimap, (1, 2, 0))
+
             home_available_actions = home_state[3]['available_actions']
             home_available_actions = utils.preprocess_available_actions(home_available_actions)
 
@@ -435,15 +442,16 @@ def reinforcement_train(training_episode):
             home_feature_units = utils.preprocess_feature_units(home_feature_units, feature_screen_size)
 
             home_feature_screen_array = np.array([home_feature_screen])
+            home_feature_minimap_array = np.array([home_feature_minimap])
             home_feature_player_array = np.array([home_feature_player])
             home_feature_units_array = np.array([home_feature_units])
             home_available_actions_array = np.array([home_available_actions])
             game_loop_array = np.array([game_loop])
             last_action_type_array = np.array([last_action_type])
             home_feature_screen_history_array = np.array([home_feature_screens_t])
-            #print("home_feature_screen_history_array.shape: ", home_feature_screen_history_array.shape)
 
             home_feature_screen_list.append(home_feature_screen_array)
+            home_feature_minimap_list.append(home_feature_minimap_array)
             home_feature_player_list.append(home_feature_player_array)
             home_feature_units_list.append(home_feature_units_array)
             home_available_actions_list.append([home_available_actions])
@@ -453,17 +461,18 @@ def reinforcement_train(training_episode):
             last_action_type_list.append(np.array([last_action_type]))
             home_feature_screen_history_list.append(home_feature_screen_history_array)
 
-            home_prediction = home_agent.act(home_feature_screen_array, home_feature_player_array, home_feature_units_array, 
+            home_prediction = home_agent.act(home_feature_screen_array, home_feature_minimap_array,
+                                                    home_feature_player_array, home_feature_units_array, 
                                                     home_available_actions_array, 
+                                                    memory_state, carry_state,
                                                     game_loop_array, last_action_type_array)
             home_fn_pi = home_prediction['fn_out']
             home_arg_pis = home_prediction['args_out']
-            #home_next_memory_state = home_prediction[3]
-            #home_next_carry_state = home_prediction[4]
+            home_next_memory_state = home_prediction['final_memory_state']
+            home_next_carry_state = home_prediction['final_carry_state']
 
             home_fn_samples, home_arg_samples = sample_actions(home_available_actions, home_fn_pi, home_arg_pis)
             home_fn_id, home_arg_ids = mask_unused_argument_samples(home_fn_samples, home_arg_samples)
-            #print("home_fn_id:", home_fn_id)
             home_fn_id_list.append(home_fn_id[0])
 
             home_arg_id_list = []
@@ -474,19 +483,7 @@ def reinforcement_train(training_episode):
             home_arg_ids_list.append(np.array([home_arg_id_list]))
             home_actions_list = actions_to_pysc2(home_fn_id, home_arg_ids, (32, 32))
             last_action_type = home_fn_id
-            #print("delay:", delay)
-            '''
-            last_action_type = home_fn_id
-            if delay != 0:
-              delay -= 1
-              delay_list.append(np.array(-1))
-              actions_list = [actions.FUNCTIONS.no_op()] 
-            else:
-              home_delay = home_prediction[5]
-              delay = np.argmax(home_delay, 1)[0]
-              delay_list.append(np.array(delay))
-              actions_list = [home_actions_list]
-            '''
+
             actions_list = [home_actions_list]
             next_state = env.step(actions_list)
 
@@ -495,8 +492,6 @@ def reinforcement_train(training_episode):
             home_feature_next_screen = utils.preprocess_screen(home_feature_next_screen)
             home_feature_next_screen = np.transpose(home_feature_next_screen, (1, 2, 0))
             home_feature_next_screen_array = np.array([home_feature_next_screen])
-            #print("home_feature_next_screen_array.shape: ", home_feature_next_screen_array.shape)
-            #print("home_feature_screens_t[:3,:, :, :].shape: ", home_feature_screens_t[:3,:, :, :].shape)
             home_feature_screens_t_1 = np.append(home_feature_next_screen_array, home_feature_screens_t[:3,:, :, :], axis=0)
 
             home_done = home_next_state[0]
@@ -506,8 +501,8 @@ def reinforcement_train(training_episode):
                 home_done = False
 
             state = next_state
-            #memory_state = home_next_memory_state
-            #carry_state =  home_next_carry_state
+            memory_state = home_next_memory_state
+            carry_state =  home_next_carry_state
             home_feature_screens_t = home_feature_screens_t_1
 
             home_reward = float(home_next_state[1])
@@ -518,17 +513,19 @@ def reinforcement_train(training_episode):
             if len(home_feature_screen_list) == 16:
                 if arguments.training == True:
                   #print("len(last_action_type_list): ", len(last_action_type_list))
-                  home_agent.reinforcement_replay(home_feature_screen_list, home_feature_player_list, home_feature_units_list, 
+                  home_agent.reinforcement_replay(home_feature_screen_list, home_feature_minimap_list,
+                                                          home_feature_player_list, home_feature_units_list, 
                                                           home_available_actions_list, home_fn_id_list, home_arg_ids_list, 
                                                           home_rewards, home_dones, 
+                                                          home_memory_state_list, home_carry_state_list,
                                                           game_loop_list, last_action_type_list)
 
-                home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
+                home_feature_screen_list, home_feature_minimap_list = [], []
+                home_feature_player_list, home_feature_units_list = [], []
                 home_available_actions_list, last_action_type_list = [], []
                 home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
                 home_memory_state_list, home_carry_state_list = [], []
-                game_loop_list, delay_list = [], []
-                home_feature_screen_history_list = []
+                game_loop_list, home_feature_screen_history_list = [], []
 
         score_list.append(home_score)
         average = sum(score_list) / len(score_list)
@@ -549,8 +546,8 @@ def reinforcement_train(training_episode):
 
 def main():
   if arguments.sl_training:
-    supervised_train(10000)
-    reinforcement_train(10000)
+    supervised_train(10000000)
+    reinforcement_train(20000)
   else:
     reinforcement_train(10000)
 
