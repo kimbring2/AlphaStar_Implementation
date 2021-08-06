@@ -41,6 +41,8 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 # Supervised Training 
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack.
 
+Please download [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub.
+
 First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 16 dividble step.
 ```
 $ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64 --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
@@ -57,8 +59,6 @@ Below is code for evaluating trained model
 ```
 python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.001 --replay_file_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --load True --visualize True --environment Simple64
 ```
-
-~~I can not see huge improvement of agent using Supervised Learning yet. If you find some fault in my code, please notify me~~ I find I did not use a Minimap feature. After adding that feature, my agent start to learn my build. I could not update code of GitHub because I am not sure other part work. Please download [testing code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) for Supervised Learning from Google Drive. 
 
 [![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
 <strong>Click to Watch!</strong>
