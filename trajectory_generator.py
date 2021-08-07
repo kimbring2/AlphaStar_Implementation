@@ -128,7 +128,7 @@ class Trajectory(object):
 				minimap_size_px = (32, 32)
 				player_id = 1
 				discount = 1.
-				step_mul = 2
+				step_mul = 1
 
 				screen_size_px = point.Point(*screen_size_px)
 				minimap_size_px = point.Point(*minimap_size_px)
@@ -215,7 +215,7 @@ class Trajectory(object):
 						a_0 = 0
 						a_l = [0]
 						exec_actions.append([a_0, a_l])
-						if replay_step % 16 == 0 or _state == StepType.LAST:
+						if replay_step % 8 == 0 or _state == StepType.LAST:
 							self.home_action.append(exec_actions)
 							pass
 						else:
