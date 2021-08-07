@@ -5,6 +5,7 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
 2. Extracting observation, action from replay file: https://github.com/narhen/pysc2-replay
 3. FullyConv model of Tensorflow 1 version: https://github.com/simonmeister/pysc2-rl-agents
+4. Supervised Learning technique: https://github.com/metataro/sc2_imitation_learning/tree/8dca03e9be92e2d8297a4bc34248939af5c7ec3b
 
 # Version
 1. Python3
