@@ -55,6 +55,9 @@ After making hkl file of replay in your workspace, try to start the Supervised L
 $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --gradient_clipping 25.0 --learning_rate 0.0001 --sl_training True --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
 ```
 
+You can check training progress using Tensorboard under tensorboard folder of your workspace.
+<img src="image/SL_Tensorboard.png" width="600">
+
 [![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
 <strong>Click to Watch!</strong>
 
