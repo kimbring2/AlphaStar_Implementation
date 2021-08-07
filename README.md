@@ -58,14 +58,16 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 You can check training progress using Tensorboard under tensorboard folder of your workspace.
 <img src="image/SL_Tensorboard.png" width="600">
 
-[![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
-<strong>Click to Watch!</strong>
-
 Below is code for evaluating trained model
 
 ```
 python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --gpu_use True --load True --visualize True --environment Simple64
 ```
+
+Video of downisde is one of behavior example of trained agent.
+
+[![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
+<strong>Click to Watch!</strong>
 
 # Detailed information
 I am writing explanation for code at Medium as series.
