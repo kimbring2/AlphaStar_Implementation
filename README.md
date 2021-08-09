@@ -69,7 +69,7 @@ Video of downisde is one of behavior example of trained agent.
 [![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
 <strong>Click to Watch!</strong>
 
-I am still training my model. In my experience, it will take 2~3 days to finish. Final loss should be under 0.5.
+I am still training my model. In my experience, final loss should be under 0.5 value. It will take long time because of current training setting is not using a distributed strategy.
 
 # Detailed information
 I am writing explanation for code at Medium as series.
