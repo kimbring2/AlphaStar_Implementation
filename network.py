@@ -219,7 +219,7 @@ class ActionTypeHead(tf.keras.layers.Layer):
     self.output_dim = output_dim
     self.network_scale = network_scale
     self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_1", kernel_regularizer='l2'),
-                                            tf.keras.layers.Softmax()])
+                                        tf.keras.layers.Softmax()])
     self.autoregressive_embedding_network = tf.keras.Sequential([tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
                                                                                        activation='relu', name="ActionTypeHead_dense_2", 
                                                                                        kernel_regularizer='l2')])
@@ -388,7 +388,7 @@ class AlphaStar(tf.keras.Model):
   def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
     batch_size = tf.shape(feature_screen)[0]
 
-    #feature_screen_array.shape:  (1, 32, 32, 28)
+    #feature_screen_array.shape:  (1, 32, 32, 13)
     #feature_player_array.shape:  (1, 32, 32, 11)
     feature_screen_encoded = self.screen_encoder(feature_screen)
 
@@ -605,7 +605,7 @@ class FullyConvLSTM(tf.keras.Model):
 
 def make_model(name):
     '''
-    feature_screen.shape:  (1, 32, 32, 28)
+    feature_screen.shape:  (1, 32, 32, `3)
     feature_player.shape:  (1, 3)
     feature_units.shape:  (1, 50, 7)
     game_loop.shape:  (1, 1)
@@ -613,7 +613,7 @@ def make_model(name):
     last_action_type.shape:  (1, 1)
     feature_screen_history.shape:  (1, 4, 32, 32, 2)
     '''
-    feature_screen = tf.keras.Input(shape=(32, 32, 28))
+    feature_screen = tf.keras.Input(shape=(32, 32, 13))
     feature_player = tf.keras.Input(shape=(11))
     feature_units = tf.keras.Input(shape=(50, 7))
     game_loop = tf.keras.Input(shape=(1))
