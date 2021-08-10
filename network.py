@@ -605,7 +605,7 @@ class FullyConvLSTM(tf.keras.Model):
 
 def make_model(name):
     '''
-    feature_screen.shape:  (1, 32, 32, `3)
+    feature_screen.shape:  (1, 32, 32, 13)
     feature_player.shape:  (1, 3)
     feature_units.shape:  (1, 50, 7)
     game_loop.shape:  (1, 1)
