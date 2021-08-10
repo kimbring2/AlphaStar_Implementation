@@ -8,11 +8,15 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 4. Supervised Learning technique: https://github.com/metataro/sc2_imitation_learning/tree/8dca03e9be92e2d8297a4bc34248939af5c7ec3b
 
 # Version
+## Python
 1. Python3
 2. PySC2 3.0.0
 3. Tensorflow 2.3.0
 4. Tensorflow-probability 0.12.2
-5. Starcraft2 4.8.2 version
+5. Hickle
+
+## Starcraft2
+1. 4.8.2 version
 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
