@@ -17,59 +17,12 @@ import utils
 mse_loss = tf.keras.losses.MeanSquaredError()
 kl_loss = tf.keras.losses.KLDivergence()
 cce = tf.keras.losses.CategoricalCrossentropy()
-'''
-FLAGS = flags.FLAGS
-FLAGS(['agent.py'])
 
-parser = argparse.ArgumentParser(description='AlphaStar implementation')
-parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
-parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
-parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
-parser.add_argument('--training', type=bool, default=False, help='training model')
-parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
-parser.add_argument('--seed', type=int, default=123, help='seed number')
-parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
-parser.add_argument('--save', type=bool, default=False, help='save trained model')
-parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
-parser.add_argument('--gradient_clipping', type=float, default=50.0, help='gradient clipping value')
-parser.add_argument('--player_1', type=str, default='terran', help='race of player 1')
-parser.add_argument('--player_2', type=str, default='terran', help='race of player 2')
-parser.add_argument('--screen_size', type=int, default=32, help='screen resolution')
-parser.add_argument('--minimap_size', type=int, default=32, help='minimap resolution')
-arguments = parser.parse_args()
-'''
 
 class A2CAgent:
     # Actor-Critic Main Optimization Algorithm
     def __init__(self, network, learning_rate, gradient_clipping):
         # Instantiate games and plot memory
-        '''
-        feature_screen_size = arguments.screen_size
-        feature_minimap_size = arguments.minimap_size
-        rgb_screen_size = None
-        rgb_minimap_size = None
-        action_space = None
-        use_feature_units = True
-        use_raw_units = False
-        step_mul = 8
-        game_steps_per_episode = None
-        disable_fog = False
-
-        self.env = sc2_env.SC2Env(
-              map_name=env_name,
-              players=players,
-              agent_interface_format=sc2_env.parse_agent_interface_format(
-                feature_screen=feature_screen_size,
-                feature_minimap=feature_minimap_size,
-                rgb_screen=rgb_screen_size,
-                rgb_minimap=rgb_minimap_size,
-                action_space=action_space,
-                use_feature_units=use_feature_units),
-              step_mul=step_mul,
-              game_steps_per_episode=game_steps_per_episode,
-              disable_fog=disable_fog,
-              visualize=arguments.visualize)
-        '''
         # Create Actor-Critic network model
         self.ActorCritic = network
         self.learning_rate = learning_rate
@@ -84,9 +37,6 @@ class A2CAgent:
 
         self.optimizer_rl = tf.keras.optimizers.RMSprop(lr_schedule, epsilon=1e-5)
         self.optimizer_sl = tf.keras.optimizers.Adam(lr_schedule, epsilon=1e-5)
-
-        #if arguments.load == True:
-        #  self.load()
 
     def run(self):
         state = self.env.reset()
@@ -111,8 +61,8 @@ class A2CAgent:
              game_loop_array, last_action_type_array):
         # Use the network to predict the next action to take, using the model
         input_ = {'feature_screen': feature_screen_array, 'feature_player': feature_player_array, 
-                   'feature_units': feature_units_array, 'game_loop': game_loop_array,
-                   'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
+                  'feature_units': feature_units_array, 'game_loop': game_loop_array,
+                  'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
 
         prediction = self.ActorCritic(input_, training=False)
         #print("prediction: ", prediction)
@@ -181,8 +131,8 @@ class A2CAgent:
 
         with tf.GradientTape() as tape:
           input_ = {'feature_screen': replay_feature_screen_array, 'feature_player': replay_feature_player_array, 
-                     'feature_units': replay_feature_units_array, 'game_loop': replay_game_loop_array,
-                     'available_actions': replay_available_actions_array, 'last_action_type': last_action_type_array}
+                    'feature_units': replay_feature_units_array, 'game_loop': replay_game_loop_array,
+                    'available_actions': replay_available_actions_array, 'last_action_type': last_action_type_array}
           prediction = self.ActorCritic(input_, training=True)
           fn_pi = prediction['fn_out']
           arg_pis = prediction['args_out']
@@ -240,8 +190,8 @@ class A2CAgent:
         discounted_r_array = self.discount_rewards(rewards, dones)
         with tf.GradientTape() as tape:
           input_ = {'feature_screen': feature_screen_array, 'feature_player': feature_player_array, 
-                     'feature_units': feature_units_array, 'game_loop': game_loop_array,
-                     'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
+                    'feature_units': feature_units_array, 'game_loop': game_loop_array,
+                    'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
 
           prediction = self.ActorCritic(input_, training=True)
           fn_pi = prediction['fn_out']
@@ -264,12 +214,6 @@ class A2CAgent:
 
             arg_log_prob *= tf.cast(tf.not_equal(arg_id, -1), 'float32')
             log_prob += arg_log_prob
-
-          #print("delay_pi: ", delay_pi)
-          #print("delay_list: ", delay_list)
-          #delay_log_prob = self.compute_log_probs(delay_pi, delay_list)
-          #delay_log_prob *= tf.cast(tf.not_equal(delay_list, -1), 'float32')
-          #log_prob += delay_log_prob
 
           actor_loss = -tf.math.reduce_mean(log_prob * advantage) 
           actor_loss = tf.cast(actor_loss, 'float32')

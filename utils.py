@@ -43,8 +43,13 @@ def preprocess_screen(screen):
   layers = []
   assert screen.shape[0] == len(features.SCREEN_FEATURES)
   for i in range(len(features.SCREEN_FEATURES)):
-    if i == _SCREEN_PLAYER_ID or i == _SCREEN_UNIT_TYPE:
-      layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
+    if i == _SCREEN_PLAYER_ID:
+      #print("features.SCREEN_FEATURES[i].scale: ", features.SCREEN_FEATURES[i].scale)
+      layer = np.zeros([features.SCREEN_FEATURES[i].scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
+      for j in range(features.SCREEN_FEATURES[i].scale):
+        indy, indx = (screen[i] == j).nonzero()
+        layer[j, indy, indx] = 1
+      layers.append(layer)
     elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
       #print("features.SCREEN_FEATURES[i]: ", features.SCREEN_FEATURES[i])
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
