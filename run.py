@@ -86,12 +86,12 @@ for name, arg_type in actions.TYPES._asdict().items():
   # HACK: we should infer the point type automatically
   is_spatial_action[arg_type] = name in ['minimap', 'screen', 'screen2']
 
-#if arguments.gpu_use == True:
-#  gpus = tf.config.experimental.list_physical_devices('GPU')
-#  tf.config.experimental.set_virtual_device_configuration(gpus[0],
-#            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
-#else:
-#  os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+if arguments.gpu_use == True:
+  gpus = tf.config.experimental.list_physical_devices('GPU')
+  tf.config.experimental.set_virtual_device_configuration(gpus[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3000)])
+else:
+  os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 def check_nonzero(mask):
