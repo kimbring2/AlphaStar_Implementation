@@ -52,7 +52,7 @@ Please download [Supervised Training code](https://drive.google.com/drive/folder
 
 First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 16 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl.
 ```
-$ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64 --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
+$ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
 ```
 
 After making hkl file of replay in your workspace, try to start the Supervised Learning using below command.
