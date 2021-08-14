@@ -45,10 +45,9 @@ class SpatialEncoder(tf.keras.layers.Layer):
     self.width = width
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(int(height/2), 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", 
-                              kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(height, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
+       tf.keras.layers.Conv2D(64, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -184,7 +183,7 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                      return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((144, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((560, 256*self.network_scale*self.network_scale)),
                                         Flatten(),
                                         tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                               name="core_dense", 
@@ -203,9 +202,10 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((144, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((560, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
-    core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, initial_state=(memory_state, carry_state))
+    core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, 
+    								     initial_state=(memory_state, carry_state))
 
     core_output = self.network(core_output)
 
@@ -218,10 +218,12 @@ class ActionTypeHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network_scale = network_scale
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_1", kernel_regularizer='l2'),
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, name="ActionTypeHead_dense_1", 
+    								kernel_regularizer='l2'),
                                         tf.keras.layers.Softmax()])
     self.autoregressive_embedding_network = tf.keras.Sequential([tf.keras.layers.Dense(256*self.network_scale*self.network_scale, 
-                                                                                       activation='relu', name="ActionTypeHead_dense_2", 
+                                                                                       activation='relu', 
+                                                                                       name="ActionTypeHead_dense_2", 
                                                                                        kernel_regularizer='l2')])
   def get_config(self):
     config = super().get_config().copy()
@@ -374,7 +376,6 @@ class AlphaStar(tf.keras.Model):
     self.build_queue_id_argument_head = ScalarArgumentHead(10)
     self.unload_id_argument_head = ScalarArgumentHead(50)
 
-
     self.baseline = Baseline(256)
     self.args_out_logits = dict()
 
@@ -388,13 +389,13 @@ class AlphaStar(tf.keras.Model):
   def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
     batch_size = tf.shape(feature_screen)[0]
 
-    #feature_screen_array.shape:  (1, 32, 32, 13)
+    #feature_screen_array.shape:  (1, 32, 32, 28)
     #feature_player_array.shape:  (1, 32, 32, 11)
     feature_screen_encoded = self.screen_encoder(feature_screen)
 
     feature_player_encoded = self.player_encoder(feature_player)
     feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player_encoded, 1), 2),
-                                         tf.stack([1, self.screen_size, self.screen_size, 1]))
+                                     tf.stack([1, self.screen_size, self.screen_size, 1]))
     feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
 
     #feature_units_encoded = self.entity_encoder(feature_units)
@@ -403,78 +404,77 @@ class AlphaStar(tf.keras.Model):
     #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
 
     game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop, 1), 2),
-                                   tf.stack([1, self.screen_size, self.screen_size, 1]))
+                                tf.stack([1, self.screen_size, self.screen_size, 1]))
     game_loop_encoded = tf.cast(game_loop_encoded, 'float32')
 
     last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
     last_action_type_encoded = tf.tile(tf.expand_dims(tf.expand_dims(last_action_type_encoded, 1), 2),
-                                           tf.stack([1, self.screen_size, self.screen_size, 1]))
+                                       tf.stack([1, self.screen_size, self.screen_size, 1]))
     last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
 
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
     
-    core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
+    #core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
+    core_outputs = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+    core_output = tf.zeros((1, 256))
+    for i in range(0, batch_size):
+      input_ = tf.expand_dims(feature_encoded[i], 0)
+      core_output, memory_state, carry_state = self.core(input_, memory_state, carry_state)
+      core_output = tf.squeeze(core_output, 0)
+      core_outputs = core_outputs.write(i, core_output)
 
-    action_type_logits, autoregressive_embedding = self.action_type_head(core_output)
+    core_outputs = core_outputs.stack()
+
+    action_type_logits, autoregressive_embedding = self.action_type_head(core_outputs)
     
     for arg_type in actions.TYPES:
       if arg_type.name == 'screen':
-        self.args_out_logits[arg_type] = self.screen_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.screen_argument_head(feature_screen_encoded, core_outputs, autoregressive_embedding)
       elif arg_type.name == 'minimap':
-        self.args_out_logits[arg_type] = self.minimap_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.minimap_argument_head(feature_screen_encoded, core_outputs, autoregressive_embedding)
       elif arg_type.name == 'screen2':
-        self.args_out_logits[arg_type] = self.screen2_argument_head(feature_screen_encoded, core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.screen2_argument_head(feature_screen_encoded, core_outputs, autoregressive_embedding)
       elif arg_type.name == 'queued':
-        self.args_out_logits[arg_type] = self.queued_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.queued_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'control_group_act':
-        self.args_out_logits[arg_type] = self.control_group_act_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.control_group_act_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'control_group_id':
-        self.args_out_logits[arg_type] = self.control_group_id_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.control_group_id_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'select_point_act':
-        self.args_out_logits[arg_type] = self.select_point_act_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.select_point_act_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'select_add':
-        self.args_out_logits[arg_type] = self.select_add_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.select_add_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'select_unit_act':
-        self.args_out_logits[arg_type] = self.select_unit_act_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.select_unit_act_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'select_unit_id':
-        self.args_out_logits[arg_type] = self.select_unit_id_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.select_unit_id_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'select_worker':
-        self.args_out_logits[arg_type] = self.select_worker_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.select_worker_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'build_queue_id':
-        self.args_out_logits[arg_type] = self.build_queue_id_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.build_queue_id_argument_head(core_outputs, autoregressive_embedding)
       elif arg_type.name == 'unload_id':
-        self.args_out_logits[arg_type] = self.unload_id_argument_head(core_output, autoregressive_embedding)
+        self.args_out_logits[arg_type] = self.unload_id_argument_head(core_outputs, autoregressive_embedding)
 
+    value = self.baseline(core_outputs)
 
-    value = self.baseline(core_output)
-
-    return action_type_logits, self.args_out_logits, value, final_memory_state, final_carry_state
+    return action_type_logits, self.args_out_logits, value, memory_state, carry_state
     
     
-class FullyConvLSTM(tf.keras.Model):
+class FullyConv(tf.keras.Model):
   def __init__(self, screen_size, minimap_size):
-    super(FullyConvLSTM, self).__init__()
+    super(FullyConv, self).__init__()
 
     self.screen_size = screen_size
     self.minimap_size = minimap_size
 
     self.network_scale = int(screen_size / 32)
-
+    
     self.screen_encoder = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(13, 1, padding='same', activation='relu'),
-       tf.keras.layers.Conv2D(16, 5, padding='same', activation='relu'),
-       tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(64, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu'),
     ])
     
-    '''
-    self.screen_encoder = tf.keras.Sequential()
-    self.screen_encoder.add(ConvLSTM2D(filters=16, kernel_size=(5,5), padding='same', activation='relu', return_sequences=True))
-    self.screen_encoder.add(BatchNormalization())
-    self.screen_encoder.add(ConvLSTM2D(filters=32, kernel_size=(3,3), padding='same', activation='relu', return_sequences=True))
-    self.screen_encoder.add(BatchNormalization())
-    #self.screen_encoder.add(ConvLSTM2D(filters=64, kernel_size=(1,1), padding='same', activation='relu', return_sequences=True))
-    self.screen_encoder.add(Conv3D(filters=1, kernel_size=(2, 2, 2), activation="relu", padding="same"))
-    '''
     self.feature_fc = tf.keras.layers.Dense(256, activation='relu')
     self.fn_out = tf.keras.layers.Dense(_NUM_FUNCTIONS, activation='softmax')
 
@@ -543,14 +543,10 @@ class FullyConvLSTM(tf.keras.Model):
     })
     return config
 
-  def call(self, feature_screen, feature_player, feature_units, game_loop, available_actions, last_action_type):
+  def call(self, feature_screen, feature_player, feature_units,  memory_state, carry_state, game_loop, available_actions, last_action_type):
     batch_size = tf.shape(feature_screen)[0]
 
-    #feature_screen_array.shape:  (1, 32, 32, 13)
-    #feature_player_array.shape:  (1, 32, 32, 11)
     feature_screen_encoded = self.screen_encoder(feature_screen)
-    #feature_screen_flatten = Flatten()(feature_screen_encoded)
-    #feature_screen_reshaped = Reshape((32, 32, 4))(feature_screen_flatten)
 
     feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player, 1), 2),
                                      tf.stack([1, 32, 32, 1]))
@@ -562,7 +558,6 @@ class FullyConvLSTM(tf.keras.Model):
     last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
 
     feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
-    #feature_encoded_reshaped = Reshape((64, 128))(feature_encoded)
 
     feature_encoded_flatten = Flatten()(feature_encoded)
     feature_fc = self.feature_fc(feature_encoded_flatten)
@@ -599,13 +594,16 @@ class FullyConvLSTM(tf.keras.Model):
         args_out[arg_type] = self.unload_id(feature_fc)
 
     value = self.dense2(feature_fc)
+    
+    final_memory_state = memory_state
+    final_carry_state = carry_state
 
-    return fn_out, args_out, value
+    return fn_out, args_out, value, final_memory_state, final_carry_state
 
 
 def make_model(name):
     '''
-    feature_screen.shape:  (1, 32, 32, 13)
+    feature_screen.shape:  (1, 32, 32, 535)
     feature_player.shape:  (1, 3)
     feature_units.shape:  (1, 50, 7)
     game_loop.shape:  (1, 1)
@@ -613,19 +611,28 @@ def make_model(name):
     last_action_type.shape:  (1, 1)
     feature_screen_history.shape:  (1, 4, 32, 32, 2)
     '''
-    feature_screen = tf.keras.Input(shape=(32, 32, 13))
+    feature_screen = tf.keras.Input(shape=(32, 32, 37))
     feature_player = tf.keras.Input(shape=(11))
     feature_units = tf.keras.Input(shape=(50, 7))
+    memory_state = tf.keras.Input(shape=(256))
+    carry_state = tf.keras.Input(shape=(256))
     game_loop = tf.keras.Input(shape=(1))
     available_actions = tf.keras.Input(shape=(573))
     last_action_type = tf.keras.Input(shape=(1))
     #feature_screen_history = tf.keras.Input(shape=(4, 32, 32, 13))
 
-    fn_out, args_out, value = FullyConvLSTM(32, 32)(feature_screen, feature_player, feature_units, game_loop, available_actions, 
-                                                    last_action_type)
-    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'feature_player': feature_player, 
-                                   'feature_units': feature_units, 'game_loop': game_loop,
-                                   'available_actions': available_actions, 'last_action_type': last_action_type}, 
-                           outputs={'fn_out': fn_out, 'args_out': args_out, 'value':value}, 
-                           name=name)
+    if name == 'fullyconv':
+        fn_out, args_out, value, final_memory_state, final_carry_state = FullyConv(32, 32)(feature_screen, feature_player, feature_units, 
+        										      memory_state, carry_state,
+        										      game_loop, available_actions, last_action_type)
+    elif name == 'alphastar':
+        fn_out, args_out, value, final_memory_state, final_carry_state = AlphaStar(32, 32)(feature_screen, feature_player, feature_units, 
+        										      memory_state, carry_state,
+        										      game_loop, available_actions, last_action_type)
+                                                
+    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'feature_player': feature_player, 'feature_units': feature_units, 
+                                   'memory_state': memory_state, 'carry_state': carry_state,
+                                   'game_loop': game_loop, 'available_actions': available_actions, 'last_action_type': last_action_type}, 
+                           outputs={'fn_out': fn_out, 'args_out': args_out, 'value':value, 'final_memory_state': final_memory_state, 
+                           	     'final_carry_state': final_carry_state}, name=name)
     return model

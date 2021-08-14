@@ -62,6 +62,7 @@ parser.add_argument('--replay_dir', type=str, default="replay", help='replay sav
 parser.add_argument('--replay_file_path', type=str, default="replay", help='path of replay file for SL')
 parser.add_argument('--sl_training', type=bool, default=False, help='Supervised Training')
 parser.add_argument('--save_replay_episodes', type=int, default=10, help='minimap resolution')
+parser.add_argument('--model', type=str, default='alphastar', help='Model of agent')
 
 arguments = parser.parse_args()
 
@@ -211,11 +212,9 @@ def PlotModel(score, episode):
 
     return average[-1]
 
-#home_agent = agent.A2CAgent(network.ConvLSTM(screen_size=arguments.screen_size, minimap_size=arguments.minimap_size), 
-#                            arguments.learning_rate, 
-#                            arguments.gradient_clipping)
-conv_lstm_model = network.make_model('fullyconv_lstm')
-home_agent = agent.A2CAgent(conv_lstm_model, arguments.learning_rate, arguments.gradient_clipping)
+model = network.make_model(arguments.model)
+
+home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
 #agent_2 = agent.A2CAgent(network.OurModel())
 
 def supervised_train(training_episode):
@@ -275,8 +274,8 @@ def supervised_train(training_episode):
             last_action_type_array = np.array([last_action_type])
 
             home_replay_prediction = home_agent.act(home_replay_feature_screen_array, home_replay_feature_player_array, 
-                                                            home_replay_feature_units_array, home_replay_available_actions_array, 
-                                                            replay_game_loop_array, last_action_type_array)
+                                                    home_replay_feature_units_array, home_replay_available_actions_array, 
+                                                    replay_game_loop_array, last_action_type_array)
             #home_replay_next_memory_state = home_replay_prediction[3]
             #home_replay_next_carry_state = home_replay_prediction[4]
 
@@ -332,9 +331,9 @@ def supervised_train(training_episode):
                 #print("len(home_replay_feature_screen_list): ", len(home_replay_feature_screen_list))
                 print("episode: ", episode)
                 home_agent.supervised_replay(home_replay_feature_screen_list, home_replay_feature_player_list, 
-                                                    home_replay_feature_units_list, home_replay_available_actions_list,
-                                                    home_replay_fn_id_list, home_replay_arg_ids_list,
-                                                    replay_game_loop_list, last_action_type_list)
+                                             home_replay_feature_units_list, home_replay_available_actions_list,
+                                             home_replay_fn_id_list, home_replay_arg_ids_list,
+                                             replay_game_loop_list, last_action_type_list)
 
                 home_replay_feature_screen_list, home_replay_feature_player_list, home_replay_feature_units_list= [], [], []
                 home_replay_available_actions_list, last_action_type_list = [], []
@@ -402,8 +401,8 @@ def reinforcement_train(training_episode):
         game_loop_list, delay_list = [], []
         home_feature_screen_history_list = [] 
 
-        memory_state = np.zeros([1,32,32,2], dtype=np.float32)
-        carry_state =  np.zeros([1,32,32,2], dtype=np.float32)
+        memory_state = np.zeros([1,256], dtype=np.float32)
+        carry_state = np.zeros([1,256], dtype=np.float32)
 
         home_state = state[0]
         home_feature_screen = home_state[3]['feature_screen']
@@ -420,10 +419,8 @@ def reinforcement_train(training_episode):
             home_feature_screen = home_state[3]['feature_screen']
             home_feature_screen = utils.preprocess_screen(home_feature_screen)
             home_feature_screen = np.transpose(home_feature_screen, (1, 2, 0))
-            #print("home_feature_screen.shape: ", home_feature_screen.shape)
             home_feature_player = home_state[3]['player']
             home_feature_player = utils.preprocess_player(home_feature_player)
-            #print("len(home_feature_player): ", len(home_feature_player))
             home_available_actions = home_state[3]['available_actions']
             home_available_actions = utils.preprocess_available_actions(home_available_actions)
 
@@ -437,7 +434,6 @@ def reinforcement_train(training_episode):
             game_loop_array = np.array([game_loop])
             last_action_type_array = np.array([last_action_type])
             home_feature_screen_history_array = np.array([home_feature_screens_t])
-            #print("home_feature_screen_history_array.shape: ", home_feature_screen_history_array.shape)
 
             home_feature_screen_list.append(home_feature_screen_array)
             home_feature_player_list.append(home_feature_player_array)
@@ -450,16 +446,15 @@ def reinforcement_train(training_episode):
             home_feature_screen_history_list.append(home_feature_screen_history_array)
 
             home_prediction = home_agent.act(home_feature_screen_array, home_feature_player_array, home_feature_units_array, 
-                                             home_available_actions_array, 
+                                             memory_state, carry_state, home_available_actions_array, 
                                              game_loop_array, last_action_type_array)
             home_fn_pi = home_prediction['fn_out']
             home_arg_pis = home_prediction['args_out']
-            #home_next_memory_state = home_prediction[3]
-            #home_next_carry_state = home_prediction[4]
+            home_next_memory_state = home_prediction['final_memory_state']
+            home_next_carry_state = home_prediction['final_carry_state']
 
             home_fn_samples, home_arg_samples = sample_actions(home_available_actions, home_fn_pi, home_arg_pis)
             home_fn_id, home_arg_ids = mask_unused_argument_samples(home_fn_samples, home_arg_samples)
-            #print("home_fn_id:", home_fn_id)
             home_fn_id_list.append(home_fn_id[0])
 
             home_arg_id_list = []
@@ -479,8 +474,6 @@ def reinforcement_train(training_episode):
             home_feature_next_screen = utils.preprocess_screen(home_feature_next_screen)
             home_feature_next_screen = np.transpose(home_feature_next_screen, (1, 2, 0))
             home_feature_next_screen_array = np.array([home_feature_next_screen])
-            #print("home_feature_next_screen_array.shape: ", home_feature_next_screen_array.shape)
-            #print("home_feature_screens_t[:3,:, :, :].shape: ", home_feature_screens_t[:3,:, :, :].shape)
             home_feature_screens_t_1 = np.append(home_feature_next_screen_array, home_feature_screens_t[:3,:, :, :], axis=0)
 
             home_done = home_next_state[0]
@@ -490,8 +483,8 @@ def reinforcement_train(training_episode):
                 home_done = False
 
             state = next_state
-            #memory_state = home_next_memory_state
-            #carry_state =  home_next_carry_state
+            memory_state = home_next_memory_state
+            carry_state =  home_next_carry_state
             home_feature_screens_t = home_feature_screens_t_1
 
             home_reward = float(home_next_state[1])
@@ -499,12 +492,11 @@ def reinforcement_train(training_episode):
             home_dones.append(home_done)
 
             home_score += home_reward
-            if len(home_feature_screen_list) == 16:
+            if len(home_feature_screen_list) == 8:
                 if arguments.training == True:
-                  #print("len(last_action_type_list): ", len(last_action_type_list))
                   home_agent.reinforcement_replay(home_feature_screen_list, home_feature_player_list, home_feature_units_list, 
                                                   home_available_actions_list, home_fn_id_list, home_arg_ids_list, 
-                                                  home_rewards, home_dones, 
+                                                  home_rewards, home_dones, memory_state, carry_state,
                                                   game_loop_list, last_action_type_list)
 
                 home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []

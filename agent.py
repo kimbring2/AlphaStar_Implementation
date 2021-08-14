@@ -15,6 +15,7 @@ from absl import flags
 import utils
 
 mse_loss = tf.keras.losses.MeanSquaredError()
+huber_loss = tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
 kl_loss = tf.keras.losses.KLDivergence()
 cce = tf.keras.losses.CategoricalCrossentropy()
 
@@ -57,11 +58,11 @@ class A2CAgent:
             home_feature_units = utils.preprocess_feature_units(home_feature_units, feature_screen_size)
         
     @tf.function
-    def act(self, feature_screen_array, feature_player_array, feature_units_array, available_actions_array,
-             game_loop_array, last_action_type_array):
+    def act(self, feature_screen_array, feature_player_array, feature_units_array, memory_state, carry_state, available_actions_array,
+            game_loop_array, last_action_type_array):
         # Use the network to predict the next action to take, using the model
-        input_ = {'feature_screen': feature_screen_array, 'feature_player': feature_player_array, 
-                  'feature_units': feature_units_array, 'game_loop': game_loop_array,
+        input_ = {'feature_screen': feature_screen_array, 'feature_player': feature_player_array, 'feature_units': feature_units_array, 
+                  'memory_state': memory_state, 'carry_state': carry_state, 'game_loop': game_loop_array,
                   'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
 
         prediction = self.ActorCritic(input_, training=False)
@@ -78,6 +79,10 @@ class A2CAgent:
         for i in reversed(range(0, len(reward))):
             running_add = running_add * gamma * (1 - dones[i]) + reward[i]
             discounted_r[i] = running_add
+
+        #if np.std(discounted_r) != 0:
+        #    discounted_r -= np.mean(discounted_r) # normalizing the result
+        #    discounted_r /= np.std(discounted_r) # divide by standard deviation
 
         return discounted_r
     
@@ -118,8 +123,8 @@ class A2CAgent:
           tf.math.log(tf.maximum(1e-12, x)))
     
     def supervised_replay(self, replay_feature_screen_list, replay_feature_player_list, replay_feature_units_list, 
-                               replay_available_actions_list, replay_fn_id_list, replay_args_ids_list,
-                               replay_game_loop_list, last_action_type_list):
+                          replay_available_actions_list, replay_fn_id_list, replay_args_ids_list,
+                          replay_game_loop_list, last_action_type_list):
         replay_feature_screen_array = tf.concat(replay_feature_screen_list, 0)
         replay_feature_player_array = tf.concat(replay_feature_player_list, 0)
         replay_feature_units_array = tf.concat(replay_feature_units_list, 0)
@@ -170,19 +175,19 @@ class A2CAgent:
         self.optimizer_sl.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
     def reinforcement_replay(self, feature_screen_list, feature_player_list, feature_units_list, 
-                                   available_actions_list, fn_id_list, arg_ids_list, 
-                                   rewards, dones, game_loop_list, last_action_type_list):
+                             available_actions_list, fn_id_list, arg_ids_list, 
+                             rewards, dones, home_memory_state_list, home_carry_state_list, 
+                             game_loop_list, last_action_type_list):
         feature_screen_array = tf.concat(feature_screen_list, 0)
         feature_player_array = tf.concat(feature_player_list, 0)
         feature_units_array = tf.concat(feature_units_list, 0)
         game_loop_array = tf.concat(game_loop_list, 0)
-        #delay_array = tf.concat(delay_list, 0)
         last_action_type_array = tf.concat(last_action_type_list, 0)
         available_actions_array = tf.concat(available_actions_list, 0)
         arg_ids_array = tf.concat(arg_ids_list, 0)
 
-        #home_memory_state_array = tf.concat(home_memory_state_list, 0)
-        #home_carry_state_array = tf.concat(home_carry_state_list, 0)
+        home_memory_state_array = tf.concat(home_memory_state_list, 0)
+        home_carry_state_array = tf.concat(home_carry_state_list, 0)
 
         #feature_screen_history_array = tf.concat(feature_screen_history_list, 0)
 
@@ -191,19 +196,17 @@ class A2CAgent:
         with tf.GradientTape() as tape:
           input_ = {'feature_screen': feature_screen_array, 'feature_player': feature_player_array, 
                     'feature_units': feature_units_array, 'game_loop': game_loop_array,
+                    'memory_state': home_memory_state_array, 'carry_state': home_carry_state_array,
                     'available_actions': available_actions_array, 'last_action_type': last_action_type_array}
 
           prediction = self.ActorCritic(input_, training=True)
           fn_pi = prediction['fn_out']
           arg_pis = prediction['args_out']
           value_estimate = prediction['value']
-          #delay_pi = prediction[5]
 
           discounted_r_array = tf.cast(discounted_r_array, 'float32')
           advantage = discounted_r_array - tf.stack(value_estimate)[:, 0]
 
-          #print("available_actions_array: ", available_actions_array)
-          #print("fn_pi: ", fn_pi)
           fn_pi = self.mask_unavailable_actions(available_actions_array, fn_pi) # TODO: this should be unneccessary
           fn_log_prob = self.compute_log_probs(fn_pi, fn_id_list)
           log_prob = fn_log_prob

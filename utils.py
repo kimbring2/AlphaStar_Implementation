@@ -42,23 +42,20 @@ FLAT_FEATURES = [
   FlatFeature(10, features.FeatureType.SCALAR, 200, 'larva_count'),
 ]
 
-
+unit_list = [0, 48, 317]
 def preprocess_screen(screen):
   layers = []
   assert screen.shape[0] == len(features.SCREEN_FEATURES)
   for i in range(len(features.SCREEN_FEATURES)):
     if i == _SCREEN_UNIT_TYPE:
-      scale = 500
-
-      layer = np.zeros([scale + 1, screen.shape[1], screen.shape[2]], dtype=np.float32)
-      for j in range(features.SCREEN_FEATURES[i].scale):
-        if j <= 500:
-          indy, indx = (screen[i] == j).nonzero()
+      scale = len(unit_list)
+      layer = np.zeros([scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
+      for j in range(scale):
+        indy, indx = (screen[i] == unit_list[j]).nonzero()
+        if indy.shape[0] != 0:
+          #print("unit_list[j]: ", unit_list[j])
           layer[j, indy, indx] = 1
-        else:
-          indy, indx = (screen[i] == j).nonzero()  
-          layer[scale, indy, indx] = 1
-
+            
       layers.append(layer)
     elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
