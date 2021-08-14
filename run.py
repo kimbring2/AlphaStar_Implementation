@@ -410,8 +410,9 @@ def reinforcement_train(training_episode):
         home_feature_screen = np.transpose(home_feature_screen, (1, 2, 0))
         home_feature_screens_t = np.stack((home_feature_screen, home_feature_screen, home_feature_screen, home_feature_screen), axis=0)
 
-        delay = 0
         last_action_type = [0]
+        initial_memory_state = memory_state
+        initial_carry_state = carry_state
         while not home_done:
             home_state = state[0]
             game_loop = home_state[3]['game_loop'] / 15000.0
@@ -484,7 +485,7 @@ def reinforcement_train(training_episode):
 
             state = next_state
             memory_state = home_next_memory_state
-            carry_state =  home_next_carry_state
+            carry_state = home_next_carry_state
             home_feature_screens_t = home_feature_screens_t_1
 
             home_reward = float(home_next_state[1])
@@ -496,7 +497,7 @@ def reinforcement_train(training_episode):
                 if arguments.training == True:
                   home_agent.reinforcement_replay(home_feature_screen_list, home_feature_player_list, home_feature_units_list, 
                                                   home_available_actions_list, home_fn_id_list, home_arg_ids_list, 
-                                                  home_rewards, home_dones, memory_state, carry_state,
+                                                  home_rewards, home_dones, initial_memory_state, initial_carry_state,
                                                   game_loop_list, last_action_type_list)
 
                 home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
@@ -505,6 +506,9 @@ def reinforcement_train(training_episode):
                 home_memory_state_list, home_carry_state_list = [], []
                 game_loop_list, delay_list = [], []
                 home_feature_screen_history_list = []
+                
+                initial_memory_state = memory_state
+                initial_carry_state = carry_state
 
         score_list.append(home_score)
         average = sum(score_list) / len(score_list)
