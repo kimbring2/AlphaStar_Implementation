@@ -213,7 +213,6 @@ def PlotModel(score, episode):
     return average[-1]
 
 model = network.make_model(arguments.model)
-
 home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
 #agent_2 = agent.A2CAgent(network.OurModel())
 
@@ -397,7 +396,6 @@ def reinforcement_train(training_episode):
         home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
         home_available_actions_list, last_action_type_list = [], []
         home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
-        home_memory_state_list, home_carry_state_list = [], []
         game_loop_list, delay_list = [], []
         home_feature_screen_history_list = [] 
 
@@ -440,8 +438,6 @@ def reinforcement_train(training_episode):
             home_feature_player_list.append(home_feature_player_array)
             home_feature_units_list.append(home_feature_units_array)
             home_available_actions_list.append([home_available_actions])
-            home_memory_state_list.append(memory_state)
-            home_carry_state_list.append(carry_state)
             game_loop_list.append(game_loop_array)
             last_action_type_list.append(np.array([last_action_type]))
             home_feature_screen_history_list.append(home_feature_screen_history_array)
@@ -503,7 +499,6 @@ def reinforcement_train(training_episode):
                 home_feature_screen_list, home_feature_player_list, home_feature_units_list = [], [], []
                 home_available_actions_list, last_action_type_list = [], []
                 home_fn_id_list, home_arg_ids_list, home_rewards, home_dones = [], [], [], []
-                home_memory_state_list, home_carry_state_list = [], []
                 game_loop_list, delay_list = [], []
                 home_feature_screen_history_list = []
                 

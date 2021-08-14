@@ -86,7 +86,7 @@ class A2CAgent:
 
         return discounted_r
     
-    @tf.function
+    #@tf.function
     def compute_entropy(self, probs):
       return -tf.reduce_sum(self.safe_log(probs) * probs, axis=-1)
 
