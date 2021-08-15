@@ -183,7 +183,7 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                      return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((560, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((556, 256*self.network_scale*self.network_scale)),
                                         Flatten(),
                                         tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                               name="core_dense", 
@@ -202,7 +202,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((560, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((556, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, 
     								     initial_state=(memory_state, carry_state))
@@ -403,16 +403,7 @@ class AlphaStar(tf.keras.Model):
     #                                    tf.stack([1, self.screen_size, self.screen_size, 1]))
     #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
 
-    game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop, 1), 2),
-                                tf.stack([1, self.screen_size, self.screen_size, 1]))
-    game_loop_encoded = tf.cast(game_loop_encoded, 'float32')
-
-    last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
-    last_action_type_encoded = tf.tile(tf.expand_dims(tf.expand_dims(last_action_type_encoded, 1), 2),
-                                       tf.stack([1, self.screen_size, self.screen_size, 1]))
-    last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
-
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
     
     #core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
     core_outputs = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
