@@ -29,17 +29,17 @@ _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
 
 FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
 FLAT_FEATURES = [
-  FlatFeature(0,  features.FeatureType.SCALAR, 4, 'player_id'),
-  FlatFeature(1,  features.FeatureType.SCALAR, 10000, 'minerals'),
-  FlatFeature(2,  features.FeatureType.SCALAR, 10000, 'vespene'),
-  FlatFeature(3,  features.FeatureType.SCALAR, 200, 'food_used'),
-  FlatFeature(4,  features.FeatureType.SCALAR, 200, 'food_cap'),
-  FlatFeature(5,  features.FeatureType.SCALAR, 200, 'food_army'),
-  FlatFeature(6,  features.FeatureType.SCALAR, 200, 'food_workers'),
-  FlatFeature(7,  features.FeatureType.SCALAR, 200, 'idle_worker_count'),
-  FlatFeature(8,  features.FeatureType.SCALAR, 200, 'army_count'),
-  FlatFeature(9,  features.FeatureType.SCALAR, 200, 'warp_gate_count'),
-  FlatFeature(10, features.FeatureType.SCALAR, 200, 'larva_count'),
+  FlatFeature(0,  features.FeatureType.SCALAR, 1, 'player_id'),
+  FlatFeature(1,  features.FeatureType.SCALAR, 1, 'minerals'),
+  FlatFeature(2,  features.FeatureType.SCALAR, 1, 'vespene'),
+  FlatFeature(3,  features.FeatureType.SCALAR, 1, 'food_used'),
+  FlatFeature(4,  features.FeatureType.SCALAR, 1, 'food_cap'),
+  FlatFeature(5,  features.FeatureType.SCALAR, 1, 'food_army'),
+  FlatFeature(6,  features.FeatureType.SCALAR, 1, 'food_workers'),
+  FlatFeature(7,  features.FeatureType.SCALAR, 1, 'idle_worker_count'),
+  FlatFeature(8,  features.FeatureType.SCALAR, 1, 'army_count'),
+  FlatFeature(9,  features.FeatureType.SCALAR, 1, 'warp_gate_count'),
+  FlatFeature(10, features.FeatureType.SCALAR, 1, 'larva_count'),
 ]
 
 unit_list = [0, 48, 317]
