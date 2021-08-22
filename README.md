@@ -75,7 +75,7 @@ Video of downisde is one of behavior example of trained agent.
 [![Supervised Learning demo](https://img.youtube.com/vi/ABomHc4_GlQ/maxresdefault.jpg)](https://youtu.be/ABomHc4_GlQ "AlphaStar Implementation - Click to Watch!")
 <strong>Click to Watch!</strong>
 
-I am still training my model. In my experience, final loss should be under 0.5 value. It will take long time because of current training setting is not using a distributed strategy.
+I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
 
 # Detailed information
 I am writing explanation for code at Medium as series.
