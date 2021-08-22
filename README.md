@@ -11,8 +11,8 @@ I am trying to implement AlphaStar based on supplementary material of DeepMind. 
 ## Python
 1. Python3
 2. PySC2 3.0.0
-3. Tensorflow 2.3.0
-4. Tensorflow-probability 0.12.2
+3. Tensorflow 2.4.0
+4. Tensorflow-probability 0.11.0
 5. Hickle
 
 ## Starcraft2
@@ -72,7 +72,7 @@ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ 
 
 Video of downisde is one of behavior example of trained agent.
 
-[![Supervised Learning demo 1](https://img.youtube.com/vi/A4c3yb83KDY/sddefault.jpg)](https://youtu.be/A4c3yb83KDY "AlphaStar Implementation - Click to Watch!")
+[![Supervised Learning demo](https://img.youtube.com/vi/ABomHc4_GlQ/maxresdefault.jpg)](https://youtu.be/ABomHc4_GlQ "AlphaStar Implementation - Click to Watch!")
 <strong>Click to Watch!</strong>
 
 I am still training my model. In my experience, final loss should be under 0.5 value. It will take long time because of current training setting is not using a distributed strategy.
