@@ -31,7 +31,7 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 25.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
-<img src="image/MoveToBeacon_A2C.png" width="800">
+<img src="image/MoveToBeacon_A2C.png" width="400">
 
 After finishing training, run below command to test pretrained model.
 
