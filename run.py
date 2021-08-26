@@ -710,8 +710,9 @@ def train_step(
   grads = tape.gradient(loss, model.trainable_variables)
   grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
 
-  # Apply the gradients to the model's parameters
-  optimizer.apply_gradients(zip(grads, model.trainable_variables))
+  if arguments.training:
+    # Apply the gradients to the model's parameters
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   episode_reward = tf.math.reduce_sum(rewards)
 
