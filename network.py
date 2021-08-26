@@ -45,9 +45,10 @@ class SpatialEncoder(tf.keras.layers.Layer):
     self.width = width
 
     self.network = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(64, 1, padding='same', activation='relu', name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu', name="SpatialEncoder_cond2d_2", kernel_regularizer='l2'),
-       tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu', name="SpatialEncoder_cond2d_3", kernel_regularizer='l2')
+       tf.keras.layers.Conv2D(1, 1, padding='same', activation=None, name="SpatialEncoder_cond2d_1", kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(16, 1, padding='same', activation=None, name="SpatialEncoder_cond2d_2", kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(16, 5, padding='same', activation=None, name="SpatialEncoder_cond2d_3", kernel_regularizer='l2'),
+       tf.keras.layers.Conv2D(32, 3, padding='same', activation=None, name="SpatialEncoder_cond2d_4", kernel_regularizer='l2')
     ])
 
   def get_config(self):
@@ -156,6 +157,7 @@ class EntityEncoder(tf.keras.layers.Layer):
         'output_dim': self.output_dim,
         'entity_num': self.entity_num
     })
+    
     return config
 
   def call(self, entity_features, training):
@@ -183,13 +185,13 @@ class Core(tf.keras.layers.Layer):
     self.lstm = LSTM(256*self.network_scale*self.network_scale, name="core_lstm", return_sequences=True, 
                      return_state=True, kernel_regularizer='l2')
 
-    self.network = tf.keras.Sequential([Reshape((556, 256*self.network_scale*self.network_scale)),
+    self.network = tf.keras.Sequential([Reshape((428, 256*self.network_scale*self.network_scale)),
                                         Flatten(),
                                         tf.keras.layers.Dense(256*self.network_scale*self.network_scale, activation='relu', 
                                                               name="core_dense", 
                                                               kernel_regularizer='l2')
                                        ])
-
+                                       
   def get_config(self):
     config = super().get_config().copy()
     config.update({
@@ -202,7 +204,7 @@ class Core(tf.keras.layers.Layer):
     batch_size = tf.shape(feature_encoded)[0]
 
     feature_encoded_flattened = Flatten()(feature_encoded)
-    feature_encoded_flattened = Reshape((556, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
+    feature_encoded_flattened = Reshape((428, 256*self.network_scale*self.network_scale))(feature_encoded_flattened)
 
     core_output, final_memory_state, final_carry_state = self.lstm(feature_encoded_flattened, 
     								     initial_state=(memory_state, carry_state))
@@ -253,16 +255,16 @@ class SpatialArgumentHead(tf.keras.layers.Layer):
 
     self.height = height
     self.width = width
-    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d_2", 
+    self.network = tf.keras.Sequential([tf.keras.layers.Conv2D(1, 1, padding='same', name="SpatialArgumentHead_conv2d", 
                                         kernel_regularizer='l2'),
                                         tf.keras.layers.Flatten(),
                                         tf.keras.layers.Softmax()])
 
     self.autoregressive_embedding_encoder_1 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          		    name="SpatialArgumentHead_dense_2", 
+                                                                          		    name="SpatialArgumentHead_dense_1", 
                                                                           		    kernel_regularizer='l2')])
     self.autoregressive_embedding_encoder_2 = tf.keras.Sequential([tf.keras.layers.Dense(self.height * self.width, activation='relu', 
-                                                                          		    name="SpatialArgumentHead_dense_4", 
+                                                                          		    name="SpatialArgumentHead_dense_2", 
                                                                           		    kernel_regularizer='l2')])
 
   def get_config(self):
@@ -294,11 +296,11 @@ class ScalarArgumentHead(tf.keras.layers.Layer):
 
     self.output_dim = output_dim
     self.network = tf.keras.Sequential()
-    self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_2", kernel_regularizer='l2'))
+    self.network.add(tf.keras.layers.Dense(output_dim, name="ScalarArgumentHead_dense_1", kernel_regularizer='l2'))
     self.network.add(tf.keras.layers.Softmax())
 
     self.autoregressive_embedding_encoder = tf.keras.Sequential([tf.keras.layers.Dense(self.output_dim, activation='relu', 
-                                                                          		  name="ScalarArgumentHead_dense_6", 
+                                                                          		  name="ScalarArgumentHead_dense_2", 
                                                                           		  kernel_regularizer='l2')
                                                                 ])
 
@@ -325,7 +327,7 @@ class Baseline(tf.keras.layers.Layer):
     super(Baseline, self).__init__()
 
     self.output_dim = output_dim
-    self.network = tf.keras.Sequential([tf.keras.layers.Dense(1, name="Baseline_dense", kernel_regularizer='l2')])
+    self.network = tf.keras.Sequential([tf.keras.layers.Dense(output_dim, name="Baseline_dense")])
 
   def get_config(self):
     config = super().get_config().copy()
@@ -337,6 +339,7 @@ class Baseline(tf.keras.layers.Layer):
   def call(self, core_output):
     batch_size = tf.shape(core_output)[0]
     network_input = core_output
+    #print("network_input.shape: ", network_input.shape)
     value = self.network(network_input)
 
     return value
@@ -354,8 +357,8 @@ class AlphaStar(tf.keras.Model):
     # State Encoder
     self.player_encoder = ScalarEncoder(output_dim=11)
     self.screen_encoder = SpatialEncoder(height=screen_size, width=screen_size, channel=3)
-    #self.entity_encoder = EntityEncoder(output_dim=11, entity_num=50)
-    #self.available_actions_encoder = ScalarEncoder(output_dim=11)
+    #self.entity_encoder = EntityEncoder(output_dim=11, entity_num=3)
+    self.available_actions_encoder = ScalarEncoder(output_dim=64)
 
     # Core
     self.core = Core(256, self.network_scale)
@@ -376,7 +379,7 @@ class AlphaStar(tf.keras.Model):
     self.build_queue_id_argument_head = ScalarArgumentHead(10)
     self.unload_id_argument_head = ScalarArgumentHead(50)
 
-    self.baseline = Baseline(256)
+    self.baseline = Baseline(1)
     self.args_out_logits = dict()
 
   def get_config(self):
@@ -386,7 +389,7 @@ class AlphaStar(tf.keras.Model):
     })
     return config
 
-  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions, last_action_type):
+  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions):
     batch_size = tf.shape(feature_screen)[0]
 
     #feature_screen_array.shape:  (1, 32, 32, 28)
@@ -400,12 +403,16 @@ class AlphaStar(tf.keras.Model):
 
     #feature_units_encoded = self.entity_encoder(feature_units)
     #feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
-    #                                    tf.stack([1, self.screen_size, self.screen_size, 1]))
+    #                                tf.stack([1, self.screen_size, self.screen_size, 1]))
     #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
 
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
+    available_actions_encoded = self.available_actions_encoder(available_actions)
+    available_actions_encoded = tf.tile(tf.expand_dims(tf.expand_dims(available_actions_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    available_actions_encoded = tf.cast(available_actions_encoded, 'float32')
+
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, available_actions_encoded], axis=3)
     
-    #core_output, final_memory_state, final_carry_state = self.core(feature_encoded, memory_state, carry_state)
     core_outputs = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
     core_output = tf.zeros((1, 256))
     for i in range(0, batch_size):
@@ -461,9 +468,10 @@ class FullyConv(tf.keras.Model):
     self.network_scale = int(screen_size / 32)
     
     self.screen_encoder = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(64, 1, padding='same', activation='relu'),
-       tf.keras.layers.Conv2D(64, 5, padding='same', activation='relu'),
-       tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(1, 1, padding='same'),
+       tf.keras.layers.Conv2D(16, 1, padding='same'),
+       tf.keras.layers.Conv2D(16, 5, padding='same'),
+       tf.keras.layers.Conv2D(32, 3, padding='same'),
     ])
     
     self.feature_fc = tf.keras.layers.Dense(256, activation='relu')
@@ -534,7 +542,7 @@ class FullyConv(tf.keras.Model):
     })
     return config
 
-  def call(self, feature_screen, feature_player, feature_units,  memory_state, carry_state, game_loop, available_actions, last_action_type):
+  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions):
     batch_size = tf.shape(feature_screen)[0]
 
     feature_screen_encoded = self.screen_encoder(feature_screen)
@@ -543,12 +551,7 @@ class FullyConv(tf.keras.Model):
                                      tf.stack([1, 32, 32, 1]))
     feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
 
-    last_action_type_encoded = last_action_type / _NUM_FUNCTIONS
-    last_action_type_encoded = tf.tile(tf.expand_dims(tf.expand_dims(last_action_type_encoded, 1), 2),
-                                       tf.stack([1, self.screen_size, self.screen_size, 1]))
-    last_action_type_encoded = tf.cast(last_action_type_encoded, 'float32')
-
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, last_action_type_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
 
     feature_encoded_flatten = Flatten()(feature_encoded)
     feature_fc = self.feature_fc(feature_encoded_flatten)
@@ -594,36 +597,32 @@ class FullyConv(tf.keras.Model):
 
 def make_model(name):
     '''
-    feature_screen.shape:  (1, 32, 32, 535)
+    feature_screen.shape:  (1, 32, 32, 37)
     feature_player.shape:  (1, 3)
     feature_units.shape:  (1, 50, 7)
     game_loop.shape:  (1, 1)
     available_actions.shape:  (1, 573)
-    last_action_type.shape:  (1, 1)
-    feature_screen_history.shape:  (1, 4, 32, 32, 2)
     '''
     feature_screen = tf.keras.Input(shape=(32, 32, 37))
     feature_player = tf.keras.Input(shape=(11))
-    feature_units = tf.keras.Input(shape=(50, 7))
+    feature_units = tf.keras.Input(shape=(3, 7))
     memory_state = tf.keras.Input(shape=(256))
     carry_state = tf.keras.Input(shape=(256))
     game_loop = tf.keras.Input(shape=(1))
     available_actions = tf.keras.Input(shape=(573))
-    last_action_type = tf.keras.Input(shape=(1))
-    #feature_screen_history = tf.keras.Input(shape=(4, 32, 32, 13))
 
     if name == 'fullyconv':
         fn_out, args_out, value, final_memory_state, final_carry_state = FullyConv(32, 32)(feature_screen, feature_player, feature_units, 
         										      memory_state, carry_state,
-        										      game_loop, available_actions, last_action_type)
+        										      game_loop, available_actions)
     elif name == 'alphastar':
         fn_out, args_out, value, final_memory_state, final_carry_state = AlphaStar(32, 32)(feature_screen, feature_player, feature_units, 
         										      memory_state, carry_state,
-        										      game_loop, available_actions, last_action_type)
+        										      game_loop, available_actions)
                                                 
-    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'feature_player': feature_player, 'feature_units': feature_units, 
+    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'player': feature_player, 'feature_units': feature_units, 
                                    'memory_state': memory_state, 'carry_state': carry_state,
-                                   'game_loop': game_loop, 'available_actions': available_actions, 'last_action_type': last_action_type}, 
-                           outputs={'fn_out': fn_out, 'args_out': args_out, 'value':value, 'final_memory_state': final_memory_state, 
+                                   'game_loop': game_loop, 'available_actions': available_actions}, 
+                           outputs={'fn_out': fn_out, 'args_out': args_out, 'value': value, 'final_memory_state': final_memory_state, 
                            	     'final_carry_state': final_carry_state}, name=name)
     return model

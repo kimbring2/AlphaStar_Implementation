@@ -26,6 +26,7 @@ _SCREEN_SELECTED = features.SCREEN_FEATURES.selected.index
 _SCREEN_VISIBILITY_MAP = features.SCREEN_FEATURES.visibility_map.index
 
 _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
+_MINIMAP_CAMERA = features.MINIMAP_FEATURES.camera.index
 
 FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
 FLAT_FEATURES = [
@@ -72,12 +73,32 @@ def preprocess_screen(screen):
   return np.concatenate(layers, axis=0)
 
 
+def preprocess_minimap(minimap):
+  layers = []
+  assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
+  for i in range(len(features.MINIMAP_FEATURES)):
+    if i == _MINIMAP_PLAYER_ID:
+      layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
+    elif features.MINIMAP_FEATURES[i].type == features.FeatureType.SCALAR:
+      layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
+    elif i == _MINIMAP_CAMERA:
+      layer = np.zeros([features.MINIMAP_FEATURES[i].scale, minimap.shape[1], minimap.shape[2]], dtype=np.float32)
+      for j in range(features.MINIMAP_FEATURES[i].scale):
+        indy, indx = (minimap[i] == j).nonzero()
+        layer[j, indy, indx] = 1
+        
+      layers.append(layer)  
+
+  return np.concatenate(layers, axis=0)
+
+
 def preprocess_player(player):
   layers = []
   for s in FLAT_FEATURES:
     out = player[s.index] / s.scale
     layers.append(out)
 
+  layers = np.array([layers])
   return layers
 
 
@@ -94,11 +115,19 @@ def preprocess_feature_units(feature_units, feature_screen_size):
     for i, feature_unit in enumerate(feature_units):
       feature_unit_length = len(feature_unit) 
 
+      #print("feature_unit.unit_type: ", feature_unit.unit_type)
+      #print("feature_unit.alliance: ", feature_unit.alliance)
+      #print("feature_unit.health: ", feature_unit.health)
+      #print("feature_unit.shield: ", feature_unit.shield)
+      unit_type = feature_unit.unit_type
+      unit_index = unit_list.index(unit_type)
+      #print("unit_index: ", unit_index)
+      
       feature_unit_list = []
-      feature_unit_list.append(feature_unit.unit_type / 2000)
+      feature_unit_list.append(unit_index / 2)
       feature_unit_list.append(feature_unit.alliance / 4)
-      feature_unit_list.append(feature_unit.health / 10000)
-      feature_unit_list.append(feature_unit.shield / 10000)
+      feature_unit_list.append(feature_unit.health / 100)
+      feature_unit_list.append(feature_unit.shield / 100)
       feature_unit_list.append(feature_unit.x / 100)
       feature_unit_list.append(feature_unit.y / 100) 
       feature_unit_list.append(feature_unit.is_selected)
@@ -108,11 +137,11 @@ def preprocess_feature_units(feature_units, feature_screen_size):
 
       feature_units_list.append(feature_unit_list)
       #print("i: ", i)
-      if i >= 49:
+      if i >= 2:
         break
 
-    if feature_units_length < 50:
-      for i in range(feature_units_length, 50):
+    if feature_units_length < 3:
+      for i in range(feature_units_length, 3):
         feature_units_list.append(np.zeros(7))
 
     entity_array = np.array(feature_units_list)
