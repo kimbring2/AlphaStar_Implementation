@@ -24,7 +24,7 @@ Current, I am migrating from [old code style](https://github.com/pythonlessons/R
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
 
-# Test for minigame
+# Reinforcement Learning
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
@@ -50,7 +50,8 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 
 I do not use a Minimap feature for Minigame. It is only meaningful in Fullgame. 
 
-# Supervised Training 
+# Supervised Learning 
+## Simple64
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
 
 Please download [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub.
