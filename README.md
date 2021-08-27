@@ -1,9 +1,6 @@
 # Introduction
 I am trying to implement AlphaStar based on supplementary material of DeepMind. Currently, I can solove the MoveToBeacon environment which is one of the mini-game  of PySC2 using the multi state encoder, the action head model structure of the AlphaStar.
 
-# Notice
-Current, I am migrating from [common style](https://github.com/pythonlessons/Reinforcement_Learning/blob/master/LunarLander-v2_PPO/LunarLander-v2_PPO.py) of Tensorflow to [new style](https://www.tensorflow.org/tutorials/reinforcement_learning/actor_critic]) because of memory leak issue during training. It seems like it is only problem of PySC2 when using it with Tensorflow 2 version. Other environment suah as LunarLander-v2 of OpenAI Gym has not same problem.
-
 # Reference
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
 2. Extracting observation, action from replay file: https://github.com/narhen/pysc2-replay
@@ -20,6 +17,9 @@ Current, I am migrating from [common style](https://github.com/pythonlessons/Rei
 
 ## Starcraft2
 1. 4.8.2 version
+
+# Memory leak issue
+Current, I am migrating from [common style](https://github.com/pythonlessons/Reinforcement_Learning/blob/master/LunarLander-v2_PPO/LunarLander-v2_PPO.py) of Tensorflow to [new style](https://www.tensorflow.org/tutorials/reinforcement_learning/actor_critic]) because of memory leak issue during training. It seems like it is only problem of PySC2 when using it with Tensorflow 2 version. Other environment suah as LunarLander-v2 of OpenAI Gym has not same problem with Tensorflow 2.
 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
