@@ -104,6 +104,9 @@ writer = tf.summary.create_file_writer(workspace_path + "/tensorboard")
 
 model = network.make_model(arguments.model_name)
 
+if arguments.load == True:
+  model.load_weights(workspace_path + "Models/" + env_name + "_Model")
+
 def actions_to_pysc2(fn_id, arg_ids, size):
   height, width = size
   actions_list = []
@@ -832,7 +835,7 @@ with tqdm.trange(max_episodes) as t:
     t.set_postfix(reward_sum=episode_reward_sum, running_reward=running_reward)
 
     # Show average episode reward every 10 episodes
-    if i % 1000 == 0:
+    if i % 1000 == 0 and arguments.save == True:
       model.save_weights(workspace_path + "Models/" + env_name + "_Model")
       #pass # print(f'Episode {i}: average reward: {avg_reward}')
 
