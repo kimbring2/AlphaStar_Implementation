@@ -5,7 +5,6 @@ import statistics
 import tensorflow as tf
 import tqdm
 import sys
-import os
 
 from matplotlib import pyplot as plt
 from tensorflow.keras import layers
@@ -35,8 +34,8 @@ parser.add_argument('--model_name', type=str, default='fullyconv', help='model n
 parser.add_argument('--training', type=bool, default=False, help='training model')
 parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
 parser.add_argument('--seed', type=int, default=42, help='seed number')
-parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
-parser.add_argument('--save', type=bool, default=False, help='save trained model')
+parser.add_argument('--save_model', type=bool, default=None, help='save trained model')
+parser.add_argument('--load_model', type=bool, default=None, help='load trained model')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
 parser.add_argument('--gradient_clipping', type=float, default=1.0, help='gradient clipping value')
 parser.add_argument('--player_1', type=str, default='terran', help='race of player 1')
@@ -104,8 +103,9 @@ writer = tf.summary.create_file_writer(workspace_path + "/tensorboard")
 
 model = network.make_model(arguments.model_name)
 
-if arguments.load == True:
-  model.load_weights(workspace_path + "Models/" + env_name + "_Model")
+if arguments.load_model != None:
+  print("load_model")
+  model.load_weights(workspace_path + 'Models/' + arguments.load_model)
 
 def actions_to_pysc2(fn_id, arg_ids, size):
   height, width = size
@@ -835,8 +835,9 @@ with tqdm.trange(max_episodes) as t:
     t.set_postfix(reward_sum=episode_reward_sum, running_reward=running_reward)
 
     # Show average episode reward every 10 episodes
-    if i % 1000 == 0 and arguments.save == True:
+    if i % 1000 == 0 and arguments.save_model != None:
       model.save_weights(workspace_path + "Models/" + env_name + "_Model")
+      print("save_model")
       #pass # print(f'Episode {i}: average reward: {avg_reward}')
 
     if running_reward > reward_threshold and i >= min_episodes_criterion:  
