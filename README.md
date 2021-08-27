@@ -26,7 +26,7 @@ Current, I am migrating from [old code style](https://github.com/pythonlessons/R
 
 # Test for minigame
 ## MoveToBeacon
-First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command.
+First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
 
 ```
 $ python run.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
