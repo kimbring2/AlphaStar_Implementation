@@ -65,6 +65,7 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 ```
 
 You can check training progress using Tensorboard under tensorboard folder of your workspace. It will take very long time to finish training becasue of vast of observation and action space.
+
 <img src="image/SL_Tensorboard.png" width="600">
 
 Below is code for evaluating trained model
