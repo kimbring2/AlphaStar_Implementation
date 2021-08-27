@@ -766,6 +766,7 @@ carry_state = tf.zeros([1,256], dtype=tf.float32)
 
 done = 0.0
 
+max_average = 5.0
 episode_reward_sum = 0
 episodes_reward.append(episode_reward_sum)
 with tqdm.trange(max_episodes) as t:
@@ -832,12 +833,14 @@ with tqdm.trange(max_episodes) as t:
     running_reward = statistics.mean(episodes_reward)
 
     t.set_description(f'Episode {i}')
-    t.set_postfix(reward_sum=episode_reward_sum, running_reward=running_reward)
+    t.set_postfix(sum=episode_reward_sum, mean=running_reward)
 
     # Show average episode reward every 10 episodes
     if i % 1000 == 0 and arguments.save_model != None:
-      model.save_weights(workspace_path + "Models/" + env_name + "_Model")
-      print("save_model")
+      if running_reward >= max_average:
+        max_average = running_reward
+        model.save_weights(workspace_path + "Models/" + env_name + "_Model_" + str(i))
+        print("save_model")
       #pass # print(f'Episode {i}: average reward: {avg_reward}')
 
     if running_reward > reward_threshold and i >= min_episodes_criterion:  
