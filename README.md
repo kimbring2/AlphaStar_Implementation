@@ -36,7 +36,7 @@ I provide a FullyConv, AlphaStar style model. You can change a model by using th
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
-Gradient clipping is essential for training PySC2 network because it has multiple encoder, decoder network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
+Gradient clipping is essential for training model of PySC@ because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
 
 <img src="image/gradient_clipping.png" width="400">
 
