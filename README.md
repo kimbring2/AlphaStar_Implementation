@@ -54,7 +54,7 @@ I do not use a Minimap feature for Minigame. It is only meaningful in Fullgame.
 ## Simple64
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
 
-Please download the run.py, network.py, agent.py, utils.py, trajectory_generator.py, file from [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub.
+Please download the run.py, network.py, agent.py, utils.py, trajectory_generator.py, file from [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub because I can not check Reinforcement Learning result using same observation as Supervised Learing. It will be updated soon.
 
 First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 8 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl. Current, I only use replay file of Terran vs Terran.
 ```
