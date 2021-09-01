@@ -61,8 +61,6 @@ $ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
 
-I do not use a Minimap feature for Minigame. It is only meaningful in Fullgame. 
-
 # Supervised Learning 
 ## Simple64
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
