@@ -36,9 +36,7 @@ I provide a FullyConv, AlphaStar style model. You can change a model by using th
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
-Gradient clipping is essential for training model of PySC@ because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
-
-<img src="image/gradient_clipping.png" width="400">
+Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
 
 ```
 grads = tape.gradient(loss, model.trainable_variables)
@@ -47,7 +45,9 @@ tf.print("grad_norm: ", grad_norm)
 grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
 ```
 
-The point is that you should remove an outlier of graidnet norm and it is different at every network structure when model has multiple network.
+<img src="image/gradient_clipping.png" width="400">
+
+Afater checking norm value, you should remove an outlier value among them.
 
 <img src="image/MoveToBeacon_A2C.png" width="400">
 
