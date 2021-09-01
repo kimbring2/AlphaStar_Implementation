@@ -98,8 +98,7 @@ def preprocess_player(player):
     out = player[s.index] / s.scale
     layers.append(out)
 
-  layers = np.array([layers])
-  return layers
+  return np.array(layers)
 
 
 def preprocess_available_actions(available_action):
@@ -147,111 +146,98 @@ def preprocess_feature_units(feature_units, feature_screen_size):
     entity_array = np.array(feature_units_list)
     
     return entity_array
+    
+
+SingleSelectFeature = namedtuple('SingleSelectFeature', ['index', 'type', 'scale', 'name'])
+SINGLE_SELECT_FEATURES = [
+  SingleSelectFeature(0,  features.FeatureType.SCALAR, len(unit_list), 'unit_type'),
+  SingleSelectFeature(1,  features.FeatureType.SCALAR, 4, 'player_relative'),
+  SingleSelectFeature(2,  features.FeatureType.SCALAR, 2000, 'health'),
+]
+def preprocess_single_select(single_select):
+  if len(single_select) != 0:
+    single_select = single_select[0]
+    layers = []
+    for s in SINGLE_SELECT_FEATURES:
+      if s.index == 2:
+        out = np.log(single_select[s.index] + 1) / np.log(s.scale)
+        layers.append(out)
+      elif s.index == 0:
+        out = unit_list.index(single_select[s.index]) / s.scale
+        layers.append(out)
+      else:
+        out = single_select[s.index] / s.scale
+        layers.append(out)
+  else:
+    layers = [0.0, 0.0, 0.0]
+
+  return np.array(layers)
 
 
-def get_model_input(agent, observation):
-  feature_screen = observation['feature_screen']
-  feature_minimap = observation['feature_minimap']
-  feature_units = observation['feature_units']
-  feature_player = observation['player']
-  score_by_category = observation['score_by_category']
-  game_loop = observation['game_loop']
-  available_actions = observation['available_actions']
+ScoreCumulativeFeature = namedtuple('ScoreCumulativeFeature', ['index', 'type', 'scale', 'name'])
+SCORE_CUMULATIVE_FEATURES = [
+  ScoreCumulativeFeature(0,  features.FeatureType.SCALAR, 25000, ' score '),
+  ScoreCumulativeFeature(1,  features.FeatureType.SCALAR, 5000, 'idle_production_time'),
+  ScoreCumulativeFeature(2,  features.FeatureType.SCALAR, 10000, 'idle_worker_time'),
+  ScoreCumulativeFeature(3,  features.FeatureType.SCALAR, 10000, 'total_value_units'),
+  ScoreCumulativeFeature(4,  features.FeatureType.SCALAR, 10000, 'total_value_structures'),
+  ScoreCumulativeFeature(5,  features.FeatureType.SCALAR, 10000, 'killed_value_units'),
+  ScoreCumulativeFeature(6,  features.FeatureType.SCALAR, 10000, 'killed_value_structures'),
+  ScoreCumulativeFeature(7,  features.FeatureType.SCALAR, 10000, 'collected_minerals'),
+  ScoreCumulativeFeature(8,  features.FeatureType.SCALAR, 10000, 'collected_vespene'),
+  ScoreCumulativeFeature(9,  features.FeatureType.SCALAR, 2000, 'collection_rate_minerals'),
+  ScoreCumulativeFeature(10, features.FeatureType.SCALAR, 2000, 'collection_rate_vespene'),
+  ScoreCumulativeFeature(11, features.FeatureType.SCALAR, 10000, 'spent_minerals'),
+  ScoreCumulativeFeature(12, features.FeatureType.SCALAR, 10000, 'spent_vespene'),
+]
+def preprocess_score_cumulative(score_cumulative):
+  layers = []
+  for s in SCORE_CUMULATIVE_FEATURES:
+    if s.index == 9 or s.index == 10:
+      out = score_cumulative[s.index] / s.scale
+      layers.append(out)
+    else:
+      out = np.log(score_cumulative[s.index] + 1) / np.log(s.scale)
+      out = score_cumulative[s.index] / s.scale
+      layers.append(out)
 
-  agent_statistics = get_agent_statistics(score_by_category)
-  race = get_race_onehot(agent.home_race, agent.away_race)
-
-  #print("game_loop: " + str(game_loop))
-  time = get_gameloop_obs(game_loop)
-  #print("time.shape: " + str(time.shape))
-
-  upgrade_value = get_upgrade_obs(feature_units)
-  if upgrade_value != -1 and upgrade_value is not None :
-    agent.home_upgrade_array[np.where(upgrade_value[0] == 1)] = 1
-    agent.away_upgrade_array[np.where(upgrade_value[1] == 1)] = 1
-
-  embedded_scalar = np.concatenate((agent_statistics, race, time, agent.home_upgrade_array, agent.away_upgrade_array), axis=0)
-  embedded_scalar = np.expand_dims(embedded_scalar, axis=0)
-
-  cumulative_statistics = observation['score_cumulative'] / 1000.0
-  cumulative_statistics_array = np.log(cumulative_statistics + 1)
-
-  build_order_array = np.zeros(256)
-  if (agent.previous_action is not None):
-    unit_name = None
-    if agent.previous_action == _BUILD_BARRACKS_SCREEN:
-      unit_name = 'Barracks'
-    elif agent.previous_action == _BUILD_REFINERY_SCREEN:
-      unit_name = 'Refinery'
-    elif agent.previous_action == _BUILD_TECHLAB_SCREEN or agent.previous_action == _BUILD_TECHLAB_QUICK:
-      unit_name = 'TechLab'
-    elif agent.previous_action == _BUILD_COMMANDCENTER_SCREEN:
-      unit_name = 'CommandCenter'
-    elif agent.previous_action == _BUILD_REACTOR_SCREEN or agent.previous_action == _BUILD_REACTOR_QUICK:
-      unit_name = 'Reactor'
-    elif agent.previous_action == _BUILD_BUNKER_SCREEN:
-      unit_name = 'Bunker'
-    elif agent.previous_action == _BUILD_STARPORT_SCREEN:
-      unit_name = 'Starport'
-    elif agent.previous_action == _BUILD_FACTORY_SCREEN:
-      unit_name = 'Factory'
-    elif agent.previous_action == _BUILD_ARMORY_SCREEN:
-      unit_name = 'Armory'
-    elif agent.previous_action == _BUILD_ENGINNERINGBAY_SCREEN:
-      unit_name = 'EngineeringBay'
-    elif agent.previous_action == _TRAIN_MARINE_QUICK:
-      unit_name = 'Marine'
-    elif agent.previous_action == _TRAIN_MARAUDER_QUICK:
-      unit_name = 'Marauder'
-    elif agent.previous_action == _TRAIN_SIEGETANK_QUICK:
-      unit_name = 'SiegeTank'
-    elif agent.previous_action == _TRAIN_MEDIVAC_QUICK:
-      unit_name = 'Medivac'
-    elif agent.previous_action == _TRAIN_REAPER_QUICK:
-      unit_name = 'Reaper'
-    elif agent.previous_action == _TRAIN_HELLION_QUICK:
-      unit_name = 'Hellion'
-    elif agent.previous_action == _TRAIN_VIKINGFIGHTER_QUICK:
-      unit_name = 'VikingFighter'
-
-    if unit_name is not None:
-      unit_info = int(units_new.get_unit_type(agent.home_race, unit_name)[0])
-      build_order_array[unit_info] = 1
-
-      if len(agent.build_order) <= 20:
-        agent.build_order.append(build_order_array)
-
-      unit_name = None
-
-  feature_minimap = np.expand_dims(feature_minimap, axis=0)
-  available_actions_array = np.zeros(573)
-  available_actions_list = available_actions.tolist()
-  for available_action in available_actions_list:
-    available_actions_array[available_action] = 1
-
-  scalar_context = np.concatenate((available_actions_array, cumulative_statistics_array, build_order_array), axis=0)
-  scalar_context = np.reshape(scalar_context, [1, 842])
-
-  embedded_feature_units = get_entity_obs(feature_units)
-  embedded_feature_units = np.reshape(embedded_feature_units, [1,512,464])
-
-  return feature_minimap, embedded_feature_units, embedded_scalar, scalar_context
+  return np.array(layers)
 
 
-# feature_player: [ 2 95  0 12 15  0 12  0  0  0  0]
-# player_id, minerals, vespene, food_used, food_cap, food_army, food_workers, idle_worker_count, army_count, warp_gate_count, larva_count 
-def get_agent_statistics(score_by_category):
-  score_by_category = score_by_category.flatten() / 1000.0
-  agent_statistics = np.log(score_by_category + 1)
+def preprocess_build_queue(build_queue):
+  build_queue_length = len(build_queue)
+  if build_queue_length > 5:
+    build_queue_length = 5
 
-  return agent_statistics
+  layers = [0.0, 0.0, 0.0, 0.0, 0.0]
+  for i in range(0, build_queue_length):
+    layers[i] = (unit_list.index(build_queue[i][0]) / len(unit_list))
+
+  return np.array(layers)
 
 
-race_list = ["Protoss", "Terran", "Zerg", "Unknown"]
-def get_race_onehot(home_race, away_race):
-  home_race_index = race_list.index(home_race)
-  away_race_index = race_list.index(away_race)
-  home_race_onehot = np.identity(5)[home_race_index:home_race_index+1]
-  away_race_onehot = np.identity(5)[away_race_index:away_race_index+1]
+def preprocess_multi_select(multi_select):
+  multi_select_length = len(multi_select)
+  if multi_select_length > 10:
+    multi_select_length = 10
 
-  return np.array([home_race_onehot[0], away_race_onehot[0]]).flatten()
+  layers = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  for i in range(0, multi_select_length):
+    layers[i] = (unit_list.index(multi_select[i][0]) / len(unit_list))
+
+  return np.array(layers)
+
+
+def positional_encoding(max_position, embedding_size, add_batch_dim=False):
+    positions = np.arange(max_position)
+    angle_rates = 1 / np.power(10000, (2 * (np.arange(embedding_size)//2)) / np.float32(embedding_size))
+    angle_rads = positions[:, np.newaxis] * angle_rates[np.newaxis, :]
+
+    angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
+    angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
+
+    if add_batch_dim:
+        angle_rads = angle_rads[np.newaxis, ...]
+
+    return tf.cast(angle_rads, dtype=tf.float32)
+

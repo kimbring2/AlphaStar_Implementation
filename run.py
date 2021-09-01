@@ -99,7 +99,7 @@ np.random.seed(seed)
 eps = np.finfo(np.float32).eps.item()
 
 workspace_path = arguments.workspace_path
-writer = tf.summary.create_file_writer(workspace_path + "/tensorboard")
+writer = tf.summary.create_file_writer(workspace_path + "/tensorboard/working")
 
 model = network.make_model(arguments.model_name)
 
@@ -147,7 +147,7 @@ def env_step(fn_sample: np.ndarray, screen_arg_sample: np.ndarray, minimap_arg_s
 	     select_unit_id_arg_sample: np.ndarray, select_worker_arg_sample: np.ndarray, build_queue_id_arg_sample: np.ndarray,
 	     unload_id_arg_sample: np.ndarray) -> Tuple[np.ndarray, np.ndarray,np.ndarray, np.ndarray, np.ndarray, np.ndarray, 
 	     np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-	     np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+	     np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
   """Returns state, reward and done flag given an action."""
   args_sample = dict()
   for arg_type in actions.TYPES:
@@ -216,15 +216,28 @@ def env_step(fn_sample: np.ndarray, screen_arg_sample: np.ndarray, minimap_arg_s
     
   game_loop = next_state[3]['game_loop']
   
+  build_queue = next_state[3]['build_queue']
+  build_queue = utils.preprocess_build_queue(build_queue)
+
+  single_select = next_state[3]['single_select']
+  single_select = utils.preprocess_single_select(single_select)
+
+  multi_select = next_state[3]['multi_select']
+  multi_select = utils.preprocess_multi_select(multi_select)
+
+  score_cumulative = next_state[3]['score_cumulative']
+  score_cumulative = utils.preprocess_score_cumulative(score_cumulative)
+
   return (feature_screen.astype(np.float32), feature_minimap.astype(np.float32), player.astype(np.float32), 
           feature_units.astype(np.float32), game_loop.astype(np.int32), available_actions.astype(np.int32), 
-          np.array(reward, np.float32), np.array(done, np.float32), np.array(fn_id, np.int32),
+          build_queue.astype(np.float32), single_select.astype(np.float32), multi_select.astype(np.float32), 
+          score_cumulative.astype(np.float32), np.array(reward, np.float32), np.array(done, np.float32), np.array(fn_id, np.int32),
           np.array(arg_id_list[0], np.int32), np.array(arg_id_list[1], np.int32), np.array(arg_id_list[2], np.int32), 
           np.array(arg_id_list[3], np.int32), np.array(arg_id_list[4], np.int32), np.array(arg_id_list[5], np.int32), 
           np.array(arg_id_list[6], np.int32), np.array(arg_id_list[7], np.int32), np.array(arg_id_list[8], np.int32), 
           np.array(arg_id_list[9], np.int32), np.array(arg_id_list[10], np.int32), np.array(arg_id_list[11], np.int32),
           np.array(arg_id_list[12], np.int32)
-         )
+           )
 
 
 def tf_env_step(fn_id: tf.Tensor, screen_arg_id: tf.Tensor, minimap_arg_id: tf.Tensor, screen2_arg_id: tf.Tensor, 
@@ -232,12 +245,13 @@ def tf_env_step(fn_id: tf.Tensor, screen_arg_id: tf.Tensor, minimap_arg_id: tf.T
 	        select_point_act_arg_id: tf.Tensor, select_add_arg_id: tf.Tensor, select_unit_act_arg_id: tf.Tensor, 
 	        select_unit_id_arg_id: tf.Tensor, select_worker_arg_id: tf.Tensor, build_queue_id_arg_id: tf.Tensor,
 	        unload_id_arg_id: tf.Tensor) -> List[tf.Tensor]:
-  return tf.numpy_function(env_step, [fn_id, screen_arg_id, minimap_arg_id, screen2_arg_id, queued_arg_id, control_group_act_arg_id,
-  			    control_group_id_arg_id, select_point_act_arg_id, select_add_arg_id, select_unit_act_arg_id, 
-  			    select_unit_id_arg_id, select_worker_arg_id, build_queue_id_arg_id, unload_id_arg_id], 
-                           [tf.float32, tf.float32, tf.float32, tf.float32, tf.int32, tf.int32, tf.float32, tf.float32, tf.int32,
-                            tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32,
-                            tf.int32, tf.int32, tf.int32, tf.int32])
+  return tf.numpy_function(env_step, [fn_id, screen_arg_id, minimap_arg_id, screen2_arg_id, queued_arg_id, 
+            control_group_act_arg_id, control_group_id_arg_id, select_point_act_arg_id, select_add_arg_id, 
+            select_unit_act_arg_id, select_unit_id_arg_id, select_worker_arg_id, build_queue_id_arg_id, 
+            unload_id_arg_id], 
+                           [tf.float32, tf.float32, tf.float32, tf.float32, tf.int32, tf.int32, tf.float32, tf.float32,
+                            tf.float32, tf.float32, tf.float32, tf.float32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, 
+                            tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32])
 
 
 is_spatial_action = {}
@@ -262,10 +276,14 @@ def sample(probs):
 def run_episode(
     initial_feature_screen: tf.Tensor,
     initial_feature_minimap: tf.Tensor,
-    initial_players: tf.Tensor,
+    initial_player: tf.Tensor,
     initial_feature_units: tf.Tensor,
     initial_game_loop: tf.Tensor,
-    initial_available_actions: tf.Tensor,  
+    initial_available_actions: tf.Tensor,
+    initial_build_queue: tf.Tensor,
+    initial_single_select: tf.Tensor,
+    initial_multi_select: tf.Tensor,
+    initial_score_cumulative: tf.Tensor,
     initial_memory_state: tf.Tensor, 
     initial_carry_state: tf.Tensor, 
     initial_done: tf.Tensor, 
@@ -311,24 +329,31 @@ def run_episode(
   
   values = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
   rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-  dones = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
   
   initial_feature_screen_shape = initial_feature_screen.shape
   initial_feature_minimap_shape = initial_feature_minimap.shape
-  initial_players_shape = initial_players.shape
+  initial_player_shape = initial_player.shape
   initial_feature_units_shape = initial_feature_units.shape
   initial_game_loop_shape = initial_game_loop.shape
   initial_available_actions_shape = initial_available_actions.shape
+  initial_build_queue_shape = initial_build_queue.shape
+  initial_single_select_shape = initial_single_select.shape  
+  initial_multi_select_shape = initial_multi_select.shape
+  initial_score_cumulative_shape = initial_score_cumulative.shape
   initial_memory_state_shape = initial_memory_state.shape
   initial_carry_state_shape = initial_carry_state.shape
   initial_done_shape = initial_done.shape
   
   feature_screen = initial_feature_screen
   feature_minimap = initial_feature_minimap
-  players = initial_players
+  player = initial_player
   feature_units = initial_feature_units
   game_loop = initial_game_loop
   available_actions = initial_available_actions
+  build_queue = initial_build_queue
+  single_select = initial_single_select
+  multi_select = initial_multi_select
+  score_cumulative = initial_score_cumulative
   memory_state = initial_memory_state
   carry_state = initial_carry_state
   done = initial_done
@@ -337,14 +362,24 @@ def run_episode(
     # Convert state into a batched tensor (batch size = 1)
     feature_screen = tf.expand_dims(feature_screen, 0)
     feature_minimap = tf.expand_dims(feature_minimap, 0)
+    player = tf.expand_dims(player, 0)
+    game_loop = tf.expand_dims(game_loop, 0)
     feature_units = tf.expand_dims(feature_units, 0)
+    available_actions = tf.expand_dims(available_actions, 0)
+    build_queue = tf.expand_dims(build_queue, 0)
+    single_select = tf.expand_dims(single_select, 0)
+    multi_select = tf.expand_dims(multi_select, 0)
+    score_cumulative = tf.expand_dims(score_cumulative, 0)
 
     # Run the model and to get action probabilities and critic value
-    input_ = {'feature_screen': feature_screen, 'player': players, 'feature_units': feature_units, 
-              'memory_state': memory_state, 'carry_state': carry_state, 'game_loop': game_loop,
-              'available_actions': tf.expand_dims(available_actions, 0)}
+    model_input = {'feature_screen': feature_screen, 'feature_minimap': feature_minimap,
+                   'player': player, 'feature_units': feature_units, 
+                   'memory_state': memory_state, 'carry_state': carry_state, 
+                   'game_loop': game_loop, 'available_actions': available_actions, 
+                   'build_queue': build_queue,  'single_select': single_select, 
+                   'multi_select': multi_select, 'score_cumulative': score_cumulative}
 
-    prediction = model(input_, training=True)
+    prediction = model(model_input, training=True)
     fn_pi = prediction['fn_out']
     args_pi = prediction['args_out']
     value = prediction['value']
@@ -373,22 +408,28 @@ def run_episode(
     feature_units = step_result[3] 
     game_loop = step_result[4]
     available_actions = step_result[5] 
-    reward = step_result[6]
-    done = step_result[7]
-    fn_id = step_result[8]
-    screen_arg_id = step_result[9]
-    minimap_arg_id = step_result[10]
-    screen2_arg_id = step_result[11]
-    queued_arg_id = step_result[12]
-    control_group_act_arg_id = step_result[13]
-    control_group_id_arg_id = step_result[14]
-    select_point_act_arg_id = step_result[15]
-    select_add_arg_id = step_result[16]
-    select_unit_act_arg_id = step_result[17]
-    select_unit_id_arg_id = step_result[18]
-    select_worker_arg_id = step_result[19]
-    build_queue_id_arg_id = step_result[20]
-    unload_id_arg_id = step_result[21]
+    build_queue = step_result[6] 
+    single_select = step_result[7] 
+    multi_select = step_result[8] 
+    score_cumulative = step_result[9] 
+
+    reward = step_result[10]
+    done = step_result[11]
+
+    fn_id = step_result[12]
+    screen_arg_id = step_result[13]
+    minimap_arg_id = step_result[14]
+    screen2_arg_id = step_result[15]
+    queued_arg_id = step_result[16]
+    control_group_act_arg_id = step_result[17]
+    control_group_id_arg_id = step_result[18]
+    select_point_act_arg_id = step_result[19]
+    select_add_arg_id = step_result[20]
+    select_unit_act_arg_id = step_result[21]
+    select_unit_id_arg_id = step_result[22]
+    select_worker_arg_id = step_result[23]
+    build_queue_id_arg_id = step_result[24]
+    unload_id_arg_id = step_result[25]
     
     fn_ids = fn_ids.write(t, fn_id)
     screen_arg_ids = screen_arg_ids.write(t, screen_arg_id)
@@ -436,27 +477,23 @@ def run_episode(
     
     feature_screen.set_shape(initial_feature_screen_shape)
     feature_minimap.set_shape(initial_feature_minimap_shape)
-    players.set_shape(initial_players_shape)
+    player.set_shape(initial_player_shape)
     feature_units.set_shape(initial_feature_units_shape)
     game_loop.set_shape(initial_game_loop_shape)
     available_actions.set_shape(initial_available_actions_shape)
+    build_queue.set_shape(initial_build_queue_shape)
+    single_select.set_shape(initial_single_select_shape)
+    multi_select.set_shape(initial_multi_select_shape)
+    score_cumulative.set_shape(initial_score_cumulative_shape)
     memory_state.set_shape(initial_memory_state_shape)
     carry_state.set_shape(initial_carry_state_shape)
     
     # Store reward
     rewards = rewards.write(t, reward)
-    dones = dones.write(t, done)
-    
     done.set_shape(initial_done_shape)
     if tf.cast(done, tf.bool):
       break
 
-  last_input_ = {'feature_screen': tf.expand_dims(feature_screen, 0), 'player': players, 
-                 'feature_units': tf.expand_dims(feature_units, 0), 'memory_state': memory_state, 
-                 'carry_state': carry_state, 'game_loop': game_loop, 'available_actions': tf.expand_dims(available_actions, 0)}
-
-  last_prediction = model(last_input_, training=False)
-  next_value = tf.squeeze(last_prediction['value'])
   fn_probs = fn_probs.stack()
   screen_arg_probs = screen_arg_probs.stack()
   minimap_arg_probs = minimap_arg_probs.stack()
@@ -471,10 +508,9 @@ def run_episode(
   select_worker_arg_probs = select_worker_arg_probs.stack()
   build_queue_id_arg_probs = build_queue_id_arg_probs.stack()
   unload_id_arg_probs = unload_id_arg_probs.stack()
-  
+
   values = values.stack()
   rewards = rewards.stack()
-  dones = dones.stack()
   
   fn_ids = fn_ids.stack()
   screen_arg_ids = screen_arg_ids.stack()
@@ -494,11 +530,11 @@ def run_episode(
   return (fn_probs, screen_arg_probs, minimap_arg_probs, screen2_arg_probs, queued_arg_probs, control_group_act_probs, 
           control_group_id_arg_probs, select_point_act_probs, select_add_arg_probs, select_unit_act_arg_probs, 
           select_unit_id_arg_probs, select_worker_arg_probs, build_queue_id_arg_probs, unload_id_arg_probs, 
-          feature_screen, feature_minimap, players, feature_units, game_loop, available_actions, memory_state, carry_state, 
-          values, rewards, done, 
+          feature_screen, feature_minimap, player, feature_units, game_loop, available_actions, build_queue,
+          single_select, multi_select, score_cumulative, memory_state, carry_state, values, rewards, done, 
           fn_ids, screen_arg_ids, minimap_arg_ids, screen2_arg_ids, queued_arg_ids, control_group_act_ids, control_group_id_arg_ids,
           select_point_act_ids, select_add_arg_ids, select_unit_act_arg_ids, select_unit_id_arg_ids, select_worker_arg_ids, 
-          build_queue_id_arg_ids, unload_id_arg_ids, next_value, dones
+          build_queue_id_arg_ids, unload_id_arg_ids
          )
   
 
@@ -533,10 +569,6 @@ def get_expected_return(
   
 mse_loss = tf.keras.losses.MeanSquaredError()
 
-def safe_log(self, x):
-  return tf.where(tf.equal(x, 0), tf.zeros_like(x), tf.math.log(tf.maximum(1e-12, x)))
-
-
 def compute_loss(
     fn_probs: tf.Tensor, screen_arg_probs: tf.Tensor, minimap_arg_probs: tf.Tensor, screen2_arg_probs: tf.Tensor, 
     queued_arg_probs: tf.Tensor, control_group_act_probs: tf.Tensor, control_group_id_arg_probs: tf.Tensor, 
@@ -554,58 +586,88 @@ def compute_loss(
 
   advantage = returns - values
   
-  log_probs = tf.math.log(fn_probs)
-  log_probs += tf.math.log(screen_arg_probs) * tf.cast(tf.not_equal(screen_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(minimap_arg_probs) * tf.cast(tf.not_equal(minimap_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(screen2_arg_probs) * tf.cast(tf.not_equal(screen2_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(queued_arg_probs) * tf.cast(tf.not_equal(queued_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(control_group_act_probs) * tf.cast(tf.not_equal(control_group_act_ids, -1), 'float32')
-  log_probs += tf.math.log(control_group_id_arg_probs) * tf.cast(tf.not_equal(control_group_id_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(select_point_act_probs) * tf.cast(tf.not_equal(select_point_act_ids, -1), 'float32')
-  log_probs += tf.math.log(select_add_arg_probs) * tf.cast(tf.not_equal(select_add_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(select_unit_act_arg_probs) * tf.cast(tf.not_equal(select_unit_act_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(select_unit_id_arg_probs) * tf.cast(tf.not_equal(select_unit_id_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(select_worker_arg_probs) * tf.cast(tf.not_equal(select_worker_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(build_queue_id_arg_probs) * tf.cast(tf.not_equal(build_queue_id_arg_ids, -1), 'float32')
-  log_probs += tf.math.log(unload_id_arg_probs) * tf.cast(tf.not_equal(unload_id_arg_ids, -1), 'float32')
+  fn_log_probs = tf.math.log(fn_probs)
+  screen_arg_log_probs = tf.math.log(screen_arg_probs) * tf.cast(tf.not_equal(screen_arg_ids, -1), 'float32')
+  minimap_arg_log_probs = tf.math.log(minimap_arg_probs) * tf.cast(tf.not_equal(minimap_arg_ids, -1), 'float32')
+  screen2_arg_log_probs = tf.math.log(screen2_arg_probs) * tf.cast(tf.not_equal(screen2_arg_ids, -1), 'float32')
+  queued_arg_log_probs = tf.math.log(queued_arg_probs) * tf.cast(tf.not_equal(queued_arg_ids, -1), 'float32')
+  control_group_act_log_probs = tf.math.log(control_group_act_probs) * tf.cast(tf.not_equal(control_group_act_ids, -1), 'float32')
+  control_group_id_arg_log_probs = tf.math.log(control_group_id_arg_probs) * tf.cast(tf.not_equal(control_group_id_arg_ids, -1), 'float32')
+  select_point_act_log_probs = tf.math.log(select_point_act_probs) * tf.cast(tf.not_equal(select_point_act_ids, -1), 'float32')
+  select_add_arg_log_probs = tf.math.log(select_add_arg_probs) * tf.cast(tf.not_equal(select_add_arg_ids, -1), 'float32')
+  select_unit_act_arg_log_probs = tf.math.log(select_unit_act_arg_probs) * tf.cast(tf.not_equal(select_unit_act_arg_ids, -1), 'float32')
+  select_unit_id_arg_log_probs = tf.math.log(select_unit_id_arg_probs) * tf.cast(tf.not_equal(select_unit_id_arg_ids, -1), 'float32')
+  select_worker_arg_log_probs = tf.math.log(select_worker_arg_probs) * tf.cast(tf.not_equal(select_worker_arg_ids, -1), 'float32')
+  build_queue_id_arg_log_probs = tf.math.log(build_queue_id_arg_probs) * tf.cast(tf.not_equal(build_queue_id_arg_ids, -1), 'float32')
+  unload_id_arg_log_probs = tf.math.log(unload_id_arg_probs) * tf.cast(tf.not_equal(unload_id_arg_ids, -1), 'float32')
+  
+  log_probs = fn_log_probs + screen_arg_log_probs + minimap_arg_log_probs + screen2_arg_log_probs + queued_arg_log_probs + control_group_act_log_probs + \
+  		control_group_id_arg_log_probs + select_point_act_log_probs + select_add_arg_log_probs + select_unit_act_arg_log_probs + \
+  		  select_unit_id_arg_log_probs + select_worker_arg_log_probs + build_queue_id_arg_log_probs + unload_id_arg_log_probs
   
   actor_loss = -tf.math.reduce_mean(log_probs * tf.stop_gradient(advantage))
   critic_loss = mse_loss(values, returns)
 
-  return actor_loss + critic_loss * 0.5
+  entropy = -tf.reduce_sum(fn_log_probs * fn_probs, axis=-1)
+  entropy += -tf.reduce_sum(screen_arg_log_probs * screen_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(minimap_arg_log_probs * minimap_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(screen2_arg_log_probs * screen2_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(queued_arg_log_probs * queued_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(control_group_act_log_probs * control_group_act_probs, axis=-1)
+  entropy += -tf.reduce_sum(control_group_id_arg_log_probs * control_group_id_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(select_point_act_log_probs * select_point_act_probs, axis=-1)
+  entropy += -tf.reduce_sum(select_add_arg_log_probs * select_add_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(select_unit_act_arg_log_probs * select_unit_act_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(select_unit_id_arg_log_probs * select_unit_id_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(select_worker_arg_log_probs * select_worker_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(build_queue_id_arg_log_probs * build_queue_id_arg_probs, axis=-1)
+  entropy += -tf.reduce_sum(unload_id_arg_log_probs * unload_id_arg_probs, axis=-1)\
+  
+  entropy_loss = tf.reduce_mean(entropy)
+  #tf.print("actor_loss: ", actor_loss)
+  #tf.print("critic_loss: ", critic_loss)
+
+  return actor_loss + 0.5 * critic_loss - 1e-3 * entropy_loss
   
 
 initial_learning_rate = arguments.learning_rate
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate,
-            decay_steps=10000,
-            decay_rate=0.94,
-            staircase=True)
+#lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+#            initial_learning_rate,
+#            decay_steps=10000,
+#            decay_rate=0.94,
+#            staircase=True)
 
-optimizer = tf.keras.optimizers.RMSprop(lr_schedule, rho=0.99, epsilon=1e-5)
+#optimizer = tf.keras.optimizers.RMSprop(initial_learning_rate, rho=0.99, epsilon=1e-1)
+optimizer = tf.keras.optimizers.RMSprop(initial_learning_rate, rho=0.99, epsilon=1e-5)
 
 @tf.function
 def train_step(
     initial_feature_screen: tf.Tensor,
     initial_feature_minimap: tf.Tensor,
-    initial_players: tf.Tensor,
+    initial_player: tf.Tensor,
     initial_feature_units: tf.Tensor,
     initial_game_loop: tf.Tensor,
-    initial_available_actions: tf.Tensor,  
-    initial_memory_state: tf.Tensor, 
-    initial_carry_state: tf.Tensor, 
-    initial_done: tf.Tensor, 
-    model: tf.keras.Model, 
+    initial_available_actions: tf.Tensor,
+    initial_build_queue: tf.Tensor,
+    initial_single_select: tf.Tensor,
+    initial_multi_select: tf.Tensor,
+    initial_score_cumulative: tf.Tensor,
+    initial_memory_state: tf.Tensor,
+    initial_carry_state: tf.Tensor,
+    initial_done: tf.Tensor,
+    model: tf.keras.Model,
     optimizer: tf.keras.optimizers.Optimizer, 
     gamma: float, 
-    max_steps_per_episode: int) -> tf.Tensor:
+    max_steps_per_episode: int) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor,
+    					 tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
   """Runs a model training step."""
 
   with tf.GradientTape() as tape:
     # Run the model for one episode to collect training data
-    prediction = run_episode(initial_feature_screen, initial_feature_minimap, initial_players, initial_feature_units, 
-    			      initial_game_loop, initial_available_actions, initial_memory_state, initial_carry_state, 
-    			      initial_done, model, max_steps_per_episode) 
+    prediction = run_episode(initial_feature_screen, initial_feature_minimap, initial_player, initial_feature_units, 
+			      initial_game_loop, initial_available_actions, initial_build_queue, initial_single_select, 
+			      initial_multi_select, initial_score_cumulative, initial_memory_state, initial_carry_state, 
+			      initial_done, model, max_steps_per_episode) 
     fn_probs = prediction[0] 
     screen_arg_probs = prediction[1]  
     minimap_arg_probs = prediction[2] 
@@ -623,40 +685,41 @@ def train_step(
     
     feature_screen = prediction[14]
     feature_minimap = prediction[15] 
-    players = prediction[16]
+    player = prediction[16]
     feature_units = prediction[17] 
     game_loop = prediction[18]
     available_actions = prediction[19]
     
-    memory_state = prediction[20]
-    carry_state = prediction[21]
-    
-    values = prediction[22]
-    rewards = prediction[23]
-    done = prediction[24]
+    build_queue = prediction[20]
+    single_select = prediction[21]
+    multi_select = prediction[22]
+    score_cumulative = prediction[23]
 
-    fn_ids = prediction[25]
-    screen_arg_ids = prediction[26]
-    minimap_arg_ids = prediction[27] 
-    screen2_arg_ids = prediction[28] 
-    queued_arg_ids = prediction[29] 
-    control_group_act_ids = prediction[30] 
-    control_group_id_arg_ids = prediction[31]
-    select_point_act_ids = prediction[32]
-    select_add_arg_ids = prediction[33]
-    select_unit_act_arg_ids = prediction[34] 
-    select_unit_id_arg_ids = prediction[35] 
-    select_worker_arg_ids = prediction[36] 
-    build_queue_id_arg_ids = prediction[37] 
-    unload_id_arg_ids = prediction[38]
+    memory_state = prediction[24]
+    carry_state = prediction[25]
     
-    next_values = prediction[39]
-    dones = prediction[40]
+    values = prediction[26]
+    rewards = prediction[27]
+    done = prediction[28]
 
+    fn_ids = prediction[29]
+    screen_arg_ids = prediction[30]
+    minimap_arg_ids = prediction[31] 
+    screen2_arg_ids = prediction[32] 
+    queued_arg_ids = prediction[33] 
+    control_group_act_ids = prediction[34] 
+    control_group_id_arg_ids = prediction[35]
+    select_point_act_ids = prediction[36]
+    select_add_arg_ids = prediction[37]
+    select_unit_act_arg_ids = prediction[38] 
+    select_unit_id_arg_ids = prediction[39] 
+    select_worker_arg_ids = prediction[40] 
+    build_queue_id_arg_ids = prediction[41] 
+    unload_id_arg_ids = prediction[42]
+    
     # Calculate expected returns
     returns = get_expected_return(rewards, gamma)
-    #returns = get_expected_return(rewards, dones, values, next_values, gamma)
-
+    
     # Convert training data to appropriate TF tensor shapes
     converted_value = [
         tf.expand_dims(x, 1) for x in [fn_probs, screen_arg_probs, minimap_arg_probs, screen2_arg_probs, queued_arg_probs, 
@@ -701,27 +764,29 @@ def train_step(
     unload_id_arg_ids = converted_value[29]
 
     # Calculating loss values to update our network
-    loss = compute_loss(fn_probs, screen_arg_probs, minimap_arg_probs, screen2_arg_probs, queued_arg_probs, control_group_act_probs, 
-			 control_group_id_arg_probs, select_point_act_probs, select_add_arg_probs, select_unit_act_arg_probs, 
-			 select_unit_id_arg_probs, select_worker_arg_probs, build_queue_id_arg_probs, unload_id_arg_probs, 
-			 values, returns,
+    loss = compute_loss(fn_probs, screen_arg_probs, minimap_arg_probs, screen2_arg_probs,
+			 queued_arg_probs, control_group_act_probs, control_group_id_arg_probs, select_point_act_probs, 
+			 select_add_arg_probs, select_unit_act_arg_probs, select_unit_id_arg_probs, select_worker_arg_probs, 
+			 build_queue_id_arg_probs, unload_id_arg_probs, values, returns,
 			 fn_ids, screen_arg_ids, minimap_arg_ids, screen2_arg_ids, queued_arg_ids, control_group_act_ids, 
 			 control_group_id_arg_ids, select_point_act_ids, select_add_arg_ids, select_unit_act_arg_ids, 
 			 select_unit_id_arg_ids, select_worker_arg_ids, build_queue_id_arg_ids, unload_id_arg_ids
 			)
-
+  
   # Compute the gradients from the loss
   grads = tape.gradient(loss, model.trainable_variables)
+  grad_norm = tf.linalg.global_norm(grads)
+  tf.print("grad_norm: ", grad_norm)
   grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
 
   if arguments.training:
-    # Apply the gradients to the model's parameters
+  #  # Apply the gradients to the model's parameters
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   episode_reward = tf.math.reduce_sum(rewards)
 
-  return (episode_reward, feature_screen, feature_minimap, players, feature_units, game_loop, available_actions, memory_state, 
-   	  carry_state, done)
+  return (episode_reward, feature_screen, feature_minimap, player, feature_units, game_loop, available_actions, 
+          build_queue, single_select, multi_select, score_cumulative, memory_state, carry_state, done, grad_norm)
   
 
 min_episodes_criterion = 100
@@ -730,7 +795,7 @@ max_steps_per_episode = 8
 
 # Cartpole-v0 is considered solved if average reward is >= 195 over 100 
 # consecutive trials
-reward_threshold = 195
+reward_threshold = 10
 running_reward = 0
 
 # Discount factor for future rewards
@@ -761,6 +826,18 @@ feature_units = utils.preprocess_feature_units(feature_units, 32)
     
 game_loop = initial_state[3]['game_loop']
 
+build_queue = initial_state[3]['build_queue']
+build_queue = utils.preprocess_build_queue(build_queue)
+
+single_select = initial_state[3]['single_select']
+single_select = utils.preprocess_single_select(single_select)
+
+multi_select = initial_state[3]['multi_select']
+multi_select = utils.preprocess_multi_select(multi_select)
+
+score_cumulative = initial_state[3]['score_cumulative']
+score_cumulative = utils.preprocess_score_cumulative(score_cumulative)
+
 memory_state = tf.zeros([1,256], dtype=tf.float32)
 carry_state = tf.zeros([1,256], dtype=tf.float32)
 
@@ -773,25 +850,41 @@ with tqdm.trange(max_episodes) as t:
   for i in t:
     initial_feature_screen = tf.constant(feature_screen, dtype=tf.float32)
     initial_feature_minimap = tf.constant(feature_minimap, dtype=tf.float32)
-    initial_players = tf.constant(player, dtype=tf.float32)
+    initial_player = tf.constant(player, dtype=tf.float32)
     initial_feature_units = tf.constant(feature_units, dtype=tf.float32)
     initial_game_loop = tf.constant(game_loop, dtype=tf.int32)
     initial_available_actions = tf.constant(available_actions, dtype=tf.int32)
+    initial_build_queue = tf.constant(build_queue, dtype=tf.float32)
+    initial_single_select = tf.constant(single_select, dtype=tf.float32)
+    initial_multi_select = tf.constant(multi_select, dtype=tf.float32)
+    initial_score_cumulative = tf.constant(score_cumulative, dtype=tf.float32)
     initial_done = tf.constant(done, dtype=tf.float32)
     
-    train_result = train_step(initial_feature_screen, initial_feature_minimap, initial_players, initial_feature_units,
-        		       initial_game_loop, initial_available_actions, memory_state, carry_state, initial_done, model, 
-        		       optimizer, gamma, max_steps_per_episode)
+    train_result = train_step(initial_feature_screen, initial_feature_minimap, initial_player, 
+			       initial_feature_units, initial_game_loop, initial_available_actions, 
+			       initial_build_queue, initial_single_select, initial_multi_select,
+			       initial_score_cumulative, memory_state, carry_state, initial_done, model, 
+			       optimizer, gamma, max_steps_per_episode)
     episode_reward = train_result[0]
     feature_screen = train_result[1]
     feature_minimap = train_result[2]  
-    players = train_result[3]
+    player = train_result[3]
     feature_units = train_result[4]  
     game_loop = train_result[5]
     available_actions = train_result[6]
-    memory_state = train_result[7]
-    carry_state = train_result[8]
-    done = train_result[9]
+    build_queue = train_result[7]
+    single_select = train_result[8]
+    multi_select = train_result[9]
+    score_cumulative = train_result[10]
+    memory_state = train_result[11]
+    carry_state = train_result[12]
+    done = train_result[13]
+    grad_norm = train_result[14]
+    
+    with writer.as_default():
+      # other model code would go here
+      tf.summary.scalar("grad_norm", grad_norm, step=i)
+      writer.flush()
     
     if done == True:
       initial_state = env.reset()
@@ -816,6 +909,18 @@ with tqdm.trange(max_episodes) as t:
     
       game_loop = initial_state[3]['game_loop']
       
+      build_queue = initial_state[3]['build_queue']
+      build_queue = utils.preprocess_build_queue(build_queue)
+
+      single_select = initial_state[3]['single_select']
+      single_select = utils.preprocess_single_select(single_select)
+
+      multi_select = initial_state[3]['multi_select']
+      multi_select = utils.preprocess_multi_select(multi_select)
+
+      score_cumulative = initial_state[3]['score_cumulative']
+      score_cumulative = utils.preprocess_score_cumulative(score_cumulative)
+
       memory_state = tf.zeros([1,256], dtype=tf.float32)
       carry_state = tf.zeros([1,256], dtype=tf.float32)
       
@@ -829,7 +934,6 @@ with tqdm.trange(max_episodes) as t:
 
     episode_reward = int(episode_reward)
     episode_reward_sum += episode_reward
-    #print("episode_reward_sum: ", episode_reward_sum)
     running_reward = statistics.mean(episodes_reward)
 
     t.set_description(f'Episode {i}')
@@ -839,9 +943,8 @@ with tqdm.trange(max_episodes) as t:
     if i % 1000 == 0 and arguments.save_model != None:
       if running_reward >= max_average:
         max_average = running_reward
-        model.save_weights(workspace_path + "Models/" + env_name + "_Model_" + str(i))
+        model.save_weights(workspace_path + "Models/" + env_name + "_Model_Working" + str(i))
         print("save_model")
-      #pass # print(f'Episode {i}: average reward: {avg_reward}')
 
     if running_reward > reward_threshold and i >= min_episodes_criterion:  
         break

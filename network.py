@@ -5,6 +5,7 @@ from pysc2.env.environment import TimeStep, StepType
 from pysc2.lib.actions import TYPES as ACTION_TYPES
 
 import tensorflow as tf
+import utils
 import numpy as np
 import tensorflow_probability as tfp
 from tensorflow.keras.layers import Input, Dense, Lambda, Add, Conv2D, Flatten, LSTM, Reshape, ConvLSTM2D, BatchNormalization, Conv3D
@@ -358,7 +359,7 @@ class AlphaStar(tf.keras.Model):
     self.player_encoder = ScalarEncoder(output_dim=11)
     self.screen_encoder = SpatialEncoder(height=screen_size, width=screen_size, channel=3)
     #self.entity_encoder = EntityEncoder(output_dim=11, entity_num=3)
-    self.available_actions_encoder = ScalarEncoder(output_dim=64)
+    #self.available_actions_encoder = ScalarEncoder(output_dim=64)
 
     # Core
     self.core = Core(256, self.network_scale)
@@ -405,13 +406,14 @@ class AlphaStar(tf.keras.Model):
     #feature_units_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_units_encoded, 1), 2),
     #                                tf.stack([1, self.screen_size, self.screen_size, 1]))
     #feature_units_encoded = tf.cast(feature_units_encoded, 'float32')
-
+    '''
     available_actions_encoded = self.available_actions_encoder(available_actions)
     available_actions_encoded = tf.tile(tf.expand_dims(tf.expand_dims(available_actions_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
     available_actions_encoded = tf.cast(available_actions_encoded, 'float32')
-
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, available_actions_encoded], axis=3)
+    '''
+    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
+    #feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded, available_actions_encoded], axis=3)
     
     core_outputs = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
     core_output = tf.zeros((1, 256))
@@ -468,13 +470,31 @@ class FullyConv(tf.keras.Model):
     self.network_scale = int(screen_size / 32)
     
     self.screen_encoder = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(1, 1, padding='same'),
-       tf.keras.layers.Conv2D(16, 1, padding='same'),
-       tf.keras.layers.Conv2D(16, 5, padding='same'),
-       tf.keras.layers.Conv2D(32, 3, padding='same'),
+       tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(32, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(32, 5, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu')
     ])
     
-    self.feature_fc = tf.keras.layers.Dense(256, activation='relu')
+    self.minimap_encoder = tf.keras.Sequential([
+       tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(8, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(8, 5, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu')
+    ])
+    
+    self.player_encoder = ScalarEncoder(output_dim=11)
+    
+    #self.game_loop_encoder = tf.keras.layers.Dense(16, activation='relu')
+    #self.available_actions_encoder = tf.keras.layers.Dense(32, activation='relu')
+    #self.build_queue_encoder = tf.keras.layers.Dense(5, activation='relu')
+    #self.single_select_encoder = tf.keras.layers.Dense(5, activation='relu')
+    #self.multi_select_encoder = tf.keras.layers.Dense(10, activation='relu')
+    #self.score_cumulative_encoder = tf.keras.layers.Dense(10, activation='relu')
+    
+    #self.encoding_lookup = utils.positional_encoding(max_position=2500, embedding_size=16)
+    
+    self.feature_fc = tf.keras.layers.Dense(512, activation='relu')
     self.fn_out = tf.keras.layers.Dense(_NUM_FUNCTIONS, activation='softmax')
 
     self.screen = tf.keras.Sequential()
@@ -542,16 +562,53 @@ class FullyConv(tf.keras.Model):
     })
     return config
 
-  def call(self, feature_screen, feature_player, feature_units, memory_state, carry_state, game_loop, available_actions):
+  def call(self, feature_screen, feature_minimap, player, feature_units, memory_state, carry_state, game_loop, available_actions, 
+  	   build_queue, single_select, multi_select, score_cumulative):
     batch_size = tf.shape(feature_screen)[0]
 
     feature_screen_encoded = self.screen_encoder(feature_screen)
 
-    feature_player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(feature_player, 1), 2),
-                                     tf.stack([1, 32, 32, 1]))
-    feature_player_encoded = tf.cast(feature_player_encoded, 'float32')
+    feature_minimap_encoded = self.minimap_encoder(feature_minimap)
 
-    feature_encoded = tf.concat([feature_screen_encoded, feature_player_encoded], axis=3)
+    player_encoded = self.player_encoder(player)
+    player_encoded = tf.tile(tf.expand_dims(tf.expand_dims(player_encoded, 1), 2),
+                                     tf.stack([1, 32, 32, 1]))
+    player_encoded = tf.cast(player_encoded, 'float32')
+    '''
+    game_loop_encoded = tf.gather_nd(self.encoding_lookup, tf.cast(game_loop, tf.int32))
+    game_loop_encoded = self.game_loop_encoder(game_loop_encoded)
+    game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop_encoded, 1), 2),
+                                      tf.stack([1, self.screen_size, self.screen_size, 1]))
+    game_loop_encoded = tf.cast(game_loop_encoded, 'float32')
+
+    available_actions_encoded = self.available_actions_encoder(available_actions)
+    available_actions_encoded = tf.tile(tf.expand_dims(tf.expand_dims(available_actions_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    available_actions_encoded = tf.cast(available_actions_encoded, 'float32')
+    
+    build_queue_encoded = self.build_queue_encoder(build_queue)
+    build_queue_encoded = tf.tile(tf.expand_dims(tf.expand_dims(build_queue_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    build_queue_encoded = tf.cast(build_queue_encoded, 'float32')
+
+    single_select_encoded = self.single_select_encoder(single_select)
+    single_select_encoded = tf.tile(tf.expand_dims(tf.expand_dims(single_select_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    single_select_encoded = tf.cast(single_select_encoded, 'float32')
+
+    multi_select_encoded = self.multi_select_encoder(multi_select)
+    multi_select_encoded = tf.tile(tf.expand_dims(tf.expand_dims(multi_select_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    multi_select_encoded = tf.cast(multi_select_encoded, 'float32')
+
+    score_cumulative_encoded = self.score_cumulative_encoder(score_cumulative)
+    score_cumulative_encoded = tf.tile(tf.expand_dims(tf.expand_dims(score_cumulative_encoded, 1), 2),
+                                            tf.stack([1, self.screen_size, self.screen_size, 1]))
+    score_cumulative_encoded = tf.cast(score_cumulative_encoded, 'float32')
+    '''
+    #feature_encoded = tf.concat([feature_screen_encoded, feature_minimap_encoded, player_encoded, game_loop_encoded,
+    #				  available_actions_encoded], axis=3)
+    feature_encoded = tf.concat([feature_screen_encoded, feature_minimap_encoded, player_encoded], axis=3)
 
     feature_encoded_flatten = Flatten()(feature_encoded)
     feature_fc = self.feature_fc(feature_encoded_flatten)
@@ -596,33 +653,38 @@ class FullyConv(tf.keras.Model):
 
 
 def make_model(name):
-    '''
-    feature_screen.shape:  (1, 32, 32, 37)
-    feature_player.shape:  (1, 3)
-    feature_units.shape:  (1, 50, 7)
-    game_loop.shape:  (1, 1)
-    available_actions.shape:  (1, 573)
-    '''
     feature_screen = tf.keras.Input(shape=(32, 32, 37))
-    feature_player = tf.keras.Input(shape=(11))
+    feature_minimap = tf.keras.Input(shape=(32, 32, 4))
+    player = tf.keras.Input(shape=(11))
     feature_units = tf.keras.Input(shape=(3, 7))
+    available_actions = tf.keras.Input(shape=(573))
     memory_state = tf.keras.Input(shape=(256))
     carry_state = tf.keras.Input(shape=(256))
     game_loop = tf.keras.Input(shape=(1))
-    available_actions = tf.keras.Input(shape=(573))
+    build_queue = tf.keras.Input(shape=(5))
+    single_select = tf.keras.Input(shape=(3))
+    multi_select = tf.keras.Input(shape=(10))
+    score_cumulative = tf.keras.Input(shape=(13))
 
     if name == 'fullyconv':
-        fn_out, args_out, value, final_memory_state, final_carry_state = FullyConv(32, 32)(feature_screen, feature_player, feature_units, 
-        										      memory_state, carry_state,
-        										      game_loop, available_actions)
+      fn_out, args_out, value, final_memory_state, final_carry_state = FullyConv(32, 32)(feature_screen, feature_minimap, player, 
+											    feature_units, memory_state, carry_state, game_loop, 
+											    available_actions, build_queue, single_select, 
+											    multi_select, score_cumulative)
+
     elif name == 'alphastar':
-        fn_out, args_out, value, final_memory_state, final_carry_state = AlphaStar(32, 32)(feature_screen, feature_player, feature_units, 
-        										      memory_state, carry_state,
-        										      game_loop, available_actions)
-                                                
-    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'player': feature_player, 'feature_units': feature_units, 
-                                   'memory_state': memory_state, 'carry_state': carry_state,
-                                   'game_loop': game_loop, 'available_actions': available_actions}, 
-                           outputs={'fn_out': fn_out, 'args_out': args_out, 'value': value, 'final_memory_state': final_memory_state, 
-                           	     'final_carry_state': final_carry_state}, name=name)
+      fn_out, args_out, value, final_memory_state, final_carry_state = AlphaStar(32, 32)(feature_screen, feature_minimap, player, 
+											    feature_units, memory_state, carry_state, game_loop, 
+											    available_actions, build_queue, single_select, 
+											    multi_select, score_cumulative)
+    
+    model = tf.keras.Model(inputs={'feature_screen': feature_screen, 'feature_minimap': feature_minimap, 
+				    'player': player, 'feature_units': feature_units, 
+				    'memory_state': memory_state, 'carry_state': carry_state, 'game_loop': game_loop,
+				    'available_actions': available_actions, 'build_queue': build_queue, 
+				    'single_select': single_select, 'multi_select': multi_select, 'score_cumulative': score_cumulative}, 
+                                  outputs={'fn_out': fn_out, 'args_out': args_out, 'value':value, 'final_memory_state': final_memory_state, 
+                                           'final_carry_state':final_carry_state}, 
+                                  name=name)
+    
     return model
