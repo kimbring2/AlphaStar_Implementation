@@ -1,5 +1,5 @@
 # Introduction
-I am trying to implement AlphaStar based on supplementary material of DeepMind. Currently, I can solove the MoveToBeacon environment which is one of the mini-game  of PySC2 using the multi state encoder, the action head model structure of the AlphaStar.
+This repo is for Deep Learning agent of Starcraft2. Because networm for large map playing require too much GPU memory, I am dealing with Minigame, Simple64 map of PySC2. For that, I collect my own human replay different from original AlphaStar of DeepMind which use a replay data from BattleNet. However, you can use a my code for making your own large network based on your computing resource because every part for training Deep Learning network is same all time.
 
 # Reference
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
