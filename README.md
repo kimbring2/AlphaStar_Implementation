@@ -1,5 +1,5 @@
 # Introduction
-This repo is for Deep Learning agent of Starcraft2. Because networm for large map playing require too much GPU memory, I am dealing with Minigame, Simple64 map of PySC2. For that, I collect my own human replay different from original AlphaStar of DeepMind which use a replay data from BattleNet. However, you can use a my code for making your own large network based on your computing resource because every part for training Deep Learning network is same all time.
+This repository is for Deep Learning agent of Starcraft2. It is very similar to AlphaStar of DeepMind except size of network. I only test my code with Minigame, Simple64 map of PySC2. However, I am sure this code will work at more large scale game if network size is grown.
 
 # Reference
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
