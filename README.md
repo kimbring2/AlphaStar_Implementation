@@ -17,7 +17,7 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 
 ## Starcraft2
 1. Client 4.8.2: https://github.com/Blizzard/s2client-proto#downloads
-2. Replay 4.8.2: 
+2. Replay 4.8.2
 
 ## PC capaticy
 1. One NVIDIA Titan V
