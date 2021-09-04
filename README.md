@@ -33,7 +33,7 @@ $ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Repla
 After making hkl file of replay in your workspace, try to start the Supervised Learning using below command. It will save a trained model under Models folder of your workspace.
 
 ```
-$ python run_supervised_learning.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --learning_rate 0.0001 --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
+$ python run_supervised_learning.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --model_name alphastar --training True --gpu_use True --learning_rate 0.0001 --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
 ```
 
 You can check training progress using Tensorboard under tensorboard folder of your workspace. It will take very long time to finish training becasue of vast of observation and action space.
