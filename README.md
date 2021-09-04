@@ -10,16 +10,18 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 # Version
 ## Python
 1. Python3
-2. PySC2 3.0.0
+2. PySC2 3.0.0: https://github.com/deepmind/pysc2
 3. Tensorflow-gpu 2.3.0
 4. Tensorflow-probability 0.11.0
 5. Hickle 4.0.4
 
 ## Starcraft2
-1. 4.8.2 version
+1. Client 4.8.2: https://github.com/Blizzard/s2client-proto#downloads
+2. Replay 4.8.2: 
 
-## GPU
-1. One NVIDIA Titan V for training the model
+## PC capaticy
+1. One NVIDIA Titan V
+2. 32GB RAM
 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
