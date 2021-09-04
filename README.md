@@ -18,6 +18,9 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 ## Starcraft2
 1. 4.8.2 version
 
+## GPU
+1. One NVIDIA Titan V for training the model
+
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
 
