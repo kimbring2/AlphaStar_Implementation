@@ -194,12 +194,8 @@ workspace_path = arguments.workspace_path
 Save_Path = 'Models'
         
 model = network.make_model(arguments.model_name)
-#home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
 
-if arguments.sl_training == True:
-  writer = tf.summary.create_file_writer(arguments.tensorboard_path)
-
-
+writer = tf.summary.create_file_writer(workspace_path + "/tensorboard/supervised_learning")
 
 feature_screen_size = arguments.screen_size
 feature_minimap_size = arguments.minimap_size
