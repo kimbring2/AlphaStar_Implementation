@@ -36,8 +36,6 @@ import cv2
 import time
 
 import network as network
-import agent as agent
-import trajectory as trajectory
 import hickle as hkl 
 import utils
 
@@ -52,6 +50,7 @@ parser = argparse.ArgumentParser(description='AlphaStar implementation')
 parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
 parser.add_argument('--workspace_path', type=str, help='root directory for checkpoint storage')
 parser.add_argument('--visualize', type=bool, default=False, help='render with pygame')
+parser.add_argument('--model_name', type=str, default='fullyconv', help='model name')
 parser.add_argument('--training', type=bool, default=False, help='training model')
 parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
 parser.add_argument('--seed', type=int, default=123, help='seed number')
@@ -194,11 +193,13 @@ env_name = arguments.environment
 workspace_path = arguments.workspace_path
 Save_Path = 'Models'
         
-model = network.make_model('alphastar')
-home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
+model = network.make_model(arguments.model_name)
+#home_agent = agent.A2CAgent(model, arguments.learning_rate, arguments.gradient_clipping)
 
 if arguments.sl_training == True:
   writer = tf.summary.create_file_writer(arguments.tensorboard_path)
+
+
 
 feature_screen_size = arguments.screen_size
 feature_minimap_size = arguments.minimap_size
@@ -619,7 +620,7 @@ def supervised_train(dataset, training_episode):
               writer.flush()
 
           if training_step % 5000 == 0:
-            home_agent.save(workspace_path + '/Models/supervised_model_' + str(training_step / 10000))
+            model.save_weights(workspace_path + '/Models/supervised_model_' + str(training_step / 10000))
 
 
 def main():
