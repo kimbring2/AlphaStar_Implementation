@@ -27,23 +27,11 @@ _SCREEN_VISIBILITY_MAP = features.SCREEN_FEATURES.visibility_map.index
 
 _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
 _MINIMAP_CAMERA = features.MINIMAP_FEATURES.camera.index
+_MINIMAP_PLAYER_RELATIVE = features.MINIMAP_FEATURES.player_relative.index
 
-FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
-FLAT_FEATURES = [
-  FlatFeature(0,  features.FeatureType.SCALAR, 1, 'player_id'),
-  FlatFeature(1,  features.FeatureType.SCALAR, 1, 'minerals'),
-  FlatFeature(2,  features.FeatureType.SCALAR, 1, 'vespene'),
-  FlatFeature(3,  features.FeatureType.SCALAR, 1, 'food_used'),
-  FlatFeature(4,  features.FeatureType.SCALAR, 1, 'food_cap'),
-  FlatFeature(5,  features.FeatureType.SCALAR, 1, 'food_army'),
-  FlatFeature(6,  features.FeatureType.SCALAR, 1, 'food_workers'),
-  FlatFeature(7,  features.FeatureType.SCALAR, 1, 'idle_worker_count'),
-  FlatFeature(8,  features.FeatureType.SCALAR, 1, 'army_count'),
-  FlatFeature(9,  features.FeatureType.SCALAR, 1, 'warp_gate_count'),
-  FlatFeature(10, features.FeatureType.SCALAR, 1, 'larva_count'),
-]
+unit_list = [45, 48, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268]
+#unit_list = [0, 48, 317]
 
-unit_list = [0, 48, 317]
 def preprocess_screen(screen):
   layers = []
   assert screen.shape[0] == len(features.SCREEN_FEATURES)
@@ -53,10 +41,8 @@ def preprocess_screen(screen):
       layer = np.zeros([scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
       for j in range(scale):
         indy, indx = (screen[i] == unit_list[j]).nonzero()
-        if indy.shape[0] != 0:
-          #print("unit_list[j]: ", unit_list[j])
-          layer[j, indy, indx] = 1
-            
+        layer[j, indy, indx] = 1
+
       layers.append(layer)
     elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
@@ -65,7 +51,7 @@ def preprocess_screen(screen):
       for j in range(features.SCREEN_FEATURES[i].scale):
         indy, indx = (screen[i] == j).nonzero()
         layer[j, indy, indx] = 1
-        
+
       layers.append(layer)
     elif i == _SCREEN_UNIT_HIT_POINTS:
       layers.append(np.log(screen[i:i+1] + 1) / np.log(features.SCREEN_FEATURES[i].scale))
@@ -77,11 +63,9 @@ def preprocess_minimap(minimap):
   layers = []
   assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
   for i in range(len(features.MINIMAP_FEATURES)):
-    if i == _MINIMAP_PLAYER_ID:
+    if i == features.FeatureType.SCALAR:
       layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
-    elif features.MINIMAP_FEATURES[i].type == features.FeatureType.SCALAR:
-      layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
-    elif i == _MINIMAP_CAMERA:
+    elif i == _MINIMAP_CAMERA or i == _MINIMAP_PLAYER_RELATIVE:
       layer = np.zeros([features.MINIMAP_FEATURES[i].scale, minimap.shape[1], minimap.shape[2]], dtype=np.float32)
       for j in range(features.MINIMAP_FEATURES[i].scale):
         indy, indx = (minimap[i] == j).nonzero()
@@ -92,17 +76,35 @@ def preprocess_minimap(minimap):
   return np.concatenate(layers, axis=0)
 
 
+FlatFeature = namedtuple('FlatFeatures', ['index', 'type', 'scale', 'name'])
+FLAT_FEATURES = [
+  FlatFeature(0,  features.FeatureType.SCALAR, 1, 'player_id'),
+  FlatFeature(1,  features.FeatureType.SCALAR, 10000, 'minerals'),
+  FlatFeature(2,  features.FeatureType.SCALAR, 10000, 'vespene'),
+  FlatFeature(3,  features.FeatureType.SCALAR, 200, 'food_used'),
+  FlatFeature(4,  features.FeatureType.SCALAR, 200, 'food_cap'),
+  FlatFeature(5,  features.FeatureType.SCALAR, 200, 'food_army'),
+  FlatFeature(6,  features.FeatureType.SCALAR, 200, 'food_workers'),
+  FlatFeature(7,  features.FeatureType.SCALAR, 200, 'idle_worker_count'),
+  FlatFeature(8,  features.FeatureType.SCALAR, 200, 'army_count'),
+  FlatFeature(9,  features.FeatureType.SCALAR, 200, 'warp_gate_count'),
+  FlatFeature(10, features.FeatureType.SCALAR, 200, 'larva_count'),
+]
 def preprocess_player(player):
   layers = []
   for s in FLAT_FEATURES:
-    out = player[s.index] / s.scale
-    layers.append(out)
+    if s.index == 1 or s.index == 2:
+      out = np.log(player[s.index] + 1) / np.log(s.scale)
+      layers.append(out)
+    else:
+      out = player[s.index] / s.scale
+      layers.append(out)
 
   return np.array(layers)
 
 
 def preprocess_available_actions(available_action):
-    available_actions = np.zeros(_NUM_FUNCTIONS, dtype=np.float32)
+    available_actions = np.zeros(_NUM_FUNCTIONS, dtype=np.float64)
     available_actions[available_action] = 1
 
     return available_actions
@@ -112,41 +114,37 @@ def preprocess_feature_units(feature_units, feature_screen_size):
     feature_units_list = []
     feature_units_length = len(feature_units)
     for i, feature_unit in enumerate(feature_units):
+      #if feature_unit.unit_type == 19:
+      #  print("feature_unit: ", feature_unit)
+
       feature_unit_length = len(feature_unit) 
 
-      #print("feature_unit.unit_type: ", feature_unit.unit_type)
-      #print("feature_unit.alliance: ", feature_unit.alliance)
-      #print("feature_unit.health: ", feature_unit.health)
-      #print("feature_unit.shield: ", feature_unit.shield)
-      unit_type = feature_unit.unit_type
-      unit_index = unit_list.index(unit_type)
-      #print("unit_index: ", unit_index)
-      
       feature_unit_list = []
-      feature_unit_list.append(unit_index / 2)
+      feature_unit_list.append(feature_unit.unit_type / 2000)
       feature_unit_list.append(feature_unit.alliance / 4)
-      feature_unit_list.append(feature_unit.health / 100)
-      feature_unit_list.append(feature_unit.shield / 100)
+      feature_unit_list.append(feature_unit.health / 10000)
+      feature_unit_list.append(feature_unit.shield / 10000)
       feature_unit_list.append(feature_unit.x / 100)
       feature_unit_list.append(feature_unit.y / 100) 
       feature_unit_list.append(feature_unit.is_selected)
+      feature_unit_list.append(feature_unit.build_progress / 500)
 
       #print("feature_unit.x / (feature_screen_size + 1): ", feature_unit.x / (feature_screen_size + 1))
       #print("feature_unit.y / (feature_screen_size + 1): ", feature_unit.y / (feature_screen_size + 1))
 
       feature_units_list.append(feature_unit_list)
       #print("i: ", i)
-      if i >= 2:
+      if i >= 49:
         break
 
-    if feature_units_length < 3:
-      for i in range(feature_units_length, 3):
-        feature_units_list.append(np.zeros(7))
+    if feature_units_length < 50:
+      for i in range(feature_units_length, 50):
+        feature_units_list.append(np.zeros(8))
 
     entity_array = np.array(feature_units_list)
     
     return entity_array
-    
+
 
 SingleSelectFeature = namedtuple('SingleSelectFeature', ['index', 'type', 'scale', 'name'])
 SINGLE_SELECT_FEATURES = [
@@ -240,4 +238,3 @@ def positional_encoding(max_position, embedding_size, add_batch_dim=False):
         angle_rads = angle_rads[np.newaxis, ...]
 
     return tf.cast(angle_rads, dtype=tf.float32)
-
