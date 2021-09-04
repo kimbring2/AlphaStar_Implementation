@@ -42,6 +42,7 @@ parser.add_argument('--player_1', type=str, default='terran', help='race of play
 parser.add_argument('--player_2', type=str, default='terran', help='race of player 2')
 parser.add_argument('--screen_size', type=int, default=32, help='screen resolution')
 parser.add_argument('--minimap_size', type=int, default=32, help='minimap resolution')
+parser.add_argument('--pretrained_model', type=str, default="supervised_model", help='pretrained model name')
 parser.add_argument('--replay_dir', type=str, default="replay", help='replay save path')
 parser.add_argument('--save_replay_episodes', type=int, default=10, help='minimap resolution')
 
@@ -102,8 +103,7 @@ eps = np.finfo(np.float32).eps.item()
 workspace_path = arguments.workspace_path
 
 model = network.make_model(arguments.model_name)
-#model.load_weights(workspace_path + "/Models/Supervised_Learning/" + env_name + "_Model")
-model.load_weights(workspace_path + "/Models/" + "supervised_model_10.0")
+model.load_weights(workspace_path + "/Models/" + arguments.pretrained_model)
 
 def actions_to_pysc2(fn_id, arg_ids, size):
   height, width = size
