@@ -24,6 +24,40 @@ Current, I am migrating from [common style](https://github.com/pythonlessons/Rei
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
 
+# Supervised Learning 
+## Simple64
+To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
+
+Please download the run.py, network.py, agent.py, utils.py, trajectory_generator.py, file from [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub because I can not check Reinforcement Learning result using same observation as Supervised Learing. It will be updated soon.
+
+First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 8 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl. Current, I only use replay file of Terran vs Terran.
+```
+$ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
+```
+
+After making hkl file of replay in your workspace, try to start the Supervised Learning using below command.
+
+```
+$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --learning_rate 0.0001 --sl_training True --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
+```
+
+You can check training progress using Tensorboard under tensorboard folder of your workspace. It will take very long time to finish training becasue of vast of observation and action space.
+
+<img src="image/SL_Tensorboard.png" width="600">
+
+Below is code for evaluating trained model
+
+```
+python run_evaluation.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --gpu_use True --load True --visualize True --environment Simple64 --pretrained_model supervised_model
+```
+
+Video of downisde is one of behavior example of trained agent.
+
+[![Supervised Learning demo](https://img.youtube.com/vi/ABomHc4_GlQ/maxresdefault.jpg)](https://youtu.be/ABomHc4_GlQ "AlphaStar Implementation - Click to Watch!")
+<strong>Click to Watch!</strong>
+
+I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
+
 # Reinforcement Learning
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
@@ -54,46 +88,12 @@ Afater checking norm value, you should remove an outlier value among them.
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace.
 
 ```
-$ python run_evaluation.py --environment Simple64 --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model supervised_model
+$ python run_evaluation.py --environment Simple64 --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
 ```
 
 <img src="image/alphastar_beacon.gif" width="800">
 
 If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
-
-# Supervised Learning 
-## Simple64
-To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
-
-Please download the run.py, network.py, agent.py, utils.py, trajectory_generator.py, file from [Supervised Training code](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing) from Google Drive. It is not yet updated to GitHub because I can not check Reinforcement Learning result using same observation as Supervised Learing. It will be updated soon.
-
-First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 8 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl. Current, I only use replay file of Terran vs Terran.
-```
-$ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
-```
-
-After making hkl file of replay in your workspace, try to start the Supervised Learning using below command.
-
-```
-$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --training True --gpu_use True --learning_rate 0.0001 --sl_training True --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64
-```
-
-You can check training progress using Tensorboard under tensorboard folder of your workspace. It will take very long time to finish training becasue of vast of observation and action space.
-
-<img src="image/SL_Tensorboard.png" width="600">
-
-Below is code for evaluating trained model
-
-```
-python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --gpu_use True --load True --visualize True --environment Simple64
-```
-
-Video of downisde is one of behavior example of trained agent.
-
-[![Supervised Learning demo](https://img.youtube.com/vi/ABomHc4_GlQ/maxresdefault.jpg)](https://youtu.be/ABomHc4_GlQ "AlphaStar Implementation - Click to Watch!")
-<strong>Click to Watch!</strong>
-
-I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
 
 # Detailed information
 I am writing explanation for code at Medium as series.
