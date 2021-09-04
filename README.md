@@ -11,9 +11,9 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 ## Python
 1. Python3
 2. PySC2 3.0.0
-3. Tensorflow 2.4.0
+3. Tensorflow-gpu 2.3.0
 4. Tensorflow-probability 0.11.0
-5. Hickle
+5. Hickle 4.0.4
 
 ## Starcraft2
 1. 4.8.2 version
