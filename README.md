@@ -18,9 +18,6 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 ## Starcraft2
 1. 4.8.2 version
 
-# Memory leak issue
-Current, I am migrating from [common style](https://github.com/pythonlessons/Reinforcement_Learning/blob/master/LunarLander-v2_PPO/LunarLander-v2_PPO.py) of Tensorflow to [new style](https://www.tensorflow.org/tutorials/reinforcement_learning/actor_critic]) because of memory leak issue during training. It seems like it is only problem of PySC2 when using it with Tensorflow 2 version. Other environment suah as LunarLander-v2 of OpenAI Gym has not same problem with Tensorflow 2.
-
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
 
