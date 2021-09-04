@@ -29,7 +29,7 @@ Current, I am migrating from [common style](https://github.com/pythonlessons/Rei
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
 ```
-$ python run.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
+$ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
@@ -51,10 +51,10 @@ Afater checking norm value, you should remove an outlier value among them.
 
 <img src="image/MoveToBeacon_A2C.png" width="400">
 
-After finishing training, run below command to test pretrained model.
+After finishing training, run below command to test pretrained model that was saved under Models folder of workspace.
 
 ```
-$ python run.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --visualize True --load_model True
+$ python run_evaluation.py --environment Simple64 --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model supervised_model
 ```
 
 <img src="image/alphastar_beacon.gif" width="800">
