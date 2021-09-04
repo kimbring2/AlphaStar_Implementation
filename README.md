@@ -93,12 +93,12 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 # Detailed information
 I am writing explanation for code at Medium as series.
 
-1. Tutorial about replay file: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
-2. Tutorial about agent class: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
-3. Tutorial about encoder network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
-4. Tutorial about head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
-5. Tutorial about training network: https://dohyeongkim.medium.com/alphastar-implementation-series-part5-fd275bea68b5
-6. Tutorial about inplementation of FullyConv model as Tensorflow 2.0: https://dohyeongkim.medium.com/alphastar-implementation-series-part6-4044e7efb1ce
+1. Tutorial about Replay file: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
+2. Tutorial about Agent class: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part2-3edced5df00b
+3. Tutorial about Encoder network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
+4. Tutorial about Head network: https://dohyeongkim.medium.com/alphastar-implementation-series-part4-ee64bb93fe59
+5. Tutorial about Training network: https://dohyeongkim.medium.com/alphastar-implementation-series-part5-fd275bea68b5
+6. Tutorial about FullyConv model: https://dohyeongkim.medium.com/alphastar-implementation-series-part6-4044e7efb1ce
 7. Tutorial about Supervised Learning: https://dohyeongkim.medium.com/alphastar-implementation-series-part7-d28468c07739
 
 # License
