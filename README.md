@@ -99,7 +99,7 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 I am writing explanation for code at Medium as series.
 
 1. Tutorial about Replay file: https://medium.com/@dohyeongkim/alphastar-implementation-serie-part1-606572ddba99
-2. Tutorial about Network: https://medium.com/@dohyeongkim/alphastar-implementation-series-part3-d315d2ad5a3
+2. Tutorial about Network: https://dohyeongkim.medium.com/alphastar-implementation-series-part5-fd275bea68b5
 3. Tutorial about Reinforcement Learning: https://medium.com/nerd-for-tech/alphastar-implementation-series-part6-4044e7efb1ce
 3. Tutorial about Supervised Learning: https://dohyeongkim.medium.com/alphastar-implementation-series-part7-d28468c07739
 
