@@ -66,6 +66,14 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 $ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
 ```
 
+> :warning: **If you are using mobile browser**: Be very careful here!
+Reinforcement Learning code of this Github does not show good performance. I confirm that performance is dramatically improved when using feature_unit and Transformer network. Although it has not been updated to Github, you can download it from [Google Drive](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing). I will update it soon on GitHub after finishing test.
+
+You can run code of Google Drive by using below command.
+```
+python3.8 run.py --training True --gpu_use True --workspace_path /home/kimbring2/AlphaStar_Implementation/ --gradient_clipping 1.0 --learning_rate 0.0001
+```
+
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
