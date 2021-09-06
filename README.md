@@ -66,7 +66,7 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 $ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
 ```
 
-> :Issue: **Reinforcement Learning code of this Github takes too much time to train and sometimes fails to reach maximum reward. I check that performance is dramatically improved when using the Transformer network for the feature_unit. Although it has not been updated to Github, you can download it from my [Google Drive](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing). I will update it soon on GitHub after finishing test.**:
+> :Issue: **Current code takes too much time to train and sometimes fails to reach maximum reward. I check that performance is dramatically improved when using the Transformer network for the feature_unit. Although it has not been updated to Github, you can download it from my [Google Drive](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing). I will update it soon on GitHub after finishing test.**:
 
 You can run code of Google Drive by using below command.
 ```
