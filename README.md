@@ -70,7 +70,7 @@ $ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaSta
 
 You can run code of Google Drive by using below command.
 ```
-python run.py --training True --gpu_use True --workspace_path /home/kimbring2/AlphaStar_Implementation/ --gradient_clipping 1.0 --learning_rate 0.0001
+python run.py --training True --gpu_use True --workspace_path /home/kimbring2/AlphaStar_Implementation/ --gradient_clipping 10.0 --learning_rate 0.0001 --model_name alphastar 
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
