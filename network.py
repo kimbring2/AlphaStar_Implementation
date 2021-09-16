@@ -514,14 +514,12 @@ class FullyConv(tf.keras.Model):
     self.network_scale = int(screen_size / 32)
     
     self.screen_encoder = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(32, 1, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(32, 5, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu'),
     ])
 
     self.minimap_encoder = tf.keras.Sequential([
-       tf.keras.layers.Conv2D(1, 1, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(8, 1, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(8, 5, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
