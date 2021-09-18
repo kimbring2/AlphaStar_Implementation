@@ -82,7 +82,7 @@ tf.random.set_seed(seed)
 np.random.seed(seed)
 
 workspace_path = arguments.workspace_path
-writer = tf.summary.create_file_writer(workspace_path + "/tensorboard/2")
+writer = tf.summary.create_file_writer(workspace_path + "/tensorboard/4")
 
 _NUM_FUNCTIONS = len(actions.FUNCTIONS)
 
@@ -469,16 +469,17 @@ class A3CAgent:
                                      discounted_r_array, fn_id_array, arg_ids_array)
 
         grads = tape.gradient(total_loss, self.ActorCritic.trainable_variables)
+        grads_norm = tf.linalg.global_norm(grads)
         grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
         self.optimizer.apply_gradients(zip(grads, self.ActorCritic.trainable_variables))
 
-        return total_loss
+        return total_loss, grads_norm
 
     def load(self):
-        self.ActorCritic.load_weights('/Models/model')
+        self.ActorCritic.load_weights(workspace_path + 'Models/' + arguments.load_model)
 
     def save(self):
-        self.ActorCritic.save_weights('/Models/model')
+        self.ActorCritic.save_weights(workspace_path + 'Models/' + arguments.load_model)
 
     def imshow(self, image, rem_step=0):
         cv2.imshow(self.Model_name+str(rem_step), image[rem_step,...])
@@ -637,10 +638,10 @@ class A3CAgent:
                 if len(feature_screen_list) == 16:
                     total_step += 1
                     self.lock.acquire()
-                    total_loss = self.replay(feature_screen_list, feature_minimap_list, player_list, feature_units_list, 
-                    						 available_actions_list, game_loop_list, build_queue_list, single_select_list, 
-                    						 multi_select_list, score_cumulative_list, initial_memory_state, initial_carry_state,
-                    						 fn_id_list, arg_ids_list, rewards, dones)
+                    total_loss, grads_norm = self.replay(feature_screen_list, feature_minimap_list, player_list, feature_units_list, 
+                                                         available_actions_list, game_loop_list, build_queue_list, single_select_list, 
+                                                         multi_select_list, score_cumulative_list, initial_memory_state, 
+                                                         initial_carry_state, fn_id_list, arg_ids_list, rewards, dones)
                     self.lock.release()
 
                     initial_memory_state = memory_state
@@ -657,6 +658,7 @@ class A3CAgent:
             if thread == 0:
               with writer.as_default():
                 # other model code would go here
+                tf.summary.scalar("grads_norm", grads_norm, step=total_step)
                 tf.summary.scalar("total_loss", total_loss, step=total_step)
                 tf.summary.scalar("average", average, step=total_step)
                 writer.flush()
