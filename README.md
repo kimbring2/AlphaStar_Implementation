@@ -64,7 +64,6 @@ First, let's test the sample code for MoveToBeacon environment which is the simp
 
 ```
 $ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5
-
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
