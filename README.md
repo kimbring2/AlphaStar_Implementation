@@ -63,14 +63,8 @@ I only use a replay file of Terran vs Terran case. Therefore, agent only need to
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
 ```
-$ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True
-```
+$ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5
 
-> :Issue: **Current code takes too much time to train and sometimes fails to reach maximum reward. I check that performance is dramatically improved when using the Transformer network for the feature_unit. Although it has not been updated to Github, you can download it from my [Google Drive](https://drive.google.com/drive/folders/1i9pooreywMpv7RERHHcc3ve_u-5FwKLg?usp=sharing). I will update it soon on GitHub after finishing test.**:
-
-You can run code of Google Drive by using below command.
-```
-python run.py --training True --gpu_use True --workspace_path /home/kimbring2/AlphaStar_Implementation/ --gradient_clipping 10.0 --learning_rate 0.0001
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
