@@ -87,7 +87,7 @@ Afater checking norm value, you should remove an outlier value among them.
 
 After training against various parameter, I can obtain the following graph of average score.
 
-<img src="image/average_score_variation.png" width="400">
+<img src="image/average_score_variation.png" width="600">
 
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
