@@ -694,7 +694,7 @@ class FullyConv(tf.keras.Model):
 
 
 def make_model(name):
-    feature_screen = tf.keras.Input(shape=(32, 32, 53))
+    feature_screen = tf.keras.Input(shape=(32, 32, 56))
     feature_minimap = tf.keras.Input(shape=(32, 32, 7))
     player = tf.keras.Input(shape=(11))
     feature_units = tf.keras.Input(shape=(50, 8))
