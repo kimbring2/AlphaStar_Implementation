@@ -29,7 +29,7 @@ _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
 _MINIMAP_CAMERA = features.MINIMAP_FEATURES.camera.index
 _MINIMAP_PLAYER_RELATIVE = features.MINIMAP_FEATURES.player_relative.index
 
-unit_list = [45, 48, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268]
+unit_list = [45, 48, 317, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268, 472, 49]
 #unit_list = [0, 48, 317]
 
 def preprocess_screen(screen):
