@@ -452,8 +452,8 @@ class AlphaStar(tf.keras.Model):
     score_cumulative_encoded = tf.cast(score_cumulative_encoded, 'float32')
     
     feature_encoded = tf.concat([feature_screen_encoded, feature_minimap_encoded, player_encoded, game_loop_encoded, 
-                                       available_actions_encoded, build_queue_encoded, single_select_encoded, multi_select_encoded,
-                                       score_cumulative_encoded], axis=3)
+                                 available_actions_encoded, build_queue_encoded, single_select_encoded, multi_select_encoded,
+                                 score_cumulative_encoded], axis=3)
     '''
     core_outputs = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
     core_output = tf.zeros((1, 256))
@@ -694,7 +694,7 @@ class FullyConv(tf.keras.Model):
 
 
 def make_model(name):
-    feature_screen = tf.keras.Input(shape=(32, 32, 56))
+    feature_screen = tf.keras.Input(shape=(32, 32, 59))
     feature_minimap = tf.keras.Input(shape=(32, 32, 7))
     player = tf.keras.Input(shape=(11))
     feature_units = tf.keras.Input(shape=(50, 8))
