@@ -27,6 +27,8 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 <img src="image/network_architecture.png" width="1000">
 
 # Supervised Learning 
+I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
+
 ## Simple64
 To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
 
@@ -59,6 +61,8 @@ Video of downisde is one of behavior example of trained agent.
 I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
 
 # Reinforcement Learning
+I can only check that FullyConv works well in Reinforcement Learning. Model with LSTM takes too much time for training and does not show better performance than FullyConv yet.
+
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
