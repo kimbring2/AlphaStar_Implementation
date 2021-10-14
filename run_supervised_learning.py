@@ -389,7 +389,7 @@ def supervised_replay(replay_feature_screen_list, replay_feature_minimap_list,
       select_worker_arg_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
       build_queue_id_arg_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
       unload_id_arg_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-      for i in range(0, batch_size):
+      for i in tf.range(0, batch_size):
         input_dict = {'feature_screen': tf.expand_dims(replay_feature_screen_array[i,:,:,:], 0), 
                          'feature_minimap': tf.expand_dims(replay_feature_minimap_array[i,:,:,:], 0),
                          'player': tf.expand_dims(replay_player_array[i,:], 0), 
