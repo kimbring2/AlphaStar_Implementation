@@ -96,7 +96,7 @@ After training against various parameter, I can obtain the following graph of av
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
 ```
-$ python run_evaluation.py --environment Simple64 --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
+$ python run_evaluation.py --environment Simple64 --workspace_path [your path]/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
 ```
 
 <img src="image/alphastar_beacon.gif" width="800">
