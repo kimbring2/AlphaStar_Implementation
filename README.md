@@ -34,13 +34,13 @@ To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead o
 
 First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 8 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl. Current, I only use replay file of Terran vs Terran.
 ```
-$ python trajectory_generator.py --replay_path /home/kimbring2/StarCraftII/Replays/local_Simple64/ --saving_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64
+$ python trajectory_generator.py --replay_path [your path]/StarCraftII/Replays/local_Simple64/ --saving_path [your path]/pysc2_dataset/simple64
 ```
 
 After making hkl file of replay in your workspace, try to start the Supervised Learning using below command. It will save a trained model under Models folder of your workspace.
 
 ```
-$ python run_supervised_learning.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --model_name alphastar --training True --gpu_use True --learning_rate 0.0001 --replay_hkl_file_path /media/kimbring2/6224AA7924AA5039/pysc2_dataset/simple64/ --environment Simple64 --model_name alphastar
+$ python run_supervised_learning.py --workspace_path [your path]/AlphaStar_Implementation/ --model_name alphastar --training True --gpu_use True --learning_rate 0.0001 --replay_hkl_file_path [your path]/pysc2_dataset/simple64/ --environment Simple64 --model_name alphastar
 ```
 
 You can check training progress using Tensorboard under tensorboard folder of your workspace. It will take very long time to finish training becasue of vast of observation and action space.
@@ -50,7 +50,7 @@ You can check training progress using Tensorboard under tensorboard folder of yo
 Below is code for evaluating trained model
 
 ```
-python run_evaluation.py --workspace_path /media/kimbring2/Steam/AlphaStar_Implementation/ --gpu_use True --visualize True --environment Simple64 --pretrained_model supervised_model
+python run_evaluation.py --workspace_path [your path]/AlphaStar_Implementation/ --gpu_use True --visualize True --environment Simple64 --pretrained_model supervised_model
 ```
 
 Video of downisde is one of behavior example of trained agent.
@@ -67,7 +67,7 @@ I can only check that FullyConv works well in Reinforcement Learning. Model with
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
 ```
-$ python run_reinforcement_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5
+$ python run_reinforcement_learning.py --workspace_path [your path]/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
