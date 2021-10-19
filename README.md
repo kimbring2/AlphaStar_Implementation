@@ -26,6 +26,9 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 # Network architecture
 <img src="image/network_architecture.png" width="1000">
 
+# Notice
+There may be a minor error such a GPU setting, and network size. However, you can run it without major modification because I check that latest code works for Superviesed, Reinforcment Learning. It is not easy to check every part of code because it is huge.
+
 # Supervised Learning 
 I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
 
@@ -67,7 +70,7 @@ I can only check that FullyConv works well in Reinforcement Learning. Model with
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
 ```
-$ python run_reinforcement_learning.py --workspace_path [your path]/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5
+$ python run_reinforcement_learning.py --workspace_path [your path]/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5 --model_name alphastar
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
