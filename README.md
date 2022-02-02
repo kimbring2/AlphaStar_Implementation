@@ -16,6 +16,7 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 3. Tensorflow-gpu 2.3.0
 4. Tensorflow-probability 0.11.0
 5. Hickle 4.0.4
+6. Pygame 1.9.6
 
 ## Starcraft2
 1. Client 4.8.2: https://github.com/Blizzard/s2client-proto#downloads
