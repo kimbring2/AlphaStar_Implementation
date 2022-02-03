@@ -9,6 +9,7 @@ import importlib
 import random
 import sys
 import glob
+import os
 import argparse
 import hickle as hkl 
 import numpy as np
@@ -27,7 +28,7 @@ parser.add_argument('--saving_path', type=str, help='Path for saving proprocesse
 arguments = parser.parse_args()
 
 class Trajectory(object):
-	def __init__(self, source, home_race_name, away_race_name, replay_filter, filter_repeated_camera_moves=True):
+	def __init__(self, source, saving_path, home_race_name, away_race_name, replay_filter, filter_repeated_camera_moves=False):
 	    self.source = source
 	    self.home_race_name = home_race_name
 	    self.away_race_name = away_race_name
@@ -56,6 +57,11 @@ class Trajectory(object):
 	    self.away_trajectory = []
 	    self.away_score_cumulative = None
 
+	    #print("saving_path: ", saving_path)
+	    saving_folder_existence = os.path.isdir(saving_path)
+	    #print("saving_folder_existence: ", saving_folder_existence)
+	    assert saving_folder_existence, "saving folder is not existed"
+
 	def get_BO(self, player):
 		if player == 0:
 			return self.home_BO
@@ -76,7 +82,10 @@ class Trajectory(object):
 
 		root_path =  self.source
 		replay_file_path_list = glob.glob(root_path + '*.*')
-		#replay_file_path_list.reverse()
+
+		#print("len(replay_file_path_list) != 0: ", len(replay_file_path_list) != 0)
+		assert len(replay_file_path_list) != 0, "No replay file is found"
+
 		for replay_file_path in replay_file_path_list:
 			#print("replay_file_path: " + str(replay_file_path))
 
@@ -226,7 +235,7 @@ class Trajectory(object):
 						a_0 = 0
 						a_l = [0]
 						exec_actions.append([a_0, a_l])
-						if replay_step % 8 == 0 or _state == StepType.LAST:
+						if replay_step % 4 == 0 or _state == StepType.LAST:
 							self.home_action.append(exec_actions)
 							pass
 						else:
@@ -258,18 +267,18 @@ class Trajectory(object):
 					if _state == StepType.LAST:
 						file_path = arguments.saving_path + replay_file_name + '.hkl'
 						data = {'home_feature_screen': self.home_feature_screen, 
-								 'home_feature_minimap': self.home_feature_minimap, 
-								 'home_player': self.home_player,
-								 'home_feature_units': self.home_feature_units,
-								 'home_game_loop': self.home_game_loop,
-								 'home_available_actions': self.home_available_actions,
-								 'home_action': self.home_action,
-								 'home_build_queue': self.home_build_queue,
-								 'home_production_queue': self.home_production_queue,
-								 'home_single_select': self.home_single_select,
-								 'home_multi_select': self.home_multi_select,
-								 'home_score_cumulative': self.home_score_cumulative
-								 }
+								'home_feature_minimap': self.home_feature_minimap, 
+								'home_player': self.home_player,
+								'home_feature_units': self.home_feature_units,
+								'home_game_loop': self.home_game_loop,
+								'home_available_actions': self.home_available_actions,
+								'home_action': self.home_action,
+								'home_build_queue': self.home_build_queue,
+								'home_production_queue': self.home_production_queue,
+								'home_single_select': self.home_single_select,
+								'home_multi_select': self.home_multi_select,
+								'home_score_cumulative': self.home_score_cumulative
+								}
 
 						self.home_feature_screen = []
 						self.home_feature_minimap = []
@@ -297,5 +306,5 @@ class Trajectory(object):
 				continue
 
 
-replay = Trajectory(arguments.replay_path, arguments.player_1, arguments.player_2, arguments.mmr)
+replay = Trajectory(arguments.replay_path, arguments.saving_path, arguments.player_1, arguments.player_2, arguments.mmr)
 replay.generate_trajectory()
