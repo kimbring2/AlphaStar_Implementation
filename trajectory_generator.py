@@ -235,7 +235,7 @@ class Trajectory(object):
 						a_0 = 0
 						a_l = [0]
 						exec_actions.append([a_0, a_l])
-						if replay_step % 4 == 0 or _state == StepType.LAST:
+						if replay_step % 8 == 0 or _state == StepType.LAST:
 							self.home_action.append(exec_actions)
 							pass
 						else:
@@ -267,18 +267,18 @@ class Trajectory(object):
 					if _state == StepType.LAST:
 						file_path = arguments.saving_path + replay_file_name + '.hkl'
 						data = {'home_feature_screen': self.home_feature_screen, 
-								'home_feature_minimap': self.home_feature_minimap, 
-								'home_player': self.home_player,
-								'home_feature_units': self.home_feature_units,
-								'home_game_loop': self.home_game_loop,
-								'home_available_actions': self.home_available_actions,
-								'home_action': self.home_action,
-								'home_build_queue': self.home_build_queue,
-								'home_production_queue': self.home_production_queue,
-								'home_single_select': self.home_single_select,
-								'home_multi_select': self.home_multi_select,
-								'home_score_cumulative': self.home_score_cumulative
-								}
+							'home_feature_minimap': self.home_feature_minimap, 
+							'home_player': self.home_player,
+							'home_feature_units': self.home_feature_units,
+							'home_game_loop': self.home_game_loop,
+							'home_available_actions': self.home_available_actions,
+							'home_action': self.home_action,
+							'home_build_queue': self.home_build_queue,
+							'home_production_queue': self.home_production_queue,
+							'home_single_select': self.home_single_select,
+							'home_multi_select': self.home_multi_select,
+							'home_score_cumulative': self.home_score_cumulative
+							}
 
 						self.home_feature_screen = []
 						self.home_feature_minimap = []
