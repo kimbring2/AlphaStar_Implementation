@@ -57,7 +57,7 @@ You can check training progress using Tensorboard under tensorboard folder of yo
 Below is code for evaluating trained model
 
 ```
-python run_evaluation.py --workspace_path [your path]/AlphaStar_Implementation/ --gpu_use True --visualize True --environment Simple64 --pretrained_model supervised_model
+python run_evaluation.py --workspace_path [your path]/AlphaStar_Implementation/ --gpu_use True --visualize True --environment Simple64 --pretrained_model supervised_model --model_name alphastar
 ```
 
 Video of downisde is one of behavior example of trained agent.
