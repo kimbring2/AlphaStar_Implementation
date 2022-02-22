@@ -32,7 +32,6 @@ import tensorflow_probability as tfp
 from tensorflow_probability.python.distributions import kullback_leibler
 
 from sklearn import preprocessing
-import cv2
 import time
 
 import network as network
@@ -45,6 +44,9 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 FLAGS(['run.py'])
+'''
+python3.7 run_supervised_learning.py --workspace_path /home/kimbring2/AlphaStar_Implementation/ --model_name alphastar --training True --gpu_use True --learning_rate 0.0001 --replay_hkl_file_path /media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/pysc2_dataset/ --environment Simple64 --model_name alphastar
+'''
 
 parser = argparse.ArgumentParser(description='AlphaStar implementation')
 parser.add_argument('--environment', type=str, default='MoveToBeacon', help='name of SC2 environment')
@@ -55,7 +57,7 @@ parser.add_argument('--training', type=bool, default=False, help='training model
 parser.add_argument('--gpu_use', type=bool, default=False, help='use gpu')
 parser.add_argument('--seed', type=int, default=123, help='seed number')
 parser.add_argument('--training_episode', type=int, default=5000, help='training number')
-parser.add_argument('--load', type=bool, default=False, help='load pretrained model')
+parser.add_argument('--pretrained_model', type=str, default=None, help='pretrained model name')
 parser.add_argument('--save', type=bool, default=False, help='save trained model')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
 parser.add_argument('--player_1', type=str, default='terran', help='race of player 1')
@@ -93,7 +95,7 @@ for name, arg_type in actions.TYPES._asdict().items():
 if arguments.gpu_use == True:
   gpus = tf.config.experimental.list_physical_devices('GPU')
   tf.config.experimental.set_virtual_device_configuration(gpus[0],
-            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=8000)])
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=6000)])
 else:
   os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -194,6 +196,9 @@ workspace_path = arguments.workspace_path
 Save_Path = 'Models'
         
 model = network.make_model(arguments.model_name)
+
+if arguments.pretrained_model != None:
+  model.load_weights(workspace_path + "/Models/" + arguments.pretrained_model)
 
 writer = tf.summary.create_file_writer(workspace_path + "/tensorboard/supervised_learning")
 
@@ -347,12 +352,12 @@ cce = tf.keras.losses.CategoricalCrossentropy()
 optimizer = tf.keras.optimizers.Adam(arguments.learning_rate)
 @tf.function
 def supervised_replay(replay_feature_screen_list, replay_feature_minimap_list,
-                            replay_player_list, replay_feature_units_list, 
-                            replay_available_actions_list, replay_fn_id_list, replay_args_ids_list,
-                            memory_state, carry_state,
-                            replay_game_loop_list, last_action_type_list,
-                            replay_build_queue_list, replay_single_select_list, replay_multi_select_list,
-                            replay_score_cumulative_list):
+                      replay_player_list, replay_feature_units_list, 
+                      replay_available_actions_list, replay_fn_id_list, replay_args_ids_list,
+                      memory_state, carry_state,
+                      replay_game_loop_list, last_action_type_list,
+                      replay_build_queue_list, replay_single_select_list, replay_multi_select_list,
+                      replay_score_cumulative_list):
     replay_feature_screen_array = tf.concat(replay_feature_screen_list, 0)
     replay_feature_minimap_array = tf.concat(replay_feature_minimap_list, 0)
     replay_player_array = tf.concat(replay_player_list, 0)
@@ -391,17 +396,17 @@ def supervised_replay(replay_feature_screen_list, replay_feature_minimap_list,
       unload_id_arg_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
       for i in tf.range(0, batch_size):
         input_dict = {'feature_screen': tf.expand_dims(replay_feature_screen_array[i,:,:,:], 0), 
-                         'feature_minimap': tf.expand_dims(replay_feature_minimap_array[i,:,:,:], 0),
-                         'player': tf.expand_dims(replay_player_array[i,:], 0), 
-                         'feature_units': tf.expand_dims(replay_feature_units_array[i,:,:], 0), 
-                         'memory_state': memory_state, 'carry_state': carry_state, 
-                         'game_loop': tf.expand_dims(replay_game_loop_array[i,:], 0), 
-                         'available_actions': tf.expand_dims(replay_available_actions_array[i,:], 0), 
-                         'last_action_type': tf.expand_dims(last_action_type_array[i,:], 0), 
-                         'build_queue': tf.expand_dims(replay_build_queue_array[i], 0), 
-                         'single_select': tf.expand_dims(replay_single_select_array[i], 0), 
-                         'multi_select': tf.expand_dims(replay_multi_select_array[i], 0), 
-                         'score_cumulative': tf.expand_dims(replay_score_cumulative_array[i], 0)}
+                      'feature_minimap': tf.expand_dims(replay_feature_minimap_array[i,:,:,:], 0),
+                      'player': tf.expand_dims(replay_player_array[i,:], 0), 
+                      'feature_units': tf.expand_dims(replay_feature_units_array[i,:,:], 0), 
+                      'memory_state': memory_state, 'carry_state': carry_state, 
+                      'game_loop': tf.expand_dims(replay_game_loop_array[i,:], 0), 
+                      'available_actions': tf.expand_dims(replay_available_actions_array[i,:], 0), 
+                      'last_action_type': tf.expand_dims(last_action_type_array[i,:], 0), 
+                      'build_queue': tf.expand_dims(replay_build_queue_array[i], 0), 
+                      'single_select': tf.expand_dims(replay_single_select_array[i], 0), 
+                      'multi_select': tf.expand_dims(replay_multi_select_array[i], 0), 
+                      'score_cumulative': tf.expand_dims(replay_score_cumulative_array[i], 0)}
         prediction = model(input_dict, training=True)
         fn_pi = prediction['fn_out']
         args_pi = prediction['args_out']
@@ -578,8 +583,8 @@ def supervised_train(dataset, training_episode):
       replay_multi_select_list = batch[11][0]
       replay_score_cumulative_list = batch[12][0]
 
-      memory_state = np.zeros([1,256], dtype=np.float32)
-      carry_state =  np.zeros([1,256], dtype=np.float32)
+      memory_state = np.zeros([1,1024], dtype=np.float32)
+      carry_state =  np.zeros([1,1024], dtype=np.float32)
       step_length = 8
       for episode_index in range(0, episode_size, step_length):
         feature_screen = replay_feature_screen_list[episode_index:episode_index+step_length,:,:,:]
@@ -595,15 +600,14 @@ def supervised_train(dataset, training_episode):
         single_select = replay_single_select_list[episode_index:episode_index+step_length]
         multi_select = replay_multi_select_list[episode_index:episode_index+step_length]
         score_cumulative = replay_score_cumulative_list[episode_index:episode_index+step_length]
-        #print("len(feature_screen): {}".format(len(feature_screen)))
         if arguments.training == True and len(feature_screen) == step_length:
           total_loss, next_memory_state, next_carry_state = supervised_replay(feature_screen, feature_minimap, 
-                                                                                              player, feature_units, 
-                                                                                              available_actions, fn_id_list, args_ids,
-                                                                                              memory_state, carry_state, 
-                                                                                              game_loop, last_action_type,
-                                                                                              build_queue, single_select,
-                                                                                              multi_select, score_cumulative)
+                                                                              player, feature_units, 
+                                                                              available_actions, fn_id_list, args_ids,
+                                                                              memory_state, carry_state, 
+                                                                              game_loop, last_action_type,
+                                                                              build_queue, single_select,
+                                                                              multi_select, score_cumulative)
           memory_state = next_memory_state
           carry_state = next_carry_state
 
