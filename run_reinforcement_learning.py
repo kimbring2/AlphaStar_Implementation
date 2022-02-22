@@ -70,9 +70,11 @@ parser.add_argument('--tensorboard_path', type=str, default="tensorboard", help=
 arguments = parser.parse_args()
 
 if arguments.gpu_use == True:
-  gpus = tf.config.experimental.list_physical_devices('GPU')
-  tf.config.experimental.set_virtual_device_configuration(gpus[0],
-            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4000)])
+  #gpus = tf.config.experimental.list_physical_devices('GPU')
+  #tf.config.experimental.set_virtual_device_configuration(gpus[0],
+  #          [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=6000)])
+  physical_devices = tf.config.list_physical_devices('GPU') 
+  tf.config.experimental.set_memory_growth(physical_devices[0], True)
 else:
   os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -444,8 +446,8 @@ class A3CAgent:
       return total_loss
 
     def replay(self, feature_screen_list, feature_minimap_list, player_list, feature_units_list, available_actions_list, 
-    		   game_loop_list, build_queue_list, single_select_list, multi_select_list, score_cumulative_list,
-    		   memory_state, carry_state, fn_id_list, arg_ids_list, rewards, dones):
+    		       game_loop_list, build_queue_list, single_select_list, multi_select_list, score_cumulative_list,
+    		       memory_state, carry_state, fn_id_list, arg_ids_list, rewards, dones):
         feature_screen_array = np.vstack(feature_screen_list)
         feature_minimap_array = np.vstack(feature_minimap_list)
         player_array = np.vstack(player_list)
@@ -545,8 +547,8 @@ class A3CAgent:
             single_select_list, multi_select_list, score_cumulative_list = [], [], []
             fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
 
-            memory_state = np.zeros([1,256], dtype=np.float32)
-            carry_state = np.zeros([1,256], dtype=np.float32)
+            memory_state = np.zeros([1,512], dtype=np.float32)
+            carry_state = np.zeros([1,512], dtype=np.float32)
 
             initial_memory_state = memory_state
             initial_carry_state = carry_state
@@ -635,7 +637,7 @@ class A3CAgent:
 
                 score += reward
                 state = next_state
-                if len(feature_screen_list) == 16:
+                if len(feature_screen_list) == 8:
                     total_step += 1
                     self.lock.acquire()
                     total_loss, grads_norm = self.replay(feature_screen_list, feature_minimap_list, player_list, feature_units_list, 
