@@ -547,8 +547,8 @@ class A3CAgent:
             single_select_list, multi_select_list, score_cumulative_list = [], [], []
             fn_id_list, arg_ids_list, rewards, dones = [], [], [], []
 
-            memory_state = np.zeros([1,512], dtype=np.float32)
-            carry_state = np.zeros([1,512], dtype=np.float32)
+            memory_state = np.zeros([1,1024], dtype=np.float32)
+            carry_state = np.zeros([1,1024], dtype=np.float32)
 
             initial_memory_state = memory_state
             initial_carry_state = carry_state
