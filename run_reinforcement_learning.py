@@ -637,7 +637,7 @@ class A3CAgent:
 
                 score += reward
                 state = next_state
-                if len(feature_screen_list) == 8:
+                if len(feature_screen_list) == 16:
                     total_step += 1
                     self.lock.acquire()
                     total_loss, grads_norm = self.replay(feature_screen_list, feature_minimap_list, player_list, feature_units_list, 
