@@ -234,7 +234,7 @@ class A3CAgent:
 
         self.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=0.0001,
                                                                             decay_steps=10000, decay_rate=0.94)
-        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, epsilon=1e-3)
+        self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, rho=0.99, epsilon=1e-3)
 
     @tf.function
     def act(self, feature_screen, feature_minimap, player, feature_units, memory_state, carry_state, game_loop, 
