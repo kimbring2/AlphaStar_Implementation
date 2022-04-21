@@ -514,11 +514,33 @@ class FullyConv(tf.keras.Model):
        tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu'),
     ])
 
+    #self.screen_encoder = tf.keras.Sequential([
+    #   tf.keras.layers.Flatten(),
+    #   tf.keras.layers.Dense(1024, activation='relu')
+    #])
+
     self.minimap_encoder = tf.keras.Sequential([
        tf.keras.layers.Conv2D(8, 1, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(8, 5, padding='same', activation='relu'),
        tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
     ])
+
+    self.screen_input_encoder = tf.keras.Sequential([
+       tf.keras.layers.Conv2D(37, 1, padding='same', activation='relu')
+    ])
+
+    self.minimap_input_encoder = tf.keras.Sequential([
+       tf.keras.layers.Conv2D(7, 1, padding='same', activation='relu')
+    ])
+
+    #self.minimap_encoder = tf.keras.Sequential([
+    #   tf.keras.layers.Flatten(),
+    #   tf.keras.layers.Dense(256, activation='relu')
+    #])
+
+    #self.feature_decoder = tf.keras.Sequential([
+    #   tf.keras.layers.Dense(32*32, activation='relu')
+    #])
 
     self.player_encoder = tf.keras.layers.Dense(11, activation='relu')
     #self.game_loop_encoder = tf.keras.layers.Dense(16, activation='relu')
@@ -616,7 +638,6 @@ class FullyConv(tf.keras.Model):
     game_loop_encoded = tf.tile(tf.expand_dims(tf.expand_dims(game_loop_encoded, 1), 2),
                                       tf.stack([1, self.screen_size, self.screen_size, 1]))
     game_loop_encoded = tf.cast(game_loop_encoded, 'float32')
-
     available_actions_encoded = self.available_actions_encoder(available_actions)
     available_actions_encoded = tf.tile(tf.expand_dims(tf.expand_dims(available_actions_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
@@ -626,17 +647,14 @@ class FullyConv(tf.keras.Model):
     build_queue_encoded = tf.tile(tf.expand_dims(tf.expand_dims(build_queue_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
     build_queue_encoded = tf.cast(build_queue_encoded, 'float32')
-
     single_select_encoded = self.single_select_encoder(single_select)
     single_select_encoded = tf.tile(tf.expand_dims(tf.expand_dims(single_select_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
     single_select_encoded = tf.cast(single_select_encoded, 'float32')
-
     multi_select_encoded = self.multi_select_encoder(multi_select)
     multi_select_encoded = tf.tile(tf.expand_dims(tf.expand_dims(multi_select_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
     multi_select_encoded = tf.cast(multi_select_encoded, 'float32')
-
     score_cumulative_encoded = self.score_cumulative_encoder(score_cumulative)
     score_cumulative_encoded = tf.tile(tf.expand_dims(tf.expand_dims(score_cumulative_encoded, 1), 2),
                                             tf.stack([1, self.screen_size, self.screen_size, 1]))
@@ -645,6 +663,17 @@ class FullyConv(tf.keras.Model):
     #feature_encoded = tf.concat([feature_screen_encoded, feature_minimap_encoded, player_encoded, game_loop_encoded, 
     #                                   available_actions_encoded], axis=3)
     feature_encoded = tf.concat([feature_screen_encoded, feature_minimap_encoded, player_encoded], axis=3)
+    #feature_decoded = self.feature_decoder(feature_encoded)
+    #feature_decoded = tf.reshape(feature_decoded, (batch_size,32,32,1))
+
+    #print("feature_encoded.shape: ", feature_encoded)
+    #print("feature_screen.shape: ", feature_screen)
+
+    feature_encoded_for_screen = self.screen_input_encoder(feature_encoded)
+    feature_encoded_for_minimap = self.minimap_input_encoder(feature_encoded)
+
+    screen_input = tf.keras.layers.ReLU()(feature_encoded_for_screen + feature_screen)
+    minimap_input = tf.keras.layers.ReLU()(feature_encoded_for_minimap + feature_minimap)
 
     feature_encoded_flatten = Flatten()(feature_encoded)
     feature_fc = self.feature_fc(feature_encoded_flatten)
@@ -654,11 +683,12 @@ class FullyConv(tf.keras.Model):
     args_out = dict()
     for arg_type in actions.TYPES:
       if arg_type.name == 'screen':
-        args_out[arg_type] = self.screen(feature_encoded)
+
+        args_out[arg_type] = self.screen(screen_input)
       elif arg_type.name == 'minimap':
-        args_out[arg_type] = self.minimap(feature_encoded)
+        args_out[arg_type] = self.minimap(minimap_input)
       elif arg_type.name == 'screen2':
-        args_out[arg_type] = self.screen2(feature_encoded)
+        args_out[arg_type] = self.screen2(screen_input)
       elif arg_type.name == 'queued':
         args_out[arg_type] = self.queued(feature_fc)
       elif arg_type.name == 'control_group_act':
