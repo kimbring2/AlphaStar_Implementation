@@ -30,11 +30,11 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 # Network architecture
 
 ## FullyConv
-In the case of Starcraft2, it is important to keep the spatial information of screen, minimap because some actions should select the one point in screen, minimap. Therefore, original screen, minimap feature are added to concatenated encoded feature of screen, minimap, player feature. Conv network which has the same channel number to screen, minimap feature are used to add.
+In the case of Starcraft2, it is important to keep the spatial information of screen, minimap because some actions should select the one point in screen, minimap. Therefore, original screen, minimap feature are added to concatenated encoded feature of screen, minimap, player feature. It is similar to normal Residual Network except using the Conv network to match the channel number of original feature and encoded feature because they are 3 dimension array.
 
 <img src="image/network_architecture(fullyconv).png" width="1000">
 
-Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the residual technique.
+Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the Residual part.
 
 ## AlphaStar
 <img src="image/network_architecture.png" width="1000">
