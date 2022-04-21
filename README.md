@@ -34,7 +34,7 @@ In the case of Starcraft2, it is important to keep the spatial information of sc
 
 <img src="image/network_architecture(fullyconv).png" width="1000">
 
-Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the Residual part.
+Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the Residual part. It means the reward sum never rises up no matter how much times the network is trained.
 
 ## AlphaStar
 <img src="image/network_architecture.png" width="1000">
