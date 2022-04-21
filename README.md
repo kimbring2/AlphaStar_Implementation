@@ -30,7 +30,7 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 # Network architecture
 
 ## FullyConv
-In the case of Starcraft2, it is very important to keep the spatial information of screen, minimap because some actions should select the one point in screen, minimap. Therefore, original screen, minimap feature are added to concatenated encoded feature of screen, minimap, player feature. Conv network which has the same channel number to screen, minimap feature are used to add.
+In the case of Starcraft2, it is important to keep the spatial information of screen, minimap because some actions should select the one point in screen, minimap. Therefore, original screen, minimap feature are added to concatenated encoded feature of screen, minimap, player feature. Conv network which has the same channel number to screen, minimap feature are used to add.
 
 <img src="image/network_architecture(fullyconv).png" width="1000">
 
