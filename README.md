@@ -28,6 +28,11 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 2. 32GB RAM
 
 # Network architecture
+
+## FullyConv
+<img src="image/network_architecture.png" width="1000">
+
+## AlphaStar
 <img src="image/network_architecture.png" width="1000">
 
 # Notice
