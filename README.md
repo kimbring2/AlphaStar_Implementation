@@ -36,6 +36,46 @@ In the case of Starcraft2, it is important to keep the spatial information of sc
 
 Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the Residual part. It means the reward sum never rises up no matter how much times the network is trained.
 
+In the case of one GPU case, size of the network should be limited. For that, unit list is manually selected because the unit_type feature of screen state takes large portion of network size. Furthermore, it is likely to fail to training if the channel size of screen encoder is not larger than screen features.
+
+```
+all_unit_list = [0, 37, 45, 48, 317, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268, 472, 49, 41, 830]
+essential_unit_list = [0, 45, 48, 317, 21, 341, 18, 27, 20, 19, 483, 500]
+
+def preprocess_screen(screen):
+  layers = []
+  assert screen.shape[0] == len(features.SCREEN_FEATURES)
+  for i in range(len(features.SCREEN_FEATURES)):
+    if i == _SCREEN_UNIT_TYPE:
+      scale = len(essential_unit_list)
+      layer = np.zeros([scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
+      for j in range(len(all_unit_list)):
+        indy, indx = (screen[i] == all_unit_list[j]).nonzero()
+        
+        if all_unit_list[j] in essential_unit_list:
+          unit_index = essential_unit_list.index(all_unit_list[j])
+          layer[unit_index, indy, indx] = 1
+        else:
+          layer[-1, indy, indx] = 1
+
+      layers.append(layer)
+    elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
+      layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
+    elif i == _SCREEN_PLAYER_ID or i == _SCREEN_SELECTED or i == _SCREEN_VISIBILITY_MAP:
+      layer = np.zeros([features.SCREEN_FEATURES[i].scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
+      for j in range(features.SCREEN_FEATURES[i].scale):
+        indy, indx = (screen[i] == j).nonzero()
+        layer[j, indy, indx] = 1
+
+      layers.append(layer)
+    elif i == _SCREEN_UNIT_HIT_POINTS:
+      layers.append(np.log(screen[i:i+1] + 1) / np.log(features.SCREEN_FEATURES[i].scale))
+
+  return np.concatenate(layers, axis=0)
+```
+
+If you have a enough GPU memory, the list of unit can be larger. After incresing that, do not forget to add more channel to screen encoder.
+
 ## AlphaStar
 <img src="image/network_architecture.png" width="1000">
 
