@@ -36,7 +36,7 @@ In the case of Starcraft2, it is important to keep the spatial information of sc
 
 Probability of successful training in the MoveToBeacon environment drops from 100% to below 50% without using the Residual part. It means the reward sum never rises up no matter how much times the network is trained.
 
-In the case of one GPU case, size of the network should be limited. For that, unit list is manually selected because the unit_type feature of screen state takes large portion of network size. Furthermore, it is likely to fail to training if the channel size of screen encoder is not larger than screen features.
+In the case of one GPU case, size of the network should be limited. For that, unit list is manually selected because the unit_type feature of screen feature takes large portion in network size. Additionally, it is likely to fail at training if the channel size of screen encoder is not larger than channel number of screen feature.
 
 ```
 all_unit_list = [0, 37, 45, 48, 317, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268, 472, 49, 41, 830]
