@@ -24,8 +24,9 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 2. Replay 4.8.2
 
 ## PC capaticy
-1. One NVIDIA Titan V
+1. NVIDIA RTX 3080 x 1
 2. 32GB RAM
+3. Ubuntu 20.04
 
 # Network architecture
 
