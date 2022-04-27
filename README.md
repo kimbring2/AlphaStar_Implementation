@@ -1,8 +1,6 @@
 # Introduction
 This repository is for Deep Learning agent of Starcraft2. It is very similar to AlphaStar of DeepMind except size of network. I only test my code with Minigame, Simple64 map of PySC2. However, I am sure this code will work at more large scale game if network size is grown.
 
-## I am going to implement the IMPALA method soon for training the full game using RL.
-
 # Reference
 1. Download replay file(4.8.2 version file is needed): https://github.com/Blizzard/s2client-proto/tree/master/samples/replay-api
 2. Extracting observation, action from replay file: https://github.com/narhen/pysc2-replay
