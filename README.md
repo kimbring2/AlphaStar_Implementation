@@ -76,6 +76,16 @@ def preprocess_screen(screen):
 
 If you have a enough GPU memory, the list of unit can be larger. After incresing that, do not forget to add more channel to screen encoder.
 
+```
+feature_screen = tf.keras.Input(shape=(32, 32, 46))
+
+self.screen_encoder = tf.keras.Sequential([
+       tf.keras.layers.Conv2D(46, 1, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(46, 5, padding='same', activation='relu'),
+       tf.keras.layers.Conv2D(92, 3, padding='same', activation='relu'),
+    ])
+```
+
 ## AlphaStar
 <img src="image/network_architecture.png" width="1000">
 
