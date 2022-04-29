@@ -102,7 +102,7 @@ Afater checking norm value, you should remove an outlier value among them.
 
 <img src="image/MoveToBeacon_A2C.png" width="400">
 
-After training 10 times at FullyConv model, I can obtain the following graph of score.
+After training 10 times at the FullyConv model, Following graph of score can be obtained. Note that there are no fail training during 10 times trial after adding Residual methoh to the screen, minimap action.
 
 <img src="image/score_variation.png" width="600">
 
