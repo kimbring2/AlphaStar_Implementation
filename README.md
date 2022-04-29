@@ -104,7 +104,7 @@ Afater checking norm value, you should remove an outlier value among them.
 
 After training 10 times at FullyConv model, I can obtain the following graph of score.
 
-<img src="image/variation.png" width="600">
+<img src="image/score_variation.png" width="600">
 
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
