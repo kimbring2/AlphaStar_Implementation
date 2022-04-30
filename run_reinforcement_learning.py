@@ -233,7 +233,7 @@ class A3CAgent:
         	model.load_weights(workspace_path + 'Models/' + arguments.load_model)
 
         self.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=0.0005,
-                                                                            decay_steps=10000, decay_rate=0.94)
+                                                                            decay_steps=50000, decay_rate=0.94)
         self.optimizer = tf.keras.optimizers.RMSprop(self.learning_rate, rho=0.99, epsilon=1e-5)
 
     @tf.function
