@@ -43,7 +43,7 @@ There may be a minor error such a GPU setting, and network size. However, you ca
 I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
 
 ## Simple64
-To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1lqb__ubLKLfw4Jiig6KsO-D0e_wrnGWk?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
+To implement AlphaStar susuccessfully, Supervised Training is crucial. Instead of using the existing replay data to check simple network of mine, I collect amount of 1000 number of [replay files](https://drive.google.com/drive/folders/1Tdt-7LaQWQijT7MZWYCr5fGn1CECUsFa?usp=sharing) in Simple64 map using only Terran, and Marine rush from two Barrack with Random race opponent.
 
 First, change a Starcraft2 replay file to hkl file format for fast training. It will remove a step of no_op action except when it is occured at first, end of episode and 8 dividble step. You need a around 80GB disk space to convert number of around 1000 replay files to hkl. Current, I only use replay file of Terran vs Terran.
 ```
