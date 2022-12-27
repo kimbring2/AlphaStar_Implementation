@@ -29,9 +29,7 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 # Comment for code
 Instead of adding a comment to the code, overall explanation about code is written in Medium. Please visit using the link at the bottom of the page.
 
-<img src="image/network_architecture(fullyconv).png" width="100">
-
-<img src="image/network_architecture(fullyconv).png" width="100">
+<img src="image/network_architecture(fullyconv).png" width="100"> <img src="image/network_architecture(fullyconv).png" width="100">
 
 # Network architecture
 ## FullyConv
