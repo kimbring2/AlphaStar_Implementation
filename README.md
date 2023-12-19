@@ -39,6 +39,76 @@ Instead of adding a comment to the code, overall explanation about code is writt
 # Notice
 There may be a minor error such a GPU setting, and network size. However, you can run it without major modification because I check that latest code works for Superviesed, Reinforcment Learning. It is not easy to check every part of code because it is huge.
 
+# Reinforcement Learning
+I can only check that FullyConv model works well in Reinforcement Learning. LSTM model takes too much time for training and does not show better performance than FullyConv yet.
+
+In the case of RL, the training speed is improved by introducing [IMPALA](https://arxiv.org/abs/1802.01561) of DeepMind, which separates the learner and actor.
+<img src="image/impala_architecture.png" width="400">
+
+To run that training method, you first run the learner file using below command.
+```
+$ python learner.py --env_num 4 --gpu_use True --model_name fullyconv  --gradient_clipping 10.0
+```
+
+Next, you should run the multiple actor based on the number of env_num of learner. They should be ran from seperate terminal and can be distinguished from env_id.
+```
+$ python actor.py --env_id 0 --environment CollectMineralShards
+$ python actor.py --env_id 1 --environment CollectMineralShards
+$ python actor.py --env_id 2 --environment CollectMineralShards
+$ python actor.py --env_id 3 --environment CollectMineralShards
+```
+
+I also provide the bash file to run the below process using [tmux](https://github.com/tmux/tmux/wiki). You can start the leaner and actors using single terminal.
+```
+./run_reinforcement_learning.sh 8 True CollectMineralShards fullyconv
+```
+
+You can also terminate the learner and actors using bash script.
+```
+./step.sh
+```
+
+Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
+
+```
+grads = tape.gradient(loss, model.trainable_variables)
+grad_norm = tf.linalg.global_norm(grads)
+tf.print("grad_norm: ", grad_norm)
+grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
+```
+
+<img src="image/gradient_clipping.png" width="400">
+
+Afater checking norm value, you should remove an outlier value among them.
+
+## MoveToBeacon
+First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
+
+./run_reinforcement_learning.sh 1 True MoveToBeacon fullyconv
+
+I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
+
+After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
+
+<img src="image/MoveToBeacon_A2C.png" width="400">
+
+After training 10 times ufing the FullyConv model, Following graph of score can be obtained. Note that there are no fail training during 10 times trial after adding Residual methoh to the screen, minimap action.
+
+<img src="image/score_variation.png" width="600">
+
+After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
+
+```
+$ python run_evaluation.py --environment Simple64 --workspace_path [your path]/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
+```
+
+<img src="image/alphastar_beacon.gif" width="800">
+
+If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
+
+## CollectMineralShards
+<img src="image/alphastar_mineral.gif" width="800">
+
 # Supervised Learning 
 I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
 
@@ -72,75 +142,6 @@ Video of downisde is one of behavior example of trained agent.
 <strong>Click to Watch!</strong>
 
 I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
-
-# Reinforcement Learning
-I can only check that FullyConv model works well in Reinforcement Learning. LSTM model takes too much time for training and does not show better performance than FullyConv yet.
-
-In the case of RL, the training speed is improved by introducing [IMPALA](https://arxiv.org/abs/1802.01561) of DeepMind, which separates the learner and actor.
-<img src="image/impala_architecture.png" width="400">
-
-To run that training method, you first run the learner file using below command.
-```
-$ python learner.py --env_num 4 --gpu_use True --model_name fullyconv  --gradient_clipping 10.0
-```
-
-Next, you should run the multiple actor based on the number of env_num of learner. They should be ran from seperate terminal and can be distinguished from env_id.
-```
-$ python actor.py --env_id 0 --environment CollectMineralShards
-$ python actor.py --env_id 1 --environment CollectMineralShards
-$ python actor.py --env_id 2 --environment CollectMineralShards
-$ python actor.py --env_id 3 --environment CollectMineralShards
-```
-
-I also provide the bash file to run the below process using [tmux](https://github.com/tmux/tmux/wiki). You can start the leaner and actors using single terminal.
-```
-./run_reinforcement_learning.sh 8 True CollectMineralShards fullyconv
-```
-
-You can also terminate the learner and actors using bash script.
-```
-./step.sh
-```
-
-## MoveToBeacon
-First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
-
-```
-$ python run_reinforcement_learning.py --workspace_path [your path]/AlphaStar_Implementation/ --training True --gpu_use True --save_model True --num_worker 5 --model_name alphastar
-```
-
-I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
-
-After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
-
-Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
-
-```
-grads = tape.gradient(loss, model.trainable_variables)
-grad_norm = tf.linalg.global_norm(grads)
-tf.print("grad_norm: ", grad_norm)
-grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
-```
-
-<img src="image/gradient_clipping.png" width="400">
-
-Afater checking norm value, you should remove an outlier value among them.
-
-<img src="image/MoveToBeacon_A2C.png" width="400">
-
-After training 10 times ufing the FullyConv model, Following graph of score can be obtained. Note that there are no fail training during 10 times trial after adding Residual methoh to the screen, minimap action.
-
-<img src="image/score_variation.png" width="600">
-
-After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
-
-```
-$ python run_evaluation.py --environment Simple64 --workspace_path [your path]/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
-```
-
-<img src="image/alphastar_beacon.gif" width="800">
-
-If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
 
 # Detailed information
 I am writing explanation for code at Medium as series.
