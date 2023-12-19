@@ -92,7 +92,7 @@ I provide a FullyConv, AlphaStar style model. You can change a model by using th
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
-<img src="image/MoveToBeacon_A2C.png" width="400">
+<img src="image/MoveToBeacon_IMPALA.png" width="400">
 
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
@@ -106,6 +106,8 @@ If the accumulated reward is over 20 per episode, you can see the Marine follow 
 
 ## CollectMineralShards
 <img src="image/alphastar_mineral.gif" width="800">
+
+<img src="image/CollectMineralShards_IMPALA.png" width="400">
 
 # Supervised Learning 
 I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
