@@ -90,7 +90,7 @@ $ ./run_reinforcement_learning.sh 1 True CollectMineralShards fullyconv
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
 
-After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
+After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 100.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the the average reward is improved.
 
 <img src="image/CollectMineralShards_IMPALA.png" width="400">
 
