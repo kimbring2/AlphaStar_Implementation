@@ -74,7 +74,33 @@ Video of downisde is one of behavior example of trained agent.
 I only use a replay file of Terran vs Terran case. Therefore, agent only need to recognize 19 unit during game. It can make the size of model do not need to become huge. Total unit number of Starcraft 2 is over 100 in full game case. For that, we need more powerful GPU to run.
 
 # Reinforcement Learning
-I can only check that FullyConv works well in Reinforcement Learning. Model with LSTM takes too much time for training and does not show better performance than FullyConv yet.
+I can only check that FullyConv model works well in Reinforcement Learning. LSTM model takes too much time for training and does not show better performance than FullyConv yet.
+
+In the case of RL, the training speed is improved by introducing [IMPALA](https://arxiv.org/abs/1802.01561) of DeepMind, which separates the learner and actor.
+<img src="image/impala_architecture.png" width="400">
+
+To run that training method, you first run the learner file using below command.
+```
+$ python learner.py --env_num 4 --gpu_use True --model_name fullyconv  --gradient_clipping 10.0
+```
+
+Next, you should run the multiple actor based on the number of env_num of learner. They should be ran from seperate terminal and can be distinguished from env_id.
+```
+$ python actor.py --env_id 0 --environment CollectMineralShards
+$ python actor.py --env_id 1 --environment CollectMineralShards
+$ python actor.py --env_id 2 --environment CollectMineralShards
+$ python actor.py --env_id 3 --environment CollectMineralShards
+```
+
+I also provide the bash file to run the below process using [tmux](https://github.com/tmux/tmux/wiki). You can start the leaner and actors using single terminal.
+```
+./run_reinforcement_learning.sh 8 True CollectMineralShards fullyconv
+```
+
+You can also terminate the learner and actors using bash script.
+```
+./step.sh
+```
 
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
