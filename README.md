@@ -81,33 +81,28 @@ grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
 
 Afater checking norm value, you should remove an outlier value among them.
 
-## MoveToBeacon
+## CollectMineralShards
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
 ```
-$ ./run_reinforcement_learning.sh 1 True MoveToBeacon fullyconv
+$ ./run_reinforcement_learning.sh 1 True CollectMineralShards fullyconv
 ```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
-<img src="image/MoveToBeacon_IMPALA.png" width="400">
+<img src="image/CollectMineralShards_IMPALA.png" width="400">
 
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
 ```
-$ python run_evaluation.py --environment Simple64 --workspace_path [your path]/AlphaStar_Implementation --visualize True --model_name alphastar --pretrained_model reinforcement_model
+$ python run_evaluation.py --workspace_path /home/kimbring2/pysc2_impala --visualize True --gpu_use True --pretrained_model reinforcement_model_13626481 --environment CollectMineralShards
 ```
 
-<img src="image/alphastar_beacon.gif" width="800">
+If the accumulated reward is over 100 per episode, you can see the Marines collect the Mineral well.
 
-If the accumulated reward is over 20 per episode, you can see the Marine follow the beacon well.
-
-## CollectMineralShards
 <img src="image/alphastar_mineral.gif" width="800">
-
-<img src="image/CollectMineralShards_IMPALA.png" width="400">
 
 # Supervised Learning 
 I can only check that model with LSTM works well in Supervised Learning. FullyConv model does not show good performance yet although it fast then LSTM model for training. 
