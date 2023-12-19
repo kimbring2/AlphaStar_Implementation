@@ -9,13 +9,14 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 
 # Version
 ## Python
-1. Python3
+1. Python3.7 or 3.8
 2. PySC2 3.0.0: https://github.com/deepmind/pysc2
 3. Tensorflow-gpu 2.3.0
 4. Tensorflow-probability 0.11.0
 5. Hickle 4.0.4
 6. Pygame 1.9.6
 7. Sklearn
+8. ZeroMQ
 
 ## Starcraft2
 1. Client 4.8.2: https://github.com/Blizzard/s2client-proto#downloads
@@ -68,6 +69,7 @@ You can also terminate the learner and actors using bash script.
 $ ./stop.sh
 ```
 
+## Gradient Clipping
 Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
 
 ```
@@ -80,6 +82,9 @@ grads, _ = tf.clip_by_global_norm(grads, arguments.gradient_clipping)
 <img src="image/gradient_clipping.png" width="400">
 
 Afater checking norm value, you should remove an outlier value among them.
+
+## Stacked Screen Observation
+
 
 ## CollectMineralShards
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
