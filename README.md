@@ -65,7 +65,7 @@ I also provide the bash file to run the below process using [tmux](https://githu
 
 You can also terminate the learner and actors using bash script.
 ```
-./step.sh
+./stop.sh
 ```
 
 Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
