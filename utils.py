@@ -29,24 +29,39 @@ _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
 _MINIMAP_CAMERA = features.MINIMAP_FEATURES.camera.index
 _MINIMAP_PLAYER_RELATIVE = features.MINIMAP_FEATURES.player_relative.index
 
-unit_list = [37, 45, 48, 317, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 19, 483, 51, 28, 42, 53, 268, 472, 49, 41, 830]
-#unit_list = [0, 48, 317]
+all_unit_list = [0, 37, 45, 48, 317, 21, 341, 342, 18, 27, 132, 20, 5, 47, 21, 
+                 19, 483, 51, 28, 42, 53, 268, 472, 49, 41, 830, 105, 9, 1680, 110]
+
+# Marine = 48
+# Zergling = 105
+# Baneling = 9
+# Roach = 110
+# Mineral = 1680
+# Beacon = 317
+
+#essential_unit_list = [0, 45, 48, 317, 21, 341, 18, 27, 20, 19, 483, 500] # For Simple64
+#essential_unit_list = [0, 48, 105, 9]  # For Minigame
+essential_unit_list = [0, 48, 1680]
+
 
 def preprocess_screen(screen):
   layers = []
   assert screen.shape[0] == len(features.SCREEN_FEATURES)
   for i in range(len(features.SCREEN_FEATURES)):
     if i == _SCREEN_UNIT_TYPE:
-      scale = len(unit_list)
+      scale = len(essential_unit_list)
       layer = np.zeros([scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
-      for j in range(scale):
-        indy, indx = (screen[i] == unit_list[j]).nonzero()
-        layer[j, indy, indx] = 1
+      for j in range(len(all_unit_list)):
+        indy, indx = (screen[i] == all_unit_list[j]).nonzero()
+
+        if all_unit_list[j] in essential_unit_list:
+          unit_index = essential_unit_list.index(all_unit_list[j])
+          layer[unit_index, indy, indx] = 1
+        else:
+          layer[-1, indy, indx] = 1
 
       layers.append(layer)
-    elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
-      layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
-    elif i == _SCREEN_PLAYER_ID or i == _SCREEN_SELECTED or i == _SCREEN_VISIBILITY_MAP:
+    elif i == _SCREEN_SELECTED:
       layer = np.zeros([features.SCREEN_FEATURES[i].scale, screen.shape[1], screen.shape[2]], dtype=np.float32)
       for j in range(features.SCREEN_FEATURES[i].scale):
         indy, indx = (screen[i] == j).nonzero()
@@ -148,7 +163,7 @@ def preprocess_feature_units(feature_units, feature_screen_size):
 
 SingleSelectFeature = namedtuple('SingleSelectFeature', ['index', 'type', 'scale', 'name'])
 SINGLE_SELECT_FEATURES = [
-  SingleSelectFeature(0,  features.FeatureType.SCALAR, len(unit_list), 'unit_type'),
+  SingleSelectFeature(0,  features.FeatureType.SCALAR, len(essential_unit_list), 'unit_type'),
   SingleSelectFeature(1,  features.FeatureType.SCALAR, 4, 'player_relative'),
   SingleSelectFeature(2,  features.FeatureType.SCALAR, 2000, 'health'),
 ]
@@ -161,7 +176,7 @@ def preprocess_single_select(single_select):
         out = np.log(single_select[s.index] + 1) / np.log(s.scale)
         layers.append(out)
       elif s.index == 0:
-        out = unit_list.index(single_select[s.index]) / s.scale
+        out = essential_unit_list.index(single_select[s.index]) / s.scale
         layers.append(out)
       else:
         out = single_select[s.index] / s.scale
@@ -209,7 +224,7 @@ def preprocess_build_queue(build_queue):
 
   layers = [0.0, 0.0, 0.0, 0.0, 0.0]
   for i in range(0, build_queue_length):
-    layers[i] = (unit_list.index(build_queue[i][0]) / len(unit_list))
+    layers[i] = (essential_unit_list.index(build_queue[i][0]) / len(essential_unit_list))
 
   return np.array(layers)
 
@@ -221,7 +236,7 @@ def preprocess_multi_select(multi_select):
 
   layers = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
   for i in range(0, multi_select_length):
-    layers[i] = (unit_list.index(multi_select[i][0]) / len(unit_list))
+    layers[i] = (essential_unit_list.index(multi_select[i][0]) / len(essential_unit_list))
 
   return np.array(layers)
 
