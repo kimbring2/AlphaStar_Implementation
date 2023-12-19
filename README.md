@@ -60,12 +60,12 @@ $ python actor.py --env_id 3 --environment CollectMineralShards
 
 I also provide the bash file to run the below process using [tmux](https://github.com/tmux/tmux/wiki). You can start the leaner and actors using single terminal.
 ```
-./run_reinforcement_learning.sh 8 True CollectMineralShards fullyconv
+$ ./run_reinforcement_learning.sh 8 True CollectMineralShards fullyconv
 ```
 
 You can also terminate the learner and actors using bash script.
 ```
-./stop.sh
+$ ./stop.sh
 ```
 
 Gradient clipping is essential for training the model of PySC2 because it has multiple stae encoder, action head network. In my experience, gradient norm value is changed based on network size. Therefore, you should check it everytime you change model structure. You can check it by using 'tf.linalg.global_norm' function.
@@ -84,17 +84,15 @@ Afater checking norm value, you should remove an outlier value among them.
 ## MoveToBeacon
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
 
-./run_reinforcement_learning.sh 1 True MoveToBeacon fullyconv
+```
+$ ./run_reinforcement_learning.sh 1 True MoveToBeacon fullyconv
+```
 
 I provide a FullyConv, AlphaStar style model. You can change a model by using the model_name argument. Default is FullyConv model.
 
 After the training is completed, test it using the following command. Training performance is based on two parameter. Try to use a 1.0 as the gradient_clipping and 0.0001 as the learning_rate. Futhermore, trarning progress and result are depends on the seed value. Model is automatically saved if the average reward is over 5.0.
 
 <img src="image/MoveToBeacon_A2C.png" width="400">
-
-After training 10 times ufing the FullyConv model, Following graph of score can be obtained. Note that there are no fail training during 10 times trial after adding Residual methoh to the screen, minimap action.
-
-<img src="image/score_variation.png" width="600">
 
 After finishing training, run below command to test pretrained model that was saved under Models folder of workspace. 
 
