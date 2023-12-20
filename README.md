@@ -85,10 +85,10 @@ Afater checking norm value, you should remove an outlier value among them.
 
 ## Stacked Screen Observation
 One of the big differences between turn-based games like Go and Real-time strategy game is that there is no single state to determine whether a unit is approaching or moving away from a specific point. Therefore, you should either use LSTM as in DeepMind's [Relational Deep Reinforcement Learning paper](https://arxiv.org/pdf/1806.01830.pdf), or keep the states of the previous step and use them as the current state.
-<img src="image/stacked_observation_deepmind.png" width="400">
+<img src="image/stacked_observation_deepmind.png" width="800">
 
 In this project, the latter method was used, and it seemed to have the same effect as ConvLSTM3D.
-<img src="image/stacked_observation_mine.png" width="400">
+<img src="image/stacked_observation_mine.png" width="200">
 
 ## CollectMineralShards
 First, let's test the sample code for MoveToBeacon environment which is the simplest environment in PySC2 using model which has similar network structure as AlphaStar. First, run 'git clone https://github.com/kimbring2/AlphaStar_Implementation.git' command in your workspace. Next, start training by using below command. 
