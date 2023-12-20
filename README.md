@@ -23,8 +23,8 @@ This repository is for Deep Learning agent of Starcraft2. It is very similar to 
 2. Replay 4.8.2
 
 ## PC capaticy
-1. NVIDIA RTX 3080 x 1
-2. 32GB RAM
+1. NVIDIA RTX A6000 x 1
+2. 128GB RAM
 3. Ubuntu 20.04
 
 # Comment for code
@@ -38,7 +38,7 @@ Instead of adding a comment to the code, overall explanation about code is writt
 <img src="image/network_architecture.png" width="1000">
 
 # Notice
-There may be a minor error such a GPU setting, and network size. However, you can run it without major modification because I check that latest code works for Superviesed, Reinforcment Learning. It is not easy to check every part of code because it is huge.
+There may be a minor error such a GPU setting, unit list, and network size. However, you can run it without major modification because I check that latest code works for Superviesed, Reinforcment Learning. It is not easy to check every part of code because it is huge.
 
 # Reinforcement Learning
 I can only check that FullyConv model works well in Reinforcement Learning. LSTM model takes too much time for training and does not show better performance than FullyConv yet.
