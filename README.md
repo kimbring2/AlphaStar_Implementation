@@ -51,6 +51,20 @@ To run that training method, you first run the learner file using below command.
 $ python learner.py --env_num 4 --gpu_use True --model_name fullyconv  --gradient_clipping 10.0
 ```
 
+You can ignore the below error of learner.py part. It does not affect the training process. Please check the actor.py is running well.
+
+```
+Traceback (most recent call last):
+File "C:/minerl/learner.py", line 392, in
+coord.join(thread_data)
+File "C:\Users\sund0\anaconda3\envs\minerl_env\lib\site-packages\tensorflow\python\training\coordinator.py", line 357, in join
+threads = self._registered_threads.union(set(threads))
+
+where line 391 and 392 is
+for thread_data in thread_data_list:
+coord.join(thread_data)
+```
+
 Next, you should run the multiple actor based on the number of env_num of learner. They should be ran from seperate terminal and can be distinguished from env_id.
 ```
 $ python actor.py --env_id 0 --environment CollectMineralShards
